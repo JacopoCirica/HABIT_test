@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { MessageSquare } from "lucide-react"
 import { createUser } from "@/lib/actions"
 import { PageTransition } from "@/components/page-transition"
@@ -16,12 +17,13 @@ import { motion } from "framer-motion"
 export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
+  const [agreed, setAgreed] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
+    if (!email || !agreed) return
 
     setIsSubmitting(true)
     setError("")
@@ -94,6 +96,23 @@ export default function SignupPage() {
                     </p>
                   </div>
 
+                  <motion.div
+                    className="flex items-start space-x-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.4 }}
+                  >
+                    <Checkbox
+                      id="terms"
+                      checked={agreed}
+                      onCheckedChange={(checked) => setAgreed(checked as boolean)}
+                      className="transition-all duration-200"
+                    />
+                    <Label htmlFor="terms" className="text-sm leading-tight">
+                      I agree to participate in the study
+                    </Label>
+                  </motion.div>
+
                   {error && (
                     <motion.p
                       className="text-sm text-destructive"
@@ -104,7 +123,7 @@ export default function SignupPage() {
                     </motion.p>
                   )}
 
-                  <AnimatedButton type="submit" className="w-full" disabled={!email || isSubmitting}>
+                  <AnimatedButton type="submit" className="w-full" disabled={!email || !agreed || isSubmitting}>
                     {isSubmitting ? "Sending code..." : "Send verification code"}
                   </AnimatedButton>
                 </motion.form>
