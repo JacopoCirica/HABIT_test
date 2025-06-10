@@ -14,7 +14,6 @@ export interface ChatRoom {
   userOpinions: Record<string, any>
   timeAdjustments: Array<{ type: "add" | "remove"; minutes: number; timestamp: number }>
   moderatorPresent: boolean
-  confederateName?: string
 }
 
 export interface ChatMessage {

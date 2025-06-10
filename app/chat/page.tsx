@@ -60,39 +60,6 @@ import {
 import type { UserOpinions, OpinionTopic } from "@/lib/opinion-analyzer"
 import type { OpinionTrackingData } from "@/lib/opinion-tracker"
 
-const CONFEDERATE_NAMES = [
-  "Olivia",
-  "Liam",
-  "Emma",
-  "Noah",
-  "Ava",
-  "Oliver",
-  "Sophia",
-  "Elijah",
-  "Isabella",
-  "Mateo",
-  "Mia",
-  "Lucas",
-  "Amelia",
-  "Levi",
-  "Harper",
-  "Ezra",
-  "Evelyn",
-  "Leo",
-  "Abigail",
-  "Luca",
-  "Chloe",
-  "Daniel",
-  "Grace",
-  "Samuel",
-  "Lily",
-  "Henry",
-  "Zoe",
-  "Owen",
-  "Nora",
-  "David",
-]
-
 // Simulated confederate responses based on topics
 const SIMULATED_RESPONSES = {
   // General responses that work for any topic
@@ -246,17 +213,7 @@ export default function ChatPage() {
 
     if (!room || room.userId !== storedUserId || room.userName !== (storedName || "User")) {
       room = createChatRoom(storedUserId, storedName || "User", opinions)
-      // Assign confederate name if new room or not set
-      if (!room.confederateName) {
-        room.confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)]
-      }
       saveRoomToStorage(room)
-    } else {
-      // If room loaded, ensure confederateName is set
-      if (!room.confederateName) {
-        room.confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)]
-        saveRoomToStorage(room)
-      }
     }
 
     setCurrentRoom(room)
@@ -269,22 +226,13 @@ export default function ChatPage() {
     setSessionTimeRemaining(room.sessionTimeRemaining)
     setSessionEnded(room.sessionEnded)
     setTimeAdjustments(room.timeAdjustments)
-    // Ensure moderatorPresent is also loaded from the room
-    setIsModerator(room.moderatorPresent || false)
-
-    // Update roomMembers with the assigned confederate name
-    const confederateActualName = room.confederateName || "Confederate" // Fallback
-    setRoomMembers((prevMembers) =>
-      prevMembers.map((member) =>
-        member.role === "confederate" ? { ...member, name: confederateActualName } : member,
-      ),
-    )
+    setRoomMembers((prev) => prev.map((m) => (m.role === "user" ? { ...m, name: room!.userName } : m)))
 
     const topicToDebateAnalysis = getTopicToDebate(room.userOpinions)
     if (topicToDebateAnalysis) {
       const topicKey = topicToDebateAnalysis.topic
       setDebateTopic(topicKey)
-      room.debateTopic = topicKey // Ensure room object is updated before save
+      room.debateTopic = topicKey
       const topicDisplayName = topicDisplayNames[topicKey]
       const debateQuestion = topicDebateFraming[topicKey]
       setSessionTitle(topicDisplayName)
@@ -292,6 +240,7 @@ export default function ChatPage() {
       const tracking = initializeOpinionTracking(topicKey, topicToDebateAnalysis.rawValue)
       setOpinionTrackingData(tracking)
 
+      // Simplified topic selection for simulated responses
       if (["vaccination", "universalHealthcare"].includes(topicKey)) setSelectedTopic("healthcare")
       else if (topicKey === "climateChange") setSelectedTopic("climate")
       else if (["immigration", "gunControl"].includes(topicKey)) setSelectedTopic("politics")
@@ -311,7 +260,7 @@ export default function ChatPage() {
         setHasStartedConversation(true)
       }
     }
-    saveRoomToStorage(room) // Save room again after all updates
+    saveRoomToStorage(room)
   }, [])
 
   // Check for moderator access
@@ -1112,11 +1061,7 @@ export default function ChatPage() {
                           <div className="relative mt-1 flex-shrink-0">
                             <Avatar className="h-9 w-9 border-2 border-white">
                               <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                {message.role === "system"
-                                  ? "M"
-                                  : getAvatarInitial(
-                                      isAssistant ? participant?.name || "Confederate" : participant?.name || role,
-                                    )}
+                                {message.role === "system" ? "M" : getAvatarInitial(isAssistant ? "Confederate" : role)}
                               </div>
                             </Avatar>
                             <span
@@ -1134,7 +1079,7 @@ export default function ChatPage() {
                               {message.role === "system"
                                 ? "Moderator"
                                 : isAssistant
-                                  ? participant?.name || "Confederate" // This will now use the random name
+                                  ? "Confederate"
                                   : participant?.name || message.role}
                             </span>
                           </div>
