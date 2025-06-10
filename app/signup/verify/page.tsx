@@ -79,7 +79,7 @@ export default function VerifyPage() {
         // Success! Proceed to the next step
         setIsVerified(true)
         setTimeout(() => {
-          router.push("/signup/consent")
+          router.push("/signup/informed-consent")
         }, 2000)
         return
       }
@@ -89,7 +89,7 @@ export default function VerifyPage() {
         await verifyCode(email, code)
         setIsVerified(true)
         setTimeout(() => {
-          router.push("/signup/consent")
+          router.push("/signup/informed-consent")
         }, 2000)
       } catch (serverError) {
         // If server verification fails but we have a stored code, give it one more try
@@ -98,7 +98,7 @@ export default function VerifyPage() {
           if (code.trim() === storedVerificationCode.trim()) {
             setIsVerified(true)
             setTimeout(() => {
-              router.push("/signup/consent")
+              router.push("/signup/informed-consent")
             }, 2000)
             return
           }
@@ -171,7 +171,7 @@ export default function VerifyPage() {
   }
 
   const handleAnimationComplete = () => {
-    router.push("/signup/consent")
+    router.push("/signup/informed-consent")
   }
 
   return (
