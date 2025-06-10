@@ -66,6 +66,7 @@ const CONFEDERATE_NAMES = [
   "Jamie",
   "Alex",
   "Taylor",
+  "Max"
 ]
 
 // Simulated confederate responses based on topics
