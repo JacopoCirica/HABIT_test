@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^0.0.9",
-    "@ai-sdk/groq": "^0.0.9",
+    "@ai-sdk/groq": "^0.0.20",
     "@ai-sdk/openai": "latest",
     "@ai-sdk/react": "^0.0.9",
     "@emotion/is-prop-valid": "latest",
