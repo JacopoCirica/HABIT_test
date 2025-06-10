@@ -66,7 +66,6 @@ const CONFEDERATE_NAMES = [
   "Jamie",
   "Alex",
   "Taylor",
-  "Max"
 ]
 
 // Simulated confederate responses based on topics
@@ -604,6 +603,7 @@ export default function ChatPage() {
               ? "disagree"
               : "neutral"
           : null,
+        confederateName: currentRoom?.confederateName || null,
       }
 
       // console.log("[ChatPage] Sending to /api/chat:", JSON.stringify(requestBody, null, 2));
