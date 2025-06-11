@@ -37,7 +37,7 @@ Your participation is entirely voluntary. You can choose to stop participating a
 If you have any questions about this research, you can contact the HABIT research team at habit-research@example.com. (Note: This is a placeholder email for this demo).
 
 **7. Duration:**
-The entire session, including surveys and the chat, is expected to take approximately 20-25 minutes.
+The entire session, including surveys and the chat, is expected to take approximately 25-30 minutes.
 `
 
 export default function InformedConsentPage() {

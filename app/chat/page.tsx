@@ -1157,13 +1157,17 @@ export default function ChatPage() {
                       <div className="flex gap-3">
                         <div className="relative mt-1 flex-shrink-0">
                           <Avatar className="h-9 w-9 border-2 border-white">
-                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">C</div>
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {roomMembers.find((m) => m.role === "confederate")?.name?.[0] || "C"}
+                            </div>
                           </Avatar>
                           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
                         </div>
                         <div className="flex max-w-[75%] flex-col items-start">
                           <div className="mb-1 flex items-center gap-2">
-                            <span className="text-sm font-medium">Confederate</span>
+                            <span className="text-sm font-medium">
+                              {roomMembers.find((m) => m.role === "confederate")?.name || "Confederate"}
+                            </span>
                           </div>
                           <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-2.5 text-sm shadow-sm">
                             <div className="flex items-center gap-2">

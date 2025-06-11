@@ -91,7 +91,7 @@ export default function Home() {
                       <CardTitle>3. Chat Session</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p>Engage in structured conversations with AI agents and other participants.</p>
+                      <p>Engage in structured conversations with confederates and other participants.</p>
                     </CardContent>
                   </Card>
                 </StaggeredItem>
