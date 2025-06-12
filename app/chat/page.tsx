@@ -1126,8 +1126,10 @@ export default function ChatPage() {
                               {message.role === "system"
                                 ? "Moderator"
                                 : isAssistant
-                                  ? participant?.name || "Confederate" // This will now use the random name
-                                  : participant?.name || message.role}
+                                  ? participant?.name || "Confederate"
+                                  : message.role === "user"
+                                    ? userName
+                                    : participant?.name || message.role}
                             </span>
                           </div>
 
