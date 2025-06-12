@@ -555,6 +555,9 @@ export default function ChatPage() {
     saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage])
     updateRoomActivity(roomId)
 
+    // --- Start timing for LLM response delay ---
+    const userMessageTimestamp = Date.now()
+
     if (useSimulatedResponses) {
       setTimeout(
         () => {
@@ -646,14 +649,27 @@ export default function ChatPage() {
         )
       }
 
-      // console.log("[ChatPage] Received from /api/chat:", data);
+      // --- Calculate realistic delay before showing the LLM response ---
+      // 1. Reading time (user message): 350 words/min = 5.83 words/sec
+      // 2. Typing time (LLM response): 40 words/min = 0.67 words/sec
+      // 3. Reflection: 0.5-2s random
+      const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0)
+      const userWords = getWordCount(userMessage.content)
+      const llmWords = getWordCount(data.content || "")
+      const readingTime = userWords / (350 / 60) // seconds
+      const typingTime = llmWords / (40 / 60) // seconds
+      const reflectionTime = 0.5 + Math.random() * 1.5 // 0.5 to 2.0 seconds
+      const totalDelay = readingTime + typingTime + reflectionTime
 
-      if (data.error && !data.content) {
-        // If API returns an error field and no primary content
-        console.error("[ChatPage] API returned an error:", data.error)
-        throw new Error(data.error) // Propagate this as a hard error
-      }
+      // 4. Time since user sent message
+      const now = Date.now()
+      const elapsed = (now - userMessageTimestamp) / 1000 // seconds
+      const remainingDelay = Math.max(0, totalDelay - elapsed)
 
+      // 5. Wait for the remaining delay (if any)
+      await new Promise((resolve) => setTimeout(resolve, remainingDelay * 1000))
+
+      // --- Now show the LLM response ---
       const assistantMessage = {
         id: data.id || `assistant_${Date.now()}`,
         role: "assistant" as const,
