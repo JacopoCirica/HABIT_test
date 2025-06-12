@@ -251,7 +251,11 @@ export default function ChatPage() {
     const confederateActualName = room.confederateName || "Confederate" // Fallback
     setRoomMembers((prevMembers) =>
       prevMembers.map((member) =>
-        member.role === "confederate" ? { ...member, name: confederateActualName } : member,
+        member.role === "confederate"
+          ? { ...member, name: confederateActualName }
+          : member.role === "user"
+            ? { ...member, name: room.userName }
+            : member
       ),
     )
 
