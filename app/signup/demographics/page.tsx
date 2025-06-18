@@ -51,7 +51,7 @@ export default function DemographicsPage() {
         opinions,
       })
 
-      router.push("/chat")
+      router.push("/rooms")
     } catch (error) {
       console.error("Error saving demographics:", error)
     } finally {
