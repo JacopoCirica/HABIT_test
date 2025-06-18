@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { Suspense } from "react"
 import { useState, useRef, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -145,7 +145,15 @@ const SIMULATED_RESPONSES = {
 // In-memory store for demo (replace with backend in production)
 const twoVOneRooms: Array<any> = [];
 
-export default function ChatPage() {
+export default function ChatPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading chat...</div>}>
+      <ChatPage />
+    </Suspense>
+  );
+}
+
+function ChatPage() {
   const router = useRouter()
   const searchParams = useSearchParams();
   const roomType = searchParams.get("type") || "1v1";
