@@ -564,59 +564,70 @@ function ChatPage(): JSX.Element {
   }
 
   const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
+    e.preventDefault();
+    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return;
 
-    const userMessage = { id: `user_${Date.now()}`, role: "user" as const, content: input }
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsLoading(true)
+    const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
+    const userMessage = {
+      id: `user_${Date.now()}`,
+      role: "user",
+      content: input,
+      room_id: roomId,
+      sender_id: userId,
+      sender_role: "user",
+      timestamp: new Date().toISOString(),
+    };
 
-    const chatMessageForStorage: ChatMessage = { ...userMessage, roomId, timestamp: new Date() }
-    const existingMessages = loadMessagesFromStorage(roomId)
-    saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage])
-    updateRoomActivity(roomId)
+    setInput("");
+    setIsLoading(true);
+
+    // Insert the user message into Supabase
+    const { error: userError } = await supabase.from("messages").insert([userMessage]);
+    if (userError) {
+      console.error("Failed to send message:", userError);
+      setIsLoading(false);
+      return;
+    }
 
     // --- Start timing for LLM response delay ---
-    const userMessageTimestamp = Date.now()
+    const userMessageTimestamp = Date.now();
 
     if (useSimulatedResponses) {
-      setTimeout(
-        () => {
-          const simulatedResponse = getSimulatedResponse()
-          const assistantMessage = {
-            id: `assistant_${Date.now()}`,
-            role: "assistant" as const,
-            content: simulatedResponse,
-          }
-          setMessages((prev) => [...prev, assistantMessage])
-          setIsLoading(false)
-          const assistantChatMessage: ChatMessage = { ...assistantMessage, roomId, timestamp: new Date() }
-          const currentMsgs = loadMessagesFromStorage(roomId)
-          saveMessagesToStorage(roomId, [...currentMsgs, assistantChatMessage])
-          updateRoomActivity(roomId)
-        },
-        1500 + Math.random() * 1000,
-      )
-      return
+      setTimeout(async () => {
+        const simulatedResponse = getSimulatedResponse();
+        const assistantMessage = {
+          id: `assistant_${Date.now()}`,
+          role: "assistant",
+          content: simulatedResponse,
+          room_id: roomId,
+          sender_id: "confederate",
+          sender_role: "assistant",
+          timestamp: new Date().toISOString(),
+        };
+        // Insert the confederate message into Supabase
+        const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
+        if (confError) {
+          console.error("Failed to send confederate message:", confError);
+        }
+        setIsLoading(false);
+      }, 1500 + Math.random() * 1000);
+      return;
     }
 
     try {
-      const storedName = sessionStorage.getItem("userName") || "User"
-      const storedAge = sessionStorage.getItem("userAge") || "Unknown"
-      const storedSex = sessionStorage.getItem("userSex") || "Unknown" // From consent form
-      const storedEducation = sessionStorage.getItem("userEducation") || "Unknown"
-      const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown"
-
+      const storedName = sessionStorage.getItem("userName") || "User";
+      const storedAge = sessionStorage.getItem("userAge") || "Unknown";
+      const storedSex = sessionStorage.getItem("userSex") || "Unknown";
+      const storedEducation = sessionStorage.getItem("userEducation") || "Unknown";
+      const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown";
       const userTraits = {
-        gender: storedSex, // API expects 'gender', using 'sex' from consent
+        gender: storedSex,
         age: storedAge,
         education: storedEducation,
         employment: storedOccupation,
-      }
-
+      };
       const requestBody = {
-        messages: [...messages, userMessage], // Send all messages including the new one
+        messages: [...messages, userMessage],
         userTraits,
         topic: debateTopic ? topicDisplayNames[debateTopic] : "the current topic",
         roomId: roomId,
@@ -629,107 +640,96 @@ function ChatPage(): JSX.Element {
               : "neutral"
           : null,
         confederateName: currentRoom?.confederateName || null,
-      }
-
-      // console.log("[ChatPage] Sending to /api/chat:", JSON.stringify(requestBody, null, 2));
-
+      };
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-      })
-
-      let responseText = ""
+      });
+      let responseText = "";
       try {
-        responseText = await response.text() // Always get text first
+        responseText = await response.text();
       } catch (textError) {
-        console.error("[ChatPage] Error reading response text:", textError)
-        throw new Error(`API Error: ${response.status} ${response.statusText}. Failed to read response body.`)
+        console.error("[ChatPage] Error reading response text:", textError);
+        throw new Error(`API Error: ${response.status} ${response.statusText}. Failed to read response body.`);
       }
-
       if (!response.ok) {
-        console.error(`[ChatPage] API Error: ${response.status} ${response.statusText}. Response body:`, responseText)
-        let errorJson
+        console.error(`[ChatPage] API Error: ${response.status} ${response.statusText}. Response body:`, responseText);
+        let errorJson;
         try {
-          errorJson = JSON.parse(responseText)
-        } catch (e) {
-          /* ignore if not json */
-        }
+          errorJson = JSON.parse(responseText);
+        } catch (e) {}
         throw new Error(
           errorJson?.error || `API request failed: ${response.statusText}. Raw: ${responseText.substring(0, 100)}...`,
-        )
+        );
       }
-
-      let data
+      let data;
       try {
-        data = JSON.parse(responseText)
+        data = JSON.parse(responseText);
       } catch (jsonError) {
-        console.error("[ChatPage] Error parsing JSON response. Raw text:", responseText)
-        const err = jsonError as Error
+        console.error("[ChatPage] Error parsing JSON response. Raw text:", responseText);
+        const err = jsonError as Error;
         throw new Error(
           `Failed to parse JSON response from API. Raw text started with: ${responseText.substring(0, 100)}... Error: ${err.message}`,
-        )
+        );
       }
-
       // --- Calculate realistic delay before showing the LLM response ---
-      // 1. Reading time (user message): 350 words/min = 5.83 words/sec
-      // 2. Typing time (LLM response): 40 words/min = 0.67 words/sec
-      // 3. Reflection: 0.5-2s random
-      const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0)
-      const userWords = getWordCount(userMessage.content)
-      const llmWords = getWordCount(data.content || "")
-      const readingTime = userWords / (350 / 60) // seconds
-      const typingTime = llmWords / (40 / 60) // seconds
-      const reflectionTime = 0.5 + Math.random() * 1.5 // 0.5 to 2.0 seconds
-      const totalDelay = readingTime + typingTime + reflectionTime
-
-      // 4. Time since user sent message
-      const now = Date.now()
-      const elapsed = (now - userMessageTimestamp) / 1000 // seconds
-      const remainingDelay = Math.max(0, totalDelay - elapsed)
-
-      // 5. Wait for the remaining delay (if any)
-      await new Promise((resolve) => setTimeout(resolve, remainingDelay * 1000))
-
+      const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0);
+      const userWords = getWordCount(userMessage.content);
+      const llmWords = getWordCount(data.content || "");
+      const readingTime = userWords / (350 / 60);
+      const typingTime = llmWords / (40 / 60);
+      const reflectionTime = 0.5 + Math.random() * 1.5;
+      const totalDelay = readingTime + typingTime + reflectionTime;
+      const now = Date.now();
+      const elapsed = (now - userMessageTimestamp) / 1000;
+      const remainingDelay = Math.max(0, totalDelay - elapsed);
+      await new Promise((resolve) => setTimeout(resolve, remainingDelay * 1000));
       // --- Now show the LLM response ---
       const assistantMessage = {
         id: data.id || `assistant_${Date.now()}`,
-        role: "assistant" as const,
+        role: "assistant",
         content: data.content || "I'm not sure how to respond to that.",
+        room_id: roomId,
+        sender_id: "confederate",
+        sender_role: "assistant",
+        timestamp: new Date().toISOString(),
+      };
+      // Insert the confederate message into Supabase
+      const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
+      if (confError) {
+        console.error("Failed to send confederate message:", confError);
       }
-      setMessages((prev) => [...prev, assistantMessage])
-
-      const assistantChatMessage: ChatMessage = { ...assistantMessage, roomId, timestamp: new Date() }
-      const currentMsgs = loadMessagesFromStorage(roomId)
-      saveMessagesToStorage(roomId, [...currentMsgs, assistantChatMessage])
-      updateRoomActivity(roomId)
     } catch (error) {
-      const err = error as Error
-      console.error("[ChatPage] Error in handleChatSubmit (fetching AI response):", err.message)
+      const err = error as Error;
+      console.error("[ChatPage] Error in handleChatSubmit (fetching AI response):", err.message);
       setApiErrorCount((prevCount) => {
-        const newCount = prevCount + 1
+        const newCount = prevCount + 1;
         if (newCount >= MAX_API_ERRORS) {
-          console.warn(`[ChatPage] Max API errors (${MAX_API_ERRORS}) reached. Switching to simulated responses.`)
-          setUseSimulatedResponses(true)
+          console.warn(`[ChatPage] Max API errors (${MAX_API_ERRORS}) reached. Switching to simulated responses.`);
+          setUseSimulatedResponses(true);
         }
-        return newCount
-      })
-
-      const simulatedResponse = getSimulatedResponse()
+        return newCount;
+      });
+      const simulatedResponse = getSimulatedResponse();
       const fallbackMessage = {
         id: `assistant_fallback_${Date.now()}`,
-        role: "assistant" as const,
+        role: "assistant",
         content: simulatedResponse,
+        room_id: roomId,
+        sender_id: "confederate",
+        sender_role: "assistant",
+        timestamp: new Date().toISOString(),
+      };
+      // Insert the fallback confederate message into Supabase
+      const { error: fallbackError } = await supabase.from("messages").insert([fallbackMessage]);
+      if (fallbackError) {
+        console.error("Failed to send fallback confederate message:", fallbackError);
       }
-      setMessages((prev) => [...prev, fallbackMessage])
-      const fallbackChatMessage: ChatMessage = { ...fallbackMessage, roomId, timestamp: new Date() }
-      const currentMsgs = loadMessagesFromStorage(roomId)
-      saveMessagesToStorage(roomId, [...currentMsgs, fallbackChatMessage])
-      updateRoomActivity(roomId)
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     if (roomType === "2v1") {
