@@ -47,6 +47,7 @@ import { getTopicToDebate, topicDisplayNames, topicDebateFraming } from "@/lib/o
 import { initializeOpinionTracking, recordOpinionChange } from "@/lib/opinion-tracker"
 import { savePostSurvey } from "@/lib/post-survey-actions"
 import {
+  createChatRoom,
   saveRoomToStorage,
   loadRoomFromStorage,
   getCurrentRoomId,
