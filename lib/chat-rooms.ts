@@ -24,6 +24,8 @@ export interface ChatMessage {
   content: string
   timestamp: Date
   metadata?: Record<string, any>
+  sender_id: string
+  created_at: string
 }
 
 // Generate a unique room ID

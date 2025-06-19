@@ -194,7 +194,7 @@ function ChatPage(): JSX.Element {
 
   // Simulated chat state
   const [messages, setMessages] = useState<
-    Array<{ id: string; role: "user" | "assistant" | "system"; content: string }>
+    Array<{ id: string; role: "user" | "assistant" | "system"; content: string; sender_id: string; created_at: string }>
   >([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -303,6 +303,8 @@ function ChatPage(): JSX.Element {
             id: msg.id,
             role: msg.role as "user" | "assistant" | "system",
             content: msg.content,
+            sender_id: msg.sender_id,
+            created_at: msg.created_at,
           })),
         )
         setHasStartedConversation(true)
@@ -385,6 +387,8 @@ function ChatPage(): JSX.Element {
           id: `system_moderator_${Date.now()}`,
           role: "system" as const,
           content: moderatorMessageContent,
+          sender_id: "system",
+          created_at: new Date().toISOString(),
         }
 
         setMessages([moderatorSystemMessage])
@@ -685,6 +689,7 @@ function ChatPage(): JSX.Element {
         sender_id: "confederate",
         sender_role: "assistant",
         content: data.content || "I'm not sure how to respond to that.",
+        created_at: new Date().toISOString(),
       };
       // Insert the confederate message into Supabase
       const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
@@ -708,6 +713,7 @@ function ChatPage(): JSX.Element {
         sender_id: "confederate",
         sender_role: "assistant",
         content: simulatedResponse,
+        created_at: new Date().toISOString(),
       };
       // Insert the fallback confederate message into Supabase
       const { error: fallbackError } = await supabase.from("messages").insert([fallbackMessage]);
@@ -802,13 +808,15 @@ function ChatPage(): JSX.Element {
         .from('messages')
         .select('*')
         .eq('room_id', roomId)
-        .order('timestamp', { ascending: true });
+        .order('created_at', { ascending: true });
       if (!error && data) {
         setMessages(
           data.map((msg) => ({
             id: msg.id,
-            role: msg.role,
+            role: msg.sender_role,
             content: msg.content,
+            sender_id: msg.sender_id,
+            created_at: msg.created_at,
           }))
         );
       }
@@ -834,10 +842,12 @@ function ChatPage(): JSX.Element {
               ...prev,
               {
                 id: newMessage.id,
-                role: newMessage.role,
+                role: newMessage.sender_role,
                 content: newMessage.content,
+                sender_id: newMessage.sender_id,
+                created_at: newMessage.created_at,
               },
-            ];
+            ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
           });
         }
       )
