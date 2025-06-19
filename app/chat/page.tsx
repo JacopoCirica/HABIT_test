@@ -59,6 +59,7 @@ import {
 } from "@/lib/chat-rooms"
 import type { UserOpinions, OpinionTopic } from "@/lib/opinion-analyzer"
 import type { OpinionTrackingData } from "@/lib/opinion-tracker"
+import { createClient } from '@supabase/supabase-js'
 
 const CONFEDERATE_NAMES = [
   "Ben",
@@ -142,8 +143,10 @@ const SIMULATED_RESPONSES = {
 //     "I've been thinking about how society is changing lately. There are so many complex issues we're facing. What topics are you most concerned about these days?",
 // }
 
-// In-memory store for demo (replace with backend in production)
-const twoVOneRooms: Array<any> = [];
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function ChatPageWrapper() {
   return (
