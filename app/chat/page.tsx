@@ -219,6 +219,9 @@ function ChatPage(): JSX.Element {
   const [loadingRoom, setLoadingRoom] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
 
+  // Add fetchError state
+  const [fetchError, setFetchError] = useState<any>(null);
+
   // Initialize or load chat room
   useEffect(() => {
     cleanupOldRooms()
@@ -802,6 +805,8 @@ function ChatPage(): JSX.Element {
   useEffect(() => {
     if (!roomId) return;
 
+    console.log('roomId', roomId); // Debug roomId value
+
     // Fetch all messages for this room from Supabase on initial load
     const fetchMessages = async () => {
       const { data, error } = await supabase
@@ -813,12 +818,15 @@ function ChatPage(): JSX.Element {
         setMessages(
           data.map((msg) => ({
             id: msg.id,
-            role: msg.sender_role,
+            role: msg.sender_role, // Use sender_role from Supabase
             content: msg.content,
             sender_id: msg.sender_id,
             created_at: msg.created_at,
           }))
         );
+        setFetchError(null);
+      } else {
+        setFetchError(error);
       }
     };
     fetchMessages();
@@ -1260,7 +1268,7 @@ function ChatPage(): JSX.Element {
                   </Card>
                 </FadeIn>
 
-                <pre style={{ background: '#f5f5f5', color: '#333', fontSize: '12px', padding: '8px', borderRadius: '4px', marginBottom: '16px', maxHeight: '200px', overflow: 'auto' }}>{JSON.stringify(messages, null, 2)}</pre>
+                <pre style={{ background: '#f5f5f5', color: '#333', fontSize: '12px', padding: '8px', borderRadius: '4px', marginBottom: '16px', maxHeight: '200px', overflow: 'auto' }}>{JSON.stringify({ messages, fetchError }, null, 2)}</pre>
 
                 <div className="space-y-6">
                   {messages.map((message, index) => {
