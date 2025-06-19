@@ -754,6 +754,23 @@ function ChatPage() {
     }
   }, [roomType]);
 
+  // Poll for room status if waiting
+  useEffect(() => {
+    if (room && room.status === "waiting") {
+      setWaitingForUser(true);
+      const interval = setInterval(async () => {
+        const res = await fetch(`/api/rooms/${room.id}`);
+        const updatedRoom = await res.json();
+        if (updatedRoom.status === "active") {
+          setRoom(updatedRoom);
+          setWaitingForUser(false);
+          clearInterval(interval);
+        }
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [room]);
+
   if (!currentRoom || !roomId) {
     return (
       <PageTransition>
@@ -1411,4 +1428,18 @@ function ChatPage() {
       </div>
     </PageTransition>
   )
+}
+
+function WaitingForUserScreen() {
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="mb-4 text-2xl font-bold">Waiting for another user to join...</div>
+        <div className="text-muted-foreground mb-2">
+          Share this page link with a friend to join the session.
+        </div>
+        <div className="animate-spin mt-4">⏳</div>
+      </div>
+    </div>
+  );
 }
