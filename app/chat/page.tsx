@@ -732,6 +732,7 @@ function ChatPage(): JSX.Element {
         .then(res => res.json())
         .then(({ room }) => {
           setRoom(room);
+          setRoomId(room.id);
           setWaitingForUser(room.status === 'waiting');
         })
         .catch(() => setRoom(null))
