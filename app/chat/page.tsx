@@ -1260,6 +1260,8 @@ function ChatPage(): JSX.Element {
                   </Card>
                 </FadeIn>
 
+                <pre style={{ background: '#f5f5f5', color: '#333', fontSize: '12px', padding: '8px', borderRadius: '4px', marginBottom: '16px', maxHeight: '200px', overflow: 'auto' }}>{JSON.stringify(messages, null, 2)}</pre>
+
                 <div className="space-y-6">
                   {messages.map((message, index) => {
                     const isUser = message.role === "user"
