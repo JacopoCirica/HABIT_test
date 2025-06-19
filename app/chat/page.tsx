@@ -221,6 +221,7 @@ function ChatPage() {
   const [waitingForUser, setWaitingForUser] = useState(false);
   const [room, setRoom] = useState<any>(null);
   const [loadingRoom, setLoadingRoom] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
 
   // Initialize or load chat room
   useEffect(() => {
@@ -767,6 +768,20 @@ function ChatPage() {
           clearInterval(interval);
         }
       }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [room]);
+
+  // Fetch and poll members
+  useEffect(() => {
+    if (room && room.id) {
+      const fetchMembers = async () => {
+        const res = await fetch(`/api/rooms/${room.id}/members`);
+        const data = await res.json();
+        setMembers(data);
+      };
+      fetchMembers();
+      const interval = setInterval(fetchMembers, 2000);
       return () => clearInterval(interval);
     }
   }, [room]);
