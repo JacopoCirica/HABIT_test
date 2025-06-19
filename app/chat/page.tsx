@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
+import { Suspense } from "react"
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar } from "@/components/ui/avatar"
@@ -59,38 +59,14 @@ import {
 } from "@/lib/chat-rooms"
 import type { UserOpinions, OpinionTopic } from "@/lib/opinion-analyzer"
 import type { OpinionTrackingData } from "@/lib/opinion-tracker"
+import { createClient } from '@supabase/supabase-js'
 
 const CONFEDERATE_NAMES = [
-  "Olivia",
-  "Liam",
-  "Emma",
-  "Noah",
-  "Ava",
-  "Oliver",
-  "Sophia",
-  "Elijah",
-  "Isabella",
-  "Mateo",
-  "Mia",
-  "Lucas",
-  "Amelia",
-  "Levi",
-  "Harper",
-  "Ezra",
-  "Evelyn",
-  "Leo",
-  "Abigail",
-  "Luca",
-  "Chloe",
-  "Daniel",
-  "Grace",
-  "Samuel",
-  "Lily",
-  "Henry",
-  "Zoe",
-  "Owen",
-  "Nora",
-  "David",
+  "Ben",
+  "Chuck",
+  "Jamie",
+  "Alex",
+  "Taylor",
 ]
 
 // Simulated confederate responses based on topics
@@ -167,8 +143,23 @@ const SIMULATED_RESPONSES = {
 //     "I've been thinking about how society is changing lately. There are so many complex issues we're facing. What topics are you most concerned about these days?",
 // }
 
-export default function ChatPage() {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export default function ChatPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading chat...</div>}>
+      <ChatPage />
+    </Suspense>
+  );
+}
+
+function ChatPage() {
   const router = useRouter()
+  const searchParams = useSearchParams();
+  const roomType = searchParams.get("type") || "1v1";
   const [userOpinions, setUserOpinions] = useState<UserOpinions>({})
   const [userName, setUserName] = useState("User")
   const [sessionTitle, setSessionTitle] = useState("Opinion Discussion")
@@ -226,6 +217,9 @@ export default function ChatPage() {
   // Max API errors before switching to simulated responses
   const MAX_API_ERRORS = 2
 
+  // Add a state for waiting
+  const [waitingForUser, setWaitingForUser] = useState(false);
+
   // Initialize or load chat room
   useEffect(() => {
     cleanupOldRooms()
@@ -276,7 +270,11 @@ export default function ChatPage() {
     const confederateActualName = room.confederateName || "Confederate" // Fallback
     setRoomMembers((prevMembers) =>
       prevMembers.map((member) =>
-        member.role === "confederate" ? { ...member, name: confederateActualName } : member,
+        member.role === "confederate"
+          ? { ...member, name: confederateActualName }
+          : member.role === "user"
+            ? { ...member, name: room.userName }
+            : member
       ),
     )
 
@@ -580,6 +578,9 @@ export default function ChatPage() {
     saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage])
     updateRoomActivity(roomId)
 
+    // --- Start timing for LLM response delay ---
+    const userMessageTimestamp = Date.now()
+
     if (useSimulatedResponses) {
       setTimeout(
         () => {
@@ -628,6 +629,7 @@ export default function ChatPage() {
               ? "disagree"
               : "neutral"
           : null,
+        confederateName: currentRoom?.confederateName || null,
       }
 
       // console.log("[ChatPage] Sending to /api/chat:", JSON.stringify(requestBody, null, 2));
@@ -670,14 +672,27 @@ export default function ChatPage() {
         )
       }
 
-      // console.log("[ChatPage] Received from /api/chat:", data);
+      // --- Calculate realistic delay before showing the LLM response ---
+      // 1. Reading time (user message): 350 words/min = 5.83 words/sec
+      // 2. Typing time (LLM response): 40 words/min = 0.67 words/sec
+      // 3. Reflection: 0.5-2s random
+      const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0)
+      const userWords = getWordCount(userMessage.content)
+      const llmWords = getWordCount(data.content || "")
+      const readingTime = userWords / (350 / 60) // seconds
+      const typingTime = llmWords / (40 / 60) // seconds
+      const reflectionTime = 0.5 + Math.random() * 1.5 // 0.5 to 2.0 seconds
+      const totalDelay = readingTime + typingTime + reflectionTime
 
-      if (data.error && !data.content) {
-        // If API returns an error field and no primary content
-        console.error("[ChatPage] API returned an error:", data.error)
-        throw new Error(data.error) // Propagate this as a hard error
-      }
+      // 4. Time since user sent message
+      const now = Date.now()
+      const elapsed = (now - userMessageTimestamp) / 1000 // seconds
+      const remainingDelay = Math.max(0, totalDelay - elapsed)
 
+      // 5. Wait for the remaining delay (if any)
+      await new Promise((resolve) => setTimeout(resolve, remainingDelay * 1000))
+
+      // --- Now show the LLM response ---
       const assistantMessage = {
         id: data.id || `assistant_${Date.now()}`,
         role: "assistant" as const,
@@ -717,6 +732,42 @@ export default function ChatPage() {
     }
   }
 
+  useEffect(() => {
+    if (roomType === "2v1") {
+      // Try to find a waiting room
+      let room = twoVOneRooms.find(r => r.users.length === 1);
+      if (room) {
+        // Join as second user
+        const userName = sessionStorage.getItem("userName") || "User";
+        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
+        room.users.push({ id: userId, name: userName });
+        setCurrentRoom(room);
+        setWaitingForUser(false);
+      } else {
+        // Create new room and wait for another user
+        const userName = sessionStorage.getItem("userName") || "User";
+        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
+        const confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)];
+        room = {
+          id: `room_${Date.now()}`,
+          users: [{ id: userId, name: userName }],
+          confederate: { id: `confed_${Date.now()}`, name: confederateName },
+          moderator: { id: "mod_1", name: "Moderator" },
+          // ...other fields as needed
+        };
+        twoVOneRooms.push(room);
+        setCurrentRoom(room);
+        setWaitingForUser(true);
+      }
+      // Set members list
+      setRoomMembers([
+        { role: "moderator", name: room.moderator.name },
+        ...room.users.map(u => ({ role: "user", name: u.name })),
+        { role: "confederate", name: room.confederate.name },
+      ]);
+    }
+  }, [roomType]);
+
   if (!currentRoom || !roomId) {
     return (
       <PageTransition>
@@ -728,6 +779,20 @@ export default function ChatPage() {
         </div>
       </PageTransition>
     )
+  }
+
+  // Waiting UI
+  if (roomType === "2v1" && waitingForUser) {
+    return (
+      <PageTransition>
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 text-2xl font-bold">Waiting for another user to join...</div>
+            <div className="text-muted-foreground">Share this page link with a friend to join the session.</div>
+          </div>
+        </div>
+      </PageTransition>
+    );
   }
 
   return (
@@ -1134,8 +1199,10 @@ export default function ChatPage() {
                               {message.role === "system"
                                 ? "Moderator"
                                 : isAssistant
-                                  ? participant?.name || "Confederate" // This will now use the random name
-                                  : participant?.name || message.role}
+                                  ? participant?.name || "Confederate"
+                                  : message.role === "user"
+                                    ? userName
+                                    : participant?.name || message.role}
                             </span>
                           </div>
 
@@ -1181,13 +1248,17 @@ export default function ChatPage() {
                       <div className="flex gap-3">
                         <div className="relative mt-1 flex-shrink-0">
                           <Avatar className="h-9 w-9 border-2 border-white">
-                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">C</div>
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {roomMembers.find((m) => m.role === "confederate")?.name?.[0] || "C"}
+                            </div>
                           </Avatar>
                           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
                         </div>
                         <div className="flex max-w-[75%] flex-col items-start">
                           <div className="mb-1 flex items-center gap-2">
-                            <span className="text-sm font-medium">Confederate</span>
+                            <span className="text-sm font-medium">
+                              {roomMembers.find((m) => m.role === "confederate")?.name || "Confederate"}
+                            </span>
                           </div>
                           <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-2.5 text-sm shadow-sm">
                             <div className="flex items-center gap-2">
