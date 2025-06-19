@@ -569,13 +569,10 @@ function ChatPage(): JSX.Element {
 
     const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
     const userMessage = {
-      id: `user_${Date.now()}`,
-      role: "user",
-      content: input,
       room_id: roomId,
       sender_id: userId,
       sender_role: "user",
-      timestamp: new Date().toISOString(),
+      content: input,
     };
 
     setInput("");
@@ -584,7 +581,7 @@ function ChatPage(): JSX.Element {
     // Insert the user message into Supabase
     const { error: userError } = await supabase.from("messages").insert([userMessage]);
     if (userError) {
-      console.error("Failed to send message:", userError);
+      console.error("Failed to send message:", userError.message, userError.details);
       setIsLoading(false);
       return;
     }
@@ -596,18 +593,15 @@ function ChatPage(): JSX.Element {
       setTimeout(async () => {
         const simulatedResponse = getSimulatedResponse();
         const assistantMessage = {
-          id: `assistant_${Date.now()}`,
-          role: "assistant",
-          content: simulatedResponse,
           room_id: roomId,
           sender_id: "confederate",
           sender_role: "assistant",
-          timestamp: new Date().toISOString(),
+          content: simulatedResponse,
         };
         // Insert the confederate message into Supabase
         const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
         if (confError) {
-          console.error("Failed to send confederate message:", confError);
+          console.error("Failed to send confederate message:", confError.message, confError.details);
         }
         setIsLoading(false);
       }, 1500 + Math.random() * 1000);
@@ -627,7 +621,7 @@ function ChatPage(): JSX.Element {
         employment: storedOccupation,
       };
       const requestBody = {
-        messages: [...messages, userMessage],
+        messages: messages,
         userTraits,
         topic: debateTopic ? topicDisplayNames[debateTopic] : "the current topic",
         roomId: roomId,
@@ -675,7 +669,7 @@ function ChatPage(): JSX.Element {
       }
       // --- Calculate realistic delay before showing the LLM response ---
       const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0);
-      const userWords = getWordCount(userMessage.content);
+      const userWords = getWordCount(input);
       const llmWords = getWordCount(data.content || "");
       const readingTime = userWords / (350 / 60);
       const typingTime = llmWords / (40 / 60);
@@ -687,18 +681,15 @@ function ChatPage(): JSX.Element {
       await new Promise((resolve) => setTimeout(resolve, remainingDelay * 1000));
       // --- Now show the LLM response ---
       const assistantMessage = {
-        id: data.id || `assistant_${Date.now()}`,
-        role: "assistant",
-        content: data.content || "I'm not sure how to respond to that.",
         room_id: roomId,
         sender_id: "confederate",
         sender_role: "assistant",
-        timestamp: new Date().toISOString(),
+        content: data.content || "I'm not sure how to respond to that.",
       };
       // Insert the confederate message into Supabase
       const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
       if (confError) {
-        console.error("Failed to send confederate message:", confError);
+        console.error("Failed to send confederate message:", confError.message, confError.details);
       }
     } catch (error) {
       const err = error as Error;
@@ -713,18 +704,15 @@ function ChatPage(): JSX.Element {
       });
       const simulatedResponse = getSimulatedResponse();
       const fallbackMessage = {
-        id: `assistant_fallback_${Date.now()}`,
-        role: "assistant",
-        content: simulatedResponse,
         room_id: roomId,
         sender_id: "confederate",
         sender_role: "assistant",
-        timestamp: new Date().toISOString(),
+        content: simulatedResponse,
       };
       // Insert the fallback confederate message into Supabase
       const { error: fallbackError } = await supabase.from("messages").insert([fallbackMessage]);
       if (fallbackError) {
-        console.error("Failed to send fallback confederate message:", fallbackError);
+        console.error("Failed to send fallback confederate message:", fallbackError.message, fallbackError.details);
       }
     } finally {
       setIsLoading(false);
