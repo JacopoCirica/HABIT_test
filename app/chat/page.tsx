@@ -219,6 +219,8 @@ function ChatPage() {
 
   // Add a state for waiting
   const [waitingForUser, setWaitingForUser] = useState(false);
+  const [room, setRoom] = useState<any>(null);
+  const [loadingRoom, setLoadingRoom] = useState(false);
 
   // Initialize or load chat room
   useEffect(() => {
@@ -734,37 +736,21 @@ function ChatPage() {
 
   useEffect(() => {
     if (roomType === "2v1") {
-      // Try to find a waiting room
-      let room = twoVOneRooms.find(r => r.users.length === 1);
-      if (room) {
-        // Join as second user
-        const userName = sessionStorage.getItem("userName") || "User";
-        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
-        room.users.push({ id: userId, name: userName });
-        setCurrentRoom(room);
-        setWaitingForUser(false);
-      } else {
-        // Create new room and wait for another user
-        const userName = sessionStorage.getItem("userName") || "User";
-        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
-        const confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)];
-        room = {
-          id: `room_${Date.now()}`,
-          users: [{ id: userId, name: userName }],
-          confederate: { id: `confed_${Date.now()}`, name: confederateName },
-          moderator: { id: "mod_1", name: "Moderator" },
-          // ...other fields as needed
-        };
-        twoVOneRooms.push(room);
-        setCurrentRoom(room);
-        setWaitingForUser(true);
-      }
-      // Set members list
-      setRoomMembers([
-        { role: "moderator", name: room.moderator.name },
-        ...room.users.map(u => ({ role: "user", name: u.name })),
-        { role: "confederate", name: room.confederate.name },
-      ]);
+      setLoadingRoom(true);
+      const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
+      const userName = sessionStorage.getItem("userName") || "User";
+      fetch('/api/rooms/2v1/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, user_name: userName }),
+      })
+        .then(res => res.json())
+        .then(({ room }) => {
+          setRoom(room);
+          setWaitingForUser(room.status === 'waiting');
+        })
+        .catch(() => setRoom(null))
+        .finally(() => setLoadingRoom(false));
     }
   }, [roomType]);
 
@@ -781,7 +767,18 @@ function ChatPage() {
     )
   }
 
-  // Waiting UI
+  // Replace the old waiting UI with:
+  if (roomType === "2v1" && loadingRoom) {
+    return (
+      <PageTransition>
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 text-2xl font-bold">Joining room...</div>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
   if (roomType === "2v1" && waitingForUser) {
     return (
       <PageTransition>
