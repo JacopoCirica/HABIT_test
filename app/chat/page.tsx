@@ -1,6 +1,7 @@
 "use client"
 
-import type React from "react"
+import type { JSX } from "react"
+import * as React from "react"
 import { Suspense } from "react"
 import { useState, useRef, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -156,7 +157,7 @@ export default function ChatPageWrapper() {
   );
 }
 
-function ChatPage() {
+function ChatPage(): JSX.Element {
   const router = useRouter()
   const searchParams = useSearchParams();
   const roomType = searchParams.get("type") || "1v1";
@@ -786,6 +787,28 @@ function ChatPage() {
     }
   }, [room]);
 
+  // Sidebar members list
+  function getSidebarMembers() {
+    if (roomType === "2v1") {
+      // For 2-on-1, use fetched members + confederate + moderator
+      return [
+        ...members.map(member => ({
+          name: member.user_name,
+          role: "user",
+        })),
+        { name: room?.confederateName || "Confederate", role: "confederate" },
+        { name: "Moderator", role: "moderator" },
+      ];
+    } else {
+      // For 1-on-1, use local user and confederate
+      return [
+        { name: userName, role: "user" },
+        { name: room?.confederateName || "Confederate", role: "confederate" },
+        { name: "Moderator", role: "moderator" },
+      ];
+    }
+  }
+
   if (!currentRoom || !roomId) {
     return (
       <PageTransition>
@@ -949,9 +972,9 @@ function ChatPage() {
                         <TabsTrigger value="info">Info</TabsTrigger>
                       </TabsList>
                       <TabsContent value="members" className="mt-4 space-y-4">
-                        {roomMembers.map((member, index) => (
+                        {getSidebarMembers().map((member, index) => (
                           <motion.div
-                            key={member.id}
+                            key={member.name}
                             className="flex items-center gap-3 rounded-lg border p-3"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -966,7 +989,7 @@ function ChatPage() {
                               <span
                                 className={cn(
                                   "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
-                                  getStatusColor(member.status),
+                                  getStatusColor(member.role === "confederate" ? "active" : "idle"),
                                 )}
                               ></span>
                             </div>
@@ -1059,9 +1082,9 @@ function ChatPage() {
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="members" className="mt-4 space-y-4">
-                    {roomMembers.map((member, index) => (
+                    {getSidebarMembers().map((member, index) => (
                       <motion.div
-                        key={member.id}
+                        key={member.name}
                         className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1077,7 +1100,7 @@ function ChatPage() {
                           <span
                             className={cn(
                               "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white",
-                              getStatusColor(member.status),
+                              getStatusColor(member.role === "confederate" ? "active" : "idle"),
                             )}
                           ></span>
                         </div>

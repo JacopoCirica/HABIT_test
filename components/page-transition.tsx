@@ -1,5 +1,6 @@
 "use client"
 
+import type { JSX } from "react"
 import { motion } from "framer-motion"
 import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
@@ -8,7 +9,7 @@ interface PageTransitionProps {
   children: ReactNode
 }
 
-export function PageTransition({ children }: PageTransitionProps) {
+export function PageTransition({ children }: PageTransitionProps): JSX.Element {
   const pathname = usePathname()
 
   return (
