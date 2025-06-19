@@ -60,7 +60,7 @@ import {
 } from "@/lib/chat-rooms"
 import type { UserOpinions, OpinionTopic } from "@/lib/opinion-analyzer"
 import type { OpinionTrackingData } from "@/lib/opinion-tracker"
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from "@/lib/supabaseClient"
 
 const CONFEDERATE_NAMES = [
   "Ben",
@@ -143,11 +143,6 @@ const SIMULATED_RESPONSES = {
 //   general:
 //     "I've been thinking about how society is changing lately. There are so many complex issues we're facing. What topics are you most concerned about these days?",
 // }
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export default function ChatPageWrapper() {
   return (
@@ -808,6 +803,61 @@ function ChatPage(): JSX.Element {
       ];
     }
   }
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    // Fetch all messages for this room from Supabase on initial load
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('timestamp', { ascending: true });
+      if (!error && data) {
+        setMessages(
+          data.map((msg) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+          }))
+        );
+      }
+    };
+    fetchMessages();
+
+    // Subscribe to new messages for this room
+    const channel = supabase
+      .channel('room-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          const newMessage = payload.new;
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === newMessage.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: newMessage.id,
+                role: newMessage.role,
+                content: newMessage.content,
+              },
+            ];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId]);
 
   if (!currentRoom || !roomId) {
     return (
