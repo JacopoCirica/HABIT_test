@@ -224,96 +224,97 @@ function ChatPage(): JSX.Element {
 
   // Initialize or load chat room
   useEffect(() => {
-    if (roomType === "2v1") {
-      const joinRoom = async () => {
-        setLoadingRoom(true)
-        try {
-          const userId = sessionStorage.getItem("userId")
-          if (!userId) {
-            console.error("User ID not found")
-            setLoadingRoom(false)
-            return
-          }
+    cleanupOldRooms()
+    const existingRoomId = getCurrentRoomId()
+    let room: ChatRoom | null = null
+    if (existingRoomId) room = loadRoomFromStorage(existingRoomId)
 
-          const response = await fetch("/api/rooms/2v1/join", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId }),
-          })
-
-          if (!response.ok) {
-            throw new Error("Failed to join room")
-          }
-          const data = await response.json()
-          setRoom(data.room)
-          setRoomId(data.room.id) // This will be the UUID.
-          setMembers(data.members)
-          setWaitingForUser(data.room.status === "waiting")
-
-          // Also set user name and other details from session for consistency
-          const storedName = sessionStorage.getItem("userName")
-          setUserName(storedName || "User")
-          const storedOpinionsJSON = sessionStorage.getItem("userOpinions")
-          if (storedOpinionsJSON) {
-            setUserOpinions(JSON.parse(storedOpinionsJSON))
-          }
-        } catch (error) {
-          console.error("Error joining room:", error)
-          setFetchError(error)
-        } finally {
-          setLoadingRoom(false)
-        }
+    const storedName = sessionStorage.getItem("userName")
+    const storedOpinionsJSON = sessionStorage.getItem("userOpinions")
+    const storedUserId = sessionStorage.getItem("userId") || "anonymous"
+    let opinions: UserOpinions = {}
+    if (storedOpinionsJSON)
+      try {
+        opinions = JSON.parse(storedOpinionsJSON)
+      } catch (e) {
+        console.error("Error parsing stored opinions:", e)
       }
-      joinRoom()
+
+    if (!room || room.userId !== storedUserId || room.userName !== (storedName || "User")) {
+      room = createChatRoom(storedUserId, storedName || "User", opinions)
+      // Assign confederate name if new room or not set
+      if (!room.confederateName) {
+        room.confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)]
+      }
+      saveRoomToStorage(room)
     } else {
-      // This is the old logic for 1v1 rooms
-      cleanupOldRooms()
-      const existingRoomId = getCurrentRoomId()
-      let room: ChatRoom | null = null
-      if (existingRoomId) room = loadRoomFromStorage(existingRoomId)
-
-      const storedName = sessionStorage.getItem("userName")
-      const storedOpinionsJSON = sessionStorage.getItem("userOpinions")
-      const storedUserId = sessionStorage.getItem("userId") || "anonymous"
-      let opinions: UserOpinions = {}
-      if (storedOpinionsJSON)
-        try {
-          opinions = JSON.parse(storedOpinionsJSON)
-        } catch (e) {
-          console.error("Error parsing stored opinions:", e)
-        }
-
-      if (!room || room.userId !== storedUserId || room.userName !== (storedName || "User")) {
-        room = createChatRoom(storedUserId, storedName || "User", opinions)
-        // Assign confederate name if new room or not set
-        if (!room.confederateName) {
-          room.confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)]
-        }
+      // If room loaded, ensure confederateName is set
+      if (!room.confederateName) {
+        room.confederateName = CONFEDERATE_NAMES[Math.floor(Math.random() * CONFEDERATE_NAMES.length)]
         saveRoomToStorage(room)
-      } else {
-        // Room loaded, check if we need to load messages from storage
-        const loadedMessages = loadMessagesFromStorage(room.id)
-        if (loadedMessages.length > 0) {
-          setMessages(loadedMessages.map(msg => ({ ...msg, id: msg.id || `${msg.role}-${Date.now()}` })))
-        }
-      }
-      setCurrentRoom(room)
-      setRoomId(room.id) // This sets the legacy ID for 1v1
-      setUserName(room.userName || "User")
-      setUserOpinions(room.userOpinions || {})
-      const initialTopicAnalysis = getTopicToDebate(room.userOpinions)
-      if (initialTopicAnalysis) {
-        const topic = initialTopicAnalysis.topic
-        setDebateTopic(topic)
-        setSelectedTopic(topic)
-        const trackingData = initializeOpinionTracking(room.userOpinions, topic)
-        setOpinionTrackingData(trackingData)
-      } else {
-        setDebateTopic(null)
-        setSelectedTopic("general")
       }
     }
-  }, [roomType])
+
+    setCurrentRoom(room)
+    setRoomId(room.id)
+    setUserName(room.userName)
+    setUserOpinions(room.userOpinions)
+    setSessionStarted(room.sessionStarted)
+    setSessionPaused(room.sessionPaused)
+    setSessionTime(room.sessionTime)
+    setSessionTimeRemaining(room.sessionTimeRemaining)
+    setSessionEnded(room.sessionEnded)
+    setTimeAdjustments(room.timeAdjustments)
+    // Ensure moderatorPresent is also loaded from the room
+    setIsModerator(room.moderatorPresent || false)
+
+    // Update roomMembers with the assigned confederate name
+    const confederateActualName = room.confederateName || "Confederate" // Fallback
+    setRoomMembers((prevMembers) =>
+      prevMembers.map((member) =>
+        member.role === "confederate"
+          ? { ...member, name: confederateActualName }
+          : member.role === "user"
+            ? { ...member, name: room.userName }
+            : member
+      ),
+    )
+
+    const topicToDebateAnalysis = getTopicToDebate(room.userOpinions)
+    if (topicToDebateAnalysis) {
+      const topicKey = topicToDebateAnalysis.topic
+      setDebateTopic(topicKey)
+      room.debateTopic = topicKey // Ensure room object is updated before save
+      const topicDisplayName = topicDisplayNames[topicKey]
+      const debateQuestion = topicDebateFraming[topicKey]
+      setSessionTitle(topicDisplayName)
+      setSessionDescription(debateQuestion)
+      const tracking = initializeOpinionTracking(topicKey, topicToDebateAnalysis.rawValue)
+      setOpinionTrackingData(tracking)
+
+      if (["vaccination", "universalHealthcare"].includes(topicKey)) setSelectedTopic("healthcare")
+      else if (topicKey === "climateChange") setSelectedTopic("climate")
+      else if (["immigration", "gunControl"].includes(topicKey)) setSelectedTopic("politics")
+      else setSelectedTopic("general")
+    }
+
+    if (room.id) {
+      const existingMessages = loadMessagesFromStorage(room.id)
+      if (existingMessages.length > 0) {
+        setMessages(
+          existingMessages.map((msg) => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant" | "system",
+            content: msg.content,
+            sender_id: msg.sender_id,
+            created_at: msg.created_at,
+          })),
+        )
+        setHasStartedConversation(true)
+      }
+    }
+    saveRoomToStorage(room) // Save room again after all updates
+  }, [])
 
   // Check for moderator access
   useEffect(() => {
