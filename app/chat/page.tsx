@@ -222,8 +222,11 @@ function ChatPage(): JSX.Element {
   // Add fetchError state
   const [fetchError, setFetchError] = useState<any>(null);
 
-  // Initialize or load chat room
+  // Initialize or load chat room (only for 1v1 rooms)
   useEffect(() => {
+    // Skip legacy room initialization for 2v1 rooms
+    if (roomType === "2v1") return;
+    
     cleanupOldRooms()
     const existingRoomId = getCurrentRoomId()
     let room: ChatRoom | null = null
@@ -314,7 +317,7 @@ function ChatPage(): JSX.Element {
       }
     }
     saveRoomToStorage(room) // Save room again after all updates
-  }, [])
+  }, [roomType])
 
   // Check for moderator access
   useEffect(() => {
@@ -736,6 +739,10 @@ function ChatPage(): JSX.Element {
       setLoadingRoom(true);
       const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
       const userName = sessionStorage.getItem("userName") || "User";
+      
+      // Set basic user state for 2v1 rooms
+      setUserName(userName);
+      
       fetch('/api/rooms/2v1/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -743,8 +750,9 @@ function ChatPage(): JSX.Element {
       })
         .then(res => res.json())
         .then(({ room }) => {
+          console.log('Joined 2v1 room:', room); // Debug log
           setRoom(room);
-          setRoomId(room.id);
+          setRoomId(room.id); // This should be the Supabase UUID
           setWaitingForUser(room.status === 'waiting');
         })
         .catch(() => setRoom(null))
@@ -878,7 +886,10 @@ function ChatPage(): JSX.Element {
     };
   }, [roomId]);
 
-  if (!currentRoom || !roomId) {
+  // Check if room is ready based on room type
+  const isRoomReady = roomType === "2v1" ? (room && roomId) : (currentRoom && roomId);
+  
+  if (!isRoomReady) {
     return (
       <PageTransition>
         <div className="flex h-screen items-center justify-center">
