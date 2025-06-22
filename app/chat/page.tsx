@@ -896,7 +896,7 @@ function ChatPage(): JSX.Element {
       <PageTransition>
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
-            <div className="mb-4 text-2xl font-bold">Waiting for another user to join...</div>
+            <div className="mb-4 text-2xl font-bold">Waiting for another User to join...</div>
             <div className="text-muted-foreground">Share this page link with a friend to join the session.</div>
           </div>
         </div>
