@@ -791,6 +791,25 @@ function ChatPage(): JSX.Element {
     }
   }, [room]);
 
+  // Get sender name based on sender_id and role
+  function getSenderName(message: any) {
+    if (message.role === "system") {
+      return "Moderator";
+    } else if (message.role === "assistant") {
+      return room?.confederateName || "Confederate";
+    } else if (message.role === "user") {
+      if (roomType === "2v1") {
+        // For 2v1 rooms, look up the sender name from members array
+        const sender = members.find(member => member.user_id === message.sender_id);
+        return sender?.user_name || "User";
+      } else {
+        // For 1v1 rooms, use the current user's name
+        return userName;
+      }
+    }
+    return "Unknown";
+  }
+
   // Sidebar members list
   function getSidebarMembers() {
     if (roomType === "2v1") {
@@ -1313,9 +1332,7 @@ function ChatPage(): JSX.Element {
                               <div className="flex h-full w-full items-center justify-center text-xs font-medium">
                                 {message.role === "system"
                                   ? "M"
-                                  : getAvatarInitial(
-                                      isAssistant ? participant?.name || "Confederate" : participant?.name || role,
-                                    )}
+                                  : getAvatarInitial(getSenderName(message))}
                               </div>
                             </Avatar>
                             <span
@@ -1330,13 +1347,7 @@ function ChatPage(): JSX.Element {
                         <div className={cn("flex max-w-[75%] flex-col", isUser ? "items-end" : "items-start")}>
                           <div className="mb-1 flex items-center gap-2">
                             <span className="text-sm font-medium capitalize">
-                              {message.role === "system"
-                                ? "Moderator"
-                                : isAssistant
-                                  ? participant?.name || "Confederate"
-                                  : message.role === "user"
-                                    ? userName
-                                    : participant?.name || message.role}
+                              {getSenderName(message)}
                             </span>
                           </div>
 
@@ -1363,7 +1374,7 @@ function ChatPage(): JSX.Element {
                           <div className="relative mt-1 flex-shrink-0">
                             <Avatar className="h-9 w-9 border-2 border-white">
                               <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                {getAvatarInitial(userName)}
+                                {getAvatarInitial(getSenderName(message))}
                               </div>
                             </Avatar>
                             <span
