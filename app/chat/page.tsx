@@ -582,6 +582,8 @@ function ChatPage(): JSX.Element {
       content: input,
     };
 
+    console.log('Sending message with roomId:', roomId, 'userMessage:', userMessage); // Debug log
+
     setInput("");
     setIsLoading(true);
 
@@ -592,6 +594,7 @@ function ChatPage(): JSX.Element {
       setIsLoading(false);
       return;
     }
+    console.log('Message sent successfully to Supabase'); // Debug log
 
     // --- Start timing for LLM response delay ---
     const userMessageTimestamp = Date.now();
@@ -805,16 +808,18 @@ function ChatPage(): JSX.Element {
   useEffect(() => {
     if (!roomId) return;
 
-    console.log('roomId', roomId); // Debug roomId value
+    console.log('Setting up subscription for roomId:', roomId); // Debug roomId value
 
     // Fetch all messages for this room from Supabase on initial load
     const fetchMessages = async () => {
+      console.log('Fetching messages for roomId:', roomId); // Debug log
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('room_id', roomId)
         .order('created_at', { ascending: true });
       if (!error && data) {
+        console.log('Fetched messages:', data); // Debug log
         setMessages(
           data.map((msg) => ({
             id: msg.id,
@@ -826,12 +831,14 @@ function ChatPage(): JSX.Element {
         );
         setFetchError(null);
       } else {
+        console.error('Error fetching messages:', error); // Debug log
         setFetchError(error);
       }
     };
     fetchMessages();
 
     // Subscribe to new messages for this room
+    console.log('Setting up real-time subscription for roomId:', roomId); // Debug log
     const channel = supabase
       .channel('room-messages')
       .on(
@@ -843,9 +850,14 @@ function ChatPage(): JSX.Element {
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
+          console.log('Received new message via subscription:', payload.new); // Debug log
           const newMessage = payload.new;
           setMessages((prev) => {
-            if (prev.some((msg) => msg.id === newMessage.id)) return prev;
+            if (prev.some((msg) => msg.id === newMessage.id)) {
+              console.log('Message already exists, skipping:', newMessage.id); // Debug log
+              return prev;
+            }
+            console.log('Adding new message to state:', newMessage); // Debug log
             return [
               ...prev,
               {
