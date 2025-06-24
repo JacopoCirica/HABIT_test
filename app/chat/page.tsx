@@ -950,6 +950,12 @@ function ChatPage(): JSX.Element {
       // Set basic user state for 2v1 rooms
       setUserName(userName);
       
+      // Immediately cache the current user's name
+      setUserNameCache(prev => ({
+        ...prev,
+        [userId]: userName
+      }));
+      
       fetch('/api/rooms/2v1/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -993,6 +999,19 @@ function ChatPage(): JSX.Element {
           const data = await res.json();
           console.log('Fetched members:', data); // Debug log
           setMembers(data);
+          
+          // Populate the user name cache with fetched members
+          if (data && data.length > 0) {
+            const nameCache: Record<string, string> = {};
+            data.forEach((member: any) => {
+              nameCache[member.user_id] = member.user_name;
+            });
+            console.log('Updating user name cache:', nameCache); // Debug log
+            setUserNameCache(prev => ({
+              ...prev,
+              ...nameCache
+            }));
+          }
         } catch (error) {
           console.error('Error fetching members:', error);
         }
@@ -1007,6 +1026,9 @@ function ChatPage(): JSX.Element {
     }
   }, [room, roomType]);
 
+  // Create a memoized user cache to store user names by ID
+  const [userNameCache, setUserNameCache] = useState<Record<string, string>>({});
+
   // Get sender name based on sender_id and role
   function getSenderName(message: any) {
     if (message.role === "system") {
@@ -1015,12 +1037,22 @@ function ChatPage(): JSX.Element {
       return room?.confederateName || "Confederate";
     } else if (message.role === "user") {
       if (roomType === "2v1") {
+        // First, check if we have the name in cache
+        if (userNameCache[message.sender_id]) {
+          return userNameCache[message.sender_id];
+        }
+        
         // For 2v1 rooms, look up the sender name from members array
         console.log('Looking up sender name for:', message.sender_id, 'in members:', members); // Debug
         const sender = members.find(member => member.user_id === message.sender_id);
         console.log('Found sender:', sender); // Debug
         
         if (sender) {
+          // Cache the name for future use
+          setUserNameCache(prev => ({
+            ...prev,
+            [message.sender_id]: sender.user_name
+          }));
           return sender.user_name;
         }
         
@@ -1030,7 +1062,18 @@ function ChatPage(): JSX.Element {
         if (message.sender_id === currentUserId) {
           const currentUserName = sessionStorage.getItem("userName") || "User";
           console.log('Using current user name:', currentUserName); // Debug
+          // Cache the current user's name too
+          setUserNameCache(prev => ({
+            ...prev,
+            [message.sender_id]: currentUserName
+          }));
           return currentUserName;
+        }
+        
+        // If members array is empty, return a placeholder and try to fetch members
+        if (members.length === 0) {
+          console.log('Members array is empty, returning placeholder'); // Debug
+          return "Loading...";
         }
         
         return "User";
