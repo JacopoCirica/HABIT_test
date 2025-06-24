@@ -594,13 +594,40 @@ function ChatPage(): JSX.Element {
       console.log('Sending message with roomId:', roomId, 'userMessage:', userMessage); // Debug log
 
       // Insert the user message into Supabase
-      const { error: userError } = await supabase.from("messages").insert([userMessage]);
+      const { data: insertedMessage, error: userError } = await supabase
+        .from("messages")
+        .insert([userMessage])
+        .select()
+        .single();
+        
       if (userError) {
         console.error("Failed to send message:", userError.message, userError.details);
         setIsLoading(false);
         return;
       }
+      
       console.log('Message sent successfully to Supabase'); // Debug log
+      
+      // Immediately add the message to local state for instant feedback
+      if (insertedMessage) {
+        const localMessage = {
+          id: insertedMessage.id,
+          role: insertedMessage.sender_role,
+          content: insertedMessage.content,
+          sender_id: insertedMessage.sender_id,
+          created_at: insertedMessage.created_at,
+        };
+        
+        setMessages(prev => {
+          // Check if message already exists to avoid duplicates
+          if (prev.some(msg => msg.id === localMessage.id)) {
+            return prev;
+          }
+          return [...prev, localMessage].sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+      }
     } else {
       // For 1v1 rooms, add message to local state
       const userMessage = {
@@ -641,9 +668,33 @@ function ChatPage(): JSX.Element {
             content: simulatedResponse,
           };
           // Insert the confederate message into Supabase
-          const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
+          const { data: insertedSimMessage, error: confError } = await supabase
+            .from("messages")
+            .insert([assistantMessage])
+            .select()
+            .single();
+            
           if (confError) {
             console.error("Failed to send confederate message:", confError.message, confError.details);
+          } else if (insertedSimMessage) {
+            // Immediately add the simulated message to local state
+            const localSimMessage = {
+              id: insertedSimMessage.id,
+              role: insertedSimMessage.sender_role,
+              content: insertedSimMessage.content,
+              sender_id: insertedSimMessage.sender_id,
+              created_at: insertedSimMessage.created_at,
+            };
+            
+            setMessages(prev => {
+              // Check if message already exists to avoid duplicates
+              if (prev.some(msg => msg.id === localSimMessage.id)) {
+                return prev;
+              }
+              return [...prev, localSimMessage].sort((a, b) => 
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+            });
           }
         } else {
           // For 1v1 rooms, add to local state
@@ -758,9 +809,33 @@ function ChatPage(): JSX.Element {
           created_at: new Date().toISOString(),
         };
         // Insert the confederate message into Supabase
-        const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
+        const { data: insertedConfMessage, error: confError } = await supabase
+          .from("messages")
+          .insert([assistantMessage])
+          .select()
+          .single();
+          
         if (confError) {
           console.error("Failed to send confederate message:", confError.message, confError.details);
+        } else if (insertedConfMessage) {
+          // Immediately add the confederate message to local state
+          const localConfMessage = {
+            id: insertedConfMessage.id,
+            role: insertedConfMessage.sender_role,
+            content: insertedConfMessage.content,
+            sender_id: insertedConfMessage.sender_id,
+            created_at: insertedConfMessage.created_at,
+          };
+          
+          setMessages(prev => {
+            // Check if message already exists to avoid duplicates
+            if (prev.some(msg => msg.id === localConfMessage.id)) {
+              return prev;
+            }
+            return [...prev, localConfMessage].sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+          });
         }
       } else {
         // For 1v1 rooms, add to local state and localStorage
@@ -809,9 +884,33 @@ function ChatPage(): JSX.Element {
           created_at: new Date().toISOString(),
         };
         // Insert the fallback confederate message into Supabase
-        const { error: fallbackError } = await supabase.from("messages").insert([fallbackMessage]);
+        const { data: insertedFallback, error: fallbackError } = await supabase
+          .from("messages")
+          .insert([fallbackMessage])
+          .select()
+          .single();
+          
         if (fallbackError) {
           console.error("Failed to send fallback confederate message:", fallbackError.message, fallbackError.details);
+        } else if (insertedFallback) {
+          // Immediately add the fallback message to local state
+          const localFallbackMessage = {
+            id: insertedFallback.id,
+            role: insertedFallback.sender_role,
+            content: insertedFallback.content,
+            sender_id: insertedFallback.sender_id,
+            created_at: insertedFallback.created_at,
+          };
+          
+          setMessages(prev => {
+            // Check if message already exists to avoid duplicates
+            if (prev.some(msg => msg.id === localFallbackMessage.id)) {
+              return prev;
+            }
+            return [...prev, localFallbackMessage].sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+          });
         }
       } else {
         // For 1v1 rooms, add to local state and localStorage
