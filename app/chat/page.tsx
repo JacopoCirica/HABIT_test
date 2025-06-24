@@ -1024,6 +1024,7 @@ function ChatPage(): JSX.Element {
                 ...prev,
                 ...nameCache
               };
+              console.log('Cache updated, triggering re-render. New cache:', updated); // Debug
               setCacheVersion(v => v + 1); // Force re-render
               return updated;
             });
@@ -1047,8 +1048,13 @@ function ChatPage(): JSX.Element {
   
   // Force re-render when user cache updates
   const [cacheVersion, setCacheVersion] = useState(0);
+  
+  // Force component re-render when cache updates
+  useEffect(() => {
+    console.log('Cache version updated:', cacheVersion, 'Current cache:', userNameCache);
+  }, [cacheVersion, userNameCache]);
 
-  // Get sender name based on sender_id and role
+    // Get sender name based on sender_id and role
   function getSenderName(message: any) {
     if (message.role === "system") {
       return "Moderator";
@@ -1056,54 +1062,24 @@ function ChatPage(): JSX.Element {
       return room?.confederateName || "Confederate";
     } else if (message.role === "user") {
       if (roomType === "2v1") {
-        // First, check if we have the name in cache
+        // First, check if we have the name in cache (this should be the primary source)
         if (userNameCache[message.sender_id]) {
+          console.log('Found name in cache:', userNameCache[message.sender_id], 'for ID:', message.sender_id);
           return userNameCache[message.sender_id];
         }
         
-        // For 2v1 rooms, look up the sender name from members array
-        console.log('Looking up sender name for:', message.sender_id, 'in members:', members); // Debug
-        const sender = members.find(member => member.user_id === message.sender_id);
-        console.log('Found sender:', sender); // Debug
-        
-                  if (sender) {
-            // Cache the name for future use
-            setUserNameCache(prev => {
-              const updated = {
-                ...prev,
-                [message.sender_id]: sender.user_name
-              };
-              setCacheVersion(v => v + 1); // Force re-render
-              return updated;
-            });
-            return sender.user_name;
-          }
-        
         // Fallback: if this is the current user's message, return current user's name
         const currentUserId = sessionStorage.getItem("userId");
-        console.log('Current user ID:', currentUserId, 'Message sender ID:', message.sender_id); // Debug
-                  if (message.sender_id === currentUserId) {
-            const currentUserName = sessionStorage.getItem("userName") || "User";
-            console.log('Using current user name:', currentUserName); // Debug
-            // Cache the current user's name too
-            setUserNameCache(prev => {
-              const updated = {
-                ...prev,
-                [message.sender_id]: currentUserName
-              };
-              setCacheVersion(v => v + 1); // Force re-render
-              return updated;
-            });
-            return currentUserName;
-          }
-        
-        // If members array is empty, return a placeholder and try to fetch members
-        if (members.length === 0) {
-          console.log('Members array is empty, returning placeholder'); // Debug
-          return "Loading...";
+        console.log('Cache miss - Current user ID:', currentUserId, 'Message sender ID:', message.sender_id); // Debug
+        if (message.sender_id === currentUserId) {
+          const currentUserName = sessionStorage.getItem("userName") || "User";
+          console.log('Using current user name fallback:', currentUserName); // Debug
+          return currentUserName;
         }
         
-        return "User";
+        // If we don't have the name in cache and it's not current user, show loading
+        console.log('Name not found in cache for:', message.sender_id, 'Available cache:', userNameCache);
+        return "Loading...";
       } else {
         // For 1v1 rooms, use the current user's name
         return userName;
