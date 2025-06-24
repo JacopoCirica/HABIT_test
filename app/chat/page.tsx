@@ -577,18 +577,25 @@ function ChatPage(): JSX.Element {
     e.preventDefault();
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return;
 
-    const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
-    
+    const trimmedInput = input.trim();
     setInput("");
+
+    // Get or create consistent user ID
+    let userId = sessionStorage.getItem("userId");
+    if (!userId) {
+      userId = `user_${Date.now()}`;
+      sessionStorage.setItem("userId", userId);
+    }
+
     setIsLoading(true);
 
     // For 2v1 rooms, use Supabase
     if (roomType === "2v1") {
       const userMessage = {
-        room_id: roomId,
+        room_id: roomId!,
         sender_id: userId,
         sender_role: "user",
-        content: input,
+        content: trimmedInput,
       };
 
       console.log('Sending message with roomId:', roomId, 'userMessage:', userMessage); // Debug log
@@ -631,9 +638,9 @@ function ChatPage(): JSX.Element {
     } else {
       // For 1v1 rooms, add message to local state
       const userMessage = {
-        id: `user_${Date.now()}`,
+        id: `${userId}_${Date.now()}`,
         role: "user" as const,
-        content: input,
+        content: trimmedInput,
         sender_id: userId,
         created_at: new Date().toISOString(),
       };
@@ -644,12 +651,12 @@ function ChatPage(): JSX.Element {
       if (currentRoom) {
         const chatMessageForStorage: ChatMessage = {
           ...userMessage,
-          roomId,
+          roomId: roomId!,
           timestamp: new Date(),
         };
-        const existingMessages = loadMessagesFromStorage(roomId);
-        saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
-        updateRoomActivity(roomId);
+        const existingMessages = loadMessagesFromStorage(roomId!);
+        saveMessagesToStorage(roomId!, [...existingMessages, chatMessageForStorage]);
+        updateRoomActivity(roomId!);
       }
     }
 
@@ -662,7 +669,7 @@ function ChatPage(): JSX.Element {
         
         if (roomType === "2v1") {
           const assistantMessage = {
-            room_id: roomId,
+            room_id: roomId!,
             sender_id: "confederate",
             sender_role: "assistant",
             content: simulatedResponse,
@@ -712,12 +719,12 @@ function ChatPage(): JSX.Element {
           if (currentRoom) {
             const chatMessageForStorage: ChatMessage = {
               ...assistantMessage,
-              roomId,
+              roomId: roomId!,
               timestamp: new Date(),
             };
-            const existingMessages = loadMessagesFromStorage(roomId);
-            saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
-            updateRoomActivity(roomId);
+            const existingMessages = loadMessagesFromStorage(roomId!);
+            saveMessagesToStorage(roomId!, [...existingMessages, chatMessageForStorage]);
+            updateRoomActivity(roomId!);
           }
         }
         
@@ -787,7 +794,7 @@ function ChatPage(): JSX.Element {
       }
       // --- Calculate realistic delay before showing the LLM response ---
       const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0);
-      const userWords = getWordCount(input);
+      const userWords = getWordCount(trimmedInput);
       const llmWords = getWordCount(data.content || "");
       const readingTime = userWords / (350 / 60);
       const typingTime = llmWords / (40 / 60);
@@ -802,7 +809,7 @@ function ChatPage(): JSX.Element {
       if (roomType === "2v1") {
         // For 2v1 rooms, insert into Supabase
         const assistantMessage = {
-          room_id: roomId,
+          room_id: roomId!,
           sender_id: "confederate",
           sender_role: "assistant",
           content: data.content || "I'm not sure how to respond to that.",
@@ -853,12 +860,12 @@ function ChatPage(): JSX.Element {
         if (currentRoom) {
           const chatMessageForStorage: ChatMessage = {
             ...assistantMessage,
-            roomId,
+            roomId: roomId!,
             timestamp: new Date(),
           };
-          const existingMessages = loadMessagesFromStorage(roomId);
-          saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
-          updateRoomActivity(roomId);
+          const existingMessages = loadMessagesFromStorage(roomId!);
+          saveMessagesToStorage(roomId!, [...existingMessages, chatMessageForStorage]);
+          updateRoomActivity(roomId!);
         }
       }
     } catch (error) {
@@ -877,7 +884,7 @@ function ChatPage(): JSX.Element {
       if (roomType === "2v1") {
         // For 2v1 rooms, insert into Supabase
         const fallbackMessage = {
-          room_id: roomId,
+          room_id: roomId!,
           sender_id: "confederate",
           sender_role: "assistant",
           content: simulatedResponse,
@@ -928,12 +935,12 @@ function ChatPage(): JSX.Element {
         if (currentRoom) {
           const chatMessageForStorage: ChatMessage = {
             ...fallbackMessage,
-            roomId,
+            roomId: roomId!,
             timestamp: new Date(),
           };
-          const existingMessages = loadMessagesFromStorage(roomId);
-          saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
-          updateRoomActivity(roomId);
+          const existingMessages = loadMessagesFromStorage(roomId!);
+          saveMessagesToStorage(roomId!, [...existingMessages, chatMessageForStorage]);
+          updateRoomActivity(roomId!);
         }
       }
     } finally {
@@ -944,7 +951,14 @@ function ChatPage(): JSX.Element {
   useEffect(() => {
     if (roomType === "2v1") {
       setLoadingRoom(true);
-      const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
+      
+      // Get or create consistent user ID
+      let userId = sessionStorage.getItem("userId");
+      if (!userId) {
+        userId = `user_${Date.now()}`;
+        sessionStorage.setItem("userId", userId);
+      }
+      
       const userName = sessionStorage.getItem("userName") || "User";
       
       // Set basic user state for 2v1 rooms
@@ -954,7 +968,7 @@ function ChatPage(): JSX.Element {
       setUserNameCache(prev => {
         const updated = {
           ...prev,
-          [userId]: userName
+          [userId!]: userName
         };
         setCacheVersion(v => v + 1); // Force re-render
         return updated;
@@ -1077,8 +1091,34 @@ function ChatPage(): JSX.Element {
           return currentUserName;
         }
         
-        // If we don't have the name in cache and it's not current user, show loading
+        // If we don't have the name in cache, try to find a partial match or use fallback
         console.log('Name not found in cache for:', message.sender_id, 'Available cache:', userNameCache);
+        
+        // Try to find a user with a similar ID pattern (in case of slight ID differences)
+        const cacheKeys = Object.keys(userNameCache);
+        const partialMatch = cacheKeys.find(key => {
+          // Check if the base part of the ID matches (remove timestamp differences)
+          const baseId = message.sender_id.split('_')[1]?.substring(0, 10);
+          const cacheBaseId = key.split('_')[1]?.substring(0, 10);
+          return baseId && cacheBaseId && baseId === cacheBaseId;
+        });
+        
+        if (partialMatch) {
+          console.log('Found partial match:', partialMatch, 'for', message.sender_id);
+          return userNameCache[partialMatch];
+        }
+        
+        // Last resort: if we have any cached names and this is a user message, 
+        // it might be the other user
+        if (cacheKeys.length > 0) {
+          const currentUserId = sessionStorage.getItem("userId");
+          const otherUserKey = cacheKeys.find(key => key !== currentUserId);
+          if (otherUserKey && message.sender_id !== currentUserId) {
+            console.log('Using other user fallback:', otherUserKey, userNameCache[otherUserKey]);
+            return userNameCache[otherUserKey];
+          }
+        }
+        
         return "Loading...";
       } else {
         // For 1v1 rooms, use the current user's name
