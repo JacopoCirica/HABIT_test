@@ -578,26 +578,53 @@ function ChatPage(): JSX.Element {
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return;
 
     const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`;
-    const userMessage = {
-      room_id: roomId,
-      sender_id: userId,
-      sender_role: "user",
-      content: input,
-    };
-
-    console.log('Sending message with roomId:', roomId, 'userMessage:', userMessage); // Debug log
-
+    
     setInput("");
     setIsLoading(true);
 
-    // Insert the user message into Supabase
-    const { error: userError } = await supabase.from("messages").insert([userMessage]);
-    if (userError) {
-      console.error("Failed to send message:", userError.message, userError.details);
-      setIsLoading(false);
-      return;
+    // For 2v1 rooms, use Supabase
+    if (roomType === "2v1") {
+      const userMessage = {
+        room_id: roomId,
+        sender_id: userId,
+        sender_role: "user",
+        content: input,
+      };
+
+      console.log('Sending message with roomId:', roomId, 'userMessage:', userMessage); // Debug log
+
+      // Insert the user message into Supabase
+      const { error: userError } = await supabase.from("messages").insert([userMessage]);
+      if (userError) {
+        console.error("Failed to send message:", userError.message, userError.details);
+        setIsLoading(false);
+        return;
+      }
+      console.log('Message sent successfully to Supabase'); // Debug log
+    } else {
+      // For 1v1 rooms, add message to local state
+      const userMessage = {
+        id: `user_${Date.now()}`,
+        role: "user" as const,
+        content: input,
+        sender_id: userId,
+        created_at: new Date().toISOString(),
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Save to localStorage for 1v1 rooms
+      if (currentRoom) {
+        const chatMessageForStorage: ChatMessage = {
+          ...userMessage,
+          roomId,
+          timestamp: new Date(),
+        };
+        const existingMessages = loadMessagesFromStorage(roomId);
+        saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
+        updateRoomActivity(roomId);
+      }
     }
-    console.log('Message sent successfully to Supabase'); // Debug log
 
     // --- Start timing for LLM response delay ---
     const userMessageTimestamp = Date.now();
@@ -605,17 +632,44 @@ function ChatPage(): JSX.Element {
     if (useSimulatedResponses) {
       setTimeout(async () => {
         const simulatedResponse = getSimulatedResponse();
-        const assistantMessage = {
-          room_id: roomId,
-          sender_id: "confederate",
-          sender_role: "assistant",
-          content: simulatedResponse,
-        };
-        // Insert the confederate message into Supabase
-        const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
-        if (confError) {
-          console.error("Failed to send confederate message:", confError.message, confError.details);
+        
+        if (roomType === "2v1") {
+          const assistantMessage = {
+            room_id: roomId,
+            sender_id: "confederate",
+            sender_role: "assistant",
+            content: simulatedResponse,
+          };
+          // Insert the confederate message into Supabase
+          const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
+          if (confError) {
+            console.error("Failed to send confederate message:", confError.message, confError.details);
+          }
+        } else {
+          // For 1v1 rooms, add to local state
+          const assistantMessage = {
+            id: `assistant_${Date.now()}`,
+            role: "assistant" as const,
+            content: simulatedResponse,
+            sender_id: "confederate",
+            created_at: new Date().toISOString(),
+          };
+          
+          setMessages(prev => [...prev, assistantMessage]);
+          
+          // Save to localStorage for 1v1 rooms
+          if (currentRoom) {
+            const chatMessageForStorage: ChatMessage = {
+              ...assistantMessage,
+              roomId,
+              timestamp: new Date(),
+            };
+            const existingMessages = loadMessagesFromStorage(roomId);
+            saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
+            updateRoomActivity(roomId);
+          }
         }
+        
         setIsLoading(false);
       }, 1500 + Math.random() * 1000);
       return;
@@ -646,7 +700,7 @@ function ChatPage(): JSX.Element {
               ? "disagree"
               : "neutral"
           : null,
-        confederateName: currentRoom?.confederateName || null,
+        confederateName: (roomType === "2v1" ? room?.confederateName : currentRoom?.confederateName) || null,
       };
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -693,17 +747,44 @@ function ChatPage(): JSX.Element {
       const remainingDelay = Math.max(0, totalDelay - elapsed);
       await new Promise((resolve) => setTimeout(resolve, remainingDelay * 1000));
       // --- Now show the LLM response ---
-      const assistantMessage = {
-        room_id: roomId,
-        sender_id: "confederate",
-        sender_role: "assistant",
-        content: data.content || "I'm not sure how to respond to that.",
-        created_at: new Date().toISOString(),
-      };
-      // Insert the confederate message into Supabase
-      const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
-      if (confError) {
-        console.error("Failed to send confederate message:", confError.message, confError.details);
+      
+      if (roomType === "2v1") {
+        // For 2v1 rooms, insert into Supabase
+        const assistantMessage = {
+          room_id: roomId,
+          sender_id: "confederate",
+          sender_role: "assistant",
+          content: data.content || "I'm not sure how to respond to that.",
+          created_at: new Date().toISOString(),
+        };
+        // Insert the confederate message into Supabase
+        const { error: confError } = await supabase.from("messages").insert([assistantMessage]);
+        if (confError) {
+          console.error("Failed to send confederate message:", confError.message, confError.details);
+        }
+      } else {
+        // For 1v1 rooms, add to local state and localStorage
+        const assistantMessage = {
+          id: `assistant_${Date.now()}`,
+          role: "assistant" as const,
+          content: data.content || "I'm not sure how to respond to that.",
+          sender_id: "confederate",
+          created_at: new Date().toISOString(),
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Save to localStorage for 1v1 rooms
+        if (currentRoom) {
+          const chatMessageForStorage: ChatMessage = {
+            ...assistantMessage,
+            roomId,
+            timestamp: new Date(),
+          };
+          const existingMessages = loadMessagesFromStorage(roomId);
+          saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
+          updateRoomActivity(roomId);
+        }
       }
     } catch (error) {
       const err = error as Error;
@@ -717,17 +798,44 @@ function ChatPage(): JSX.Element {
         return newCount;
       });
       const simulatedResponse = getSimulatedResponse();
-      const fallbackMessage = {
-        room_id: roomId,
-        sender_id: "confederate",
-        sender_role: "assistant",
-        content: simulatedResponse,
-        created_at: new Date().toISOString(),
-      };
-      // Insert the fallback confederate message into Supabase
-      const { error: fallbackError } = await supabase.from("messages").insert([fallbackMessage]);
-      if (fallbackError) {
-        console.error("Failed to send fallback confederate message:", fallbackError.message, fallbackError.details);
+      
+      if (roomType === "2v1") {
+        // For 2v1 rooms, insert into Supabase
+        const fallbackMessage = {
+          room_id: roomId,
+          sender_id: "confederate",
+          sender_role: "assistant",
+          content: simulatedResponse,
+          created_at: new Date().toISOString(),
+        };
+        // Insert the fallback confederate message into Supabase
+        const { error: fallbackError } = await supabase.from("messages").insert([fallbackMessage]);
+        if (fallbackError) {
+          console.error("Failed to send fallback confederate message:", fallbackError.message, fallbackError.details);
+        }
+      } else {
+        // For 1v1 rooms, add to local state and localStorage
+        const fallbackMessage = {
+          id: `assistant_fallback_${Date.now()}`,
+          role: "assistant" as const,
+          content: simulatedResponse,
+          sender_id: "confederate",
+          created_at: new Date().toISOString(),
+        };
+        
+        setMessages(prev => [...prev, fallbackMessage]);
+        
+        // Save to localStorage for 1v1 rooms
+        if (currentRoom) {
+          const chatMessageForStorage: ChatMessage = {
+            ...fallbackMessage,
+            roomId,
+            timestamp: new Date(),
+          };
+          const existingMessages = loadMessagesFromStorage(roomId);
+          saveMessagesToStorage(roomId, [...existingMessages, chatMessageForStorage]);
+          updateRoomActivity(roomId);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -835,75 +943,78 @@ function ChatPage(): JSX.Element {
   useEffect(() => {
     if (!roomId) return;
 
-    console.log('Setting up subscription for roomId:', roomId); // Debug roomId value
+    // Only set up Supabase subscription for 2v1 rooms
+    if (roomType === "2v1") {
+      console.log('Setting up subscription for roomId:', roomId); // Debug roomId value
 
-    // Fetch all messages for this room from Supabase on initial load
-    const fetchMessages = async () => {
-      console.log('Fetching messages for roomId:', roomId); // Debug log
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: true });
-      if (!error && data) {
-        console.log('Fetched messages:', data); // Debug log
-        setMessages(
-          data.map((msg) => ({
-            id: msg.id,
-            role: msg.sender_role, // Use sender_role from Supabase
-            content: msg.content,
-            sender_id: msg.sender_id,
-            created_at: msg.created_at,
-          }))
-        );
-        setFetchError(null);
-      } else {
-        console.error('Error fetching messages:', error); // Debug log
-        setFetchError(error);
-      }
-    };
-    fetchMessages();
-
-    // Subscribe to new messages for this room
-    console.log('Setting up real-time subscription for roomId:', roomId); // Debug log
-    const channel = supabase
-      .channel('room-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          console.log('Received new message via subscription:', payload.new); // Debug log
-          const newMessage = payload.new;
-          setMessages((prev) => {
-            if (prev.some((msg) => msg.id === newMessage.id)) {
-              console.log('Message already exists, skipping:', newMessage.id); // Debug log
-              return prev;
-            }
-            console.log('Adding new message to state:', newMessage); // Debug log
-            return [
-              ...prev,
-              {
-                id: newMessage.id,
-                role: newMessage.sender_role,
-                content: newMessage.content,
-                sender_id: newMessage.sender_id,
-                created_at: newMessage.created_at,
-              },
-            ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-          });
+      // Fetch all messages for this room from Supabase on initial load
+      const fetchMessages = async () => {
+        console.log('Fetching messages for roomId:', roomId); // Debug log
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: true });
+        if (!error && data) {
+          console.log('Fetched messages:', data); // Debug log
+          setMessages(
+            data.map((msg) => ({
+              id: msg.id,
+              role: msg.sender_role, // Use sender_role from Supabase
+              content: msg.content,
+              sender_id: msg.sender_id,
+              created_at: msg.created_at,
+            }))
+          );
+          setFetchError(null);
+        } else {
+          console.error('Error fetching messages:', error); // Debug log
+          setFetchError(error);
         }
-      )
-      .subscribe();
+      };
+      fetchMessages();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [roomId]);
+      // Subscribe to new messages for this room
+      console.log('Setting up real-time subscription for roomId:', roomId); // Debug log
+      const channel = supabase
+        .channel('room-messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `room_id=eq.${roomId}`,
+          },
+          (payload) => {
+            console.log('Received new message via subscription:', payload.new); // Debug log
+            const newMessage = payload.new;
+            setMessages((prev) => {
+              if (prev.some((msg) => msg.id === newMessage.id)) {
+                console.log('Message already exists, skipping:', newMessage.id); // Debug log
+                return prev;
+              }
+              console.log('Adding new message to state:', newMessage); // Debug log
+              return [
+                ...prev,
+                {
+                  id: newMessage.id,
+                  role: newMessage.sender_role,
+                  content: newMessage.content,
+                  sender_id: newMessage.sender_id,
+                  created_at: newMessage.created_at,
+                },
+              ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [roomId, roomType]);
 
   // Check if room is ready based on room type
   const isRoomReady = roomType === "2v1" ? (room && roomId) : (currentRoom && roomId);
