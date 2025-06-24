@@ -1001,16 +1001,24 @@ function ChatPage(): JSX.Element {
         try {
           const res = await fetch(`/api/rooms/${room.id}/members`);
           const data = await res.json();
-          console.log('Fetched members:', data); // Debug log
+          console.log('Fetched members RAW:', data); // Debug log
+          console.log('First member structure:', data[0]); // Debug log
+          if (data[0]) {
+            console.log('user_id type:', typeof data[0].user_id, 'value:', data[0].user_id);
+            console.log('user_name type:', typeof data[0].user_name, 'value:', data[0].user_name);
+          }
           setMembers(data);
           
           // Populate the user name cache with fetched members
           if (data && data.length > 0) {
             const nameCache: Record<string, string> = {};
             data.forEach((member: any) => {
-              nameCache[member.user_id] = member.user_name;
+              console.log('Processing member:', member, 'user_id:', member.user_id, 'user_name:', member.user_name);
+              // Handle case where user_name might be an array
+              const userName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name;
+              nameCache[member.user_id] = userName || 'Unknown User';
             });
-            console.log('Updating user name cache:', nameCache); // Debug log
+            console.log('Final name cache:', nameCache); // Debug log
             setUserNameCache(prev => {
               const updated = {
                 ...prev,
