@@ -986,17 +986,26 @@ function ChatPage(): JSX.Element {
 
   // Fetch and poll members
   useEffect(() => {
-    if (room && room.id) {
+    if (room && room.id && roomType === "2v1") {
       const fetchMembers = async () => {
-        const res = await fetch(`/api/rooms/${room.id}/members`);
-        const data = await res.json();
-        setMembers(data);
+        try {
+          const res = await fetch(`/api/rooms/${room.id}/members`);
+          const data = await res.json();
+          console.log('Fetched members:', data); // Debug log
+          setMembers(data);
+        } catch (error) {
+          console.error('Error fetching members:', error);
+        }
       };
+      
+      // Fetch immediately
       fetchMembers();
+      
+      // Then poll every 2 seconds
       const interval = setInterval(fetchMembers, 2000);
       return () => clearInterval(interval);
     }
-  }, [room]);
+  }, [room, roomType]);
 
   // Get sender name based on sender_id and role
   function getSenderName(message: any) {
@@ -1007,8 +1016,24 @@ function ChatPage(): JSX.Element {
     } else if (message.role === "user") {
       if (roomType === "2v1") {
         // For 2v1 rooms, look up the sender name from members array
+        console.log('Looking up sender name for:', message.sender_id, 'in members:', members); // Debug
         const sender = members.find(member => member.user_id === message.sender_id);
-        return sender?.user_name || "User";
+        console.log('Found sender:', sender); // Debug
+        
+        if (sender) {
+          return sender.user_name;
+        }
+        
+        // Fallback: if this is the current user's message, return current user's name
+        const currentUserId = sessionStorage.getItem("userId");
+        console.log('Current user ID:', currentUserId, 'Message sender ID:', message.sender_id); // Debug
+        if (message.sender_id === currentUserId) {
+          const currentUserName = sessionStorage.getItem("userName") || "User";
+          console.log('Using current user name:', currentUserName); // Debug
+          return currentUserName;
+        }
+        
+        return "User";
       } else {
         // For 1v1 rooms, use the current user's name
         return userName;
