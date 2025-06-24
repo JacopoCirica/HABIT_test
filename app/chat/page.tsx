@@ -951,10 +951,14 @@ function ChatPage(): JSX.Element {
       setUserName(userName);
       
       // Immediately cache the current user's name
-      setUserNameCache(prev => ({
-        ...prev,
-        [userId]: userName
-      }));
+      setUserNameCache(prev => {
+        const updated = {
+          ...prev,
+          [userId]: userName
+        };
+        setCacheVersion(v => v + 1); // Force re-render
+        return updated;
+      });
       
       fetch('/api/rooms/2v1/join', {
         method: 'POST',
@@ -1007,10 +1011,14 @@ function ChatPage(): JSX.Element {
               nameCache[member.user_id] = member.user_name;
             });
             console.log('Updating user name cache:', nameCache); // Debug log
-            setUserNameCache(prev => ({
-              ...prev,
-              ...nameCache
-            }));
+            setUserNameCache(prev => {
+              const updated = {
+                ...prev,
+                ...nameCache
+              };
+              setCacheVersion(v => v + 1); // Force re-render
+              return updated;
+            });
           }
         } catch (error) {
           console.error('Error fetching members:', error);
@@ -1028,6 +1036,9 @@ function ChatPage(): JSX.Element {
 
   // Create a memoized user cache to store user names by ID
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({});
+  
+  // Force re-render when user cache updates
+  const [cacheVersion, setCacheVersion] = useState(0);
 
   // Get sender name based on sender_id and role
   function getSenderName(message: any) {
@@ -1047,28 +1058,36 @@ function ChatPage(): JSX.Element {
         const sender = members.find(member => member.user_id === message.sender_id);
         console.log('Found sender:', sender); // Debug
         
-        if (sender) {
-          // Cache the name for future use
-          setUserNameCache(prev => ({
-            ...prev,
-            [message.sender_id]: sender.user_name
-          }));
-          return sender.user_name;
-        }
+                  if (sender) {
+            // Cache the name for future use
+            setUserNameCache(prev => {
+              const updated = {
+                ...prev,
+                [message.sender_id]: sender.user_name
+              };
+              setCacheVersion(v => v + 1); // Force re-render
+              return updated;
+            });
+            return sender.user_name;
+          }
         
         // Fallback: if this is the current user's message, return current user's name
         const currentUserId = sessionStorage.getItem("userId");
         console.log('Current user ID:', currentUserId, 'Message sender ID:', message.sender_id); // Debug
-        if (message.sender_id === currentUserId) {
-          const currentUserName = sessionStorage.getItem("userName") || "User";
-          console.log('Using current user name:', currentUserName); // Debug
-          // Cache the current user's name too
-          setUserNameCache(prev => ({
-            ...prev,
-            [message.sender_id]: currentUserName
-          }));
-          return currentUserName;
-        }
+                  if (message.sender_id === currentUserId) {
+            const currentUserName = sessionStorage.getItem("userName") || "User";
+            console.log('Using current user name:', currentUserName); // Debug
+            // Cache the current user's name too
+            setUserNameCache(prev => {
+              const updated = {
+                ...prev,
+                [message.sender_id]: currentUserName
+              };
+              setCacheVersion(v => v + 1); // Force re-render
+              return updated;
+            });
+            return currentUserName;
+          }
         
         // If members array is empty, return a placeholder and try to fetch members
         if (members.length === 0) {
@@ -1596,6 +1615,7 @@ function ChatPage(): JSX.Element {
                     const isAssistant = message.role === "assistant"
                     const role = isAssistant ? "confederate" : message.role
                     const participant = roomMembers.find((p) => p.role === (isAssistant ? "confederate" : message.role))
+                    const senderName = getSenderName(message) // Get name with current cache state
 
                     return (
                       <MessageAnimation
@@ -1607,11 +1627,11 @@ function ChatPage(): JSX.Element {
                         {!isUser && (
                           <div className="relative mt-1 flex-shrink-0">
                             <Avatar className="h-9 w-9 border-2 border-white">
-                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                {message.role === "system"
-                                  ? "M"
-                                  : getAvatarInitial(getSenderName(message))}
-                              </div>
+                                                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {message.role === "system"
+                                ? "M"
+                                : getAvatarInitial(senderName)}
+                            </div>
                             </Avatar>
                             <span
                               className={cn(
@@ -1625,7 +1645,7 @@ function ChatPage(): JSX.Element {
                         <div className={cn("flex max-w-[75%] flex-col", isUser ? "items-end" : "items-start")}>
                           <div className="mb-1 flex items-center gap-2">
                             <span className="text-sm font-medium capitalize">
-                              {getSenderName(message)}
+                              {senderName}
                             </span>
                           </div>
 
@@ -1651,9 +1671,9 @@ function ChatPage(): JSX.Element {
                         {isUser && (
                           <div className="relative mt-1 flex-shrink-0">
                             <Avatar className="h-9 w-9 border-2 border-white">
-                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                {getAvatarInitial(getSenderName(message))}
-                              </div>
+                                                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {getAvatarInitial(senderName)}
+                            </div>
                             </Avatar>
                             <span
                               className={cn(
