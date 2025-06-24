@@ -1641,21 +1641,56 @@ function ChatPage(): JSX.Element {
                     const participant = roomMembers.find((p) => p.role === (isAssistant ? "confederate" : message.role))
                     const senderName = getSenderName(message) // Get name with current cache state
 
+                    // Determine message alignment for 2v1 rooms
+                    let messageAlignment = "justify-start"; // Default: left side
+                    let isCurrentUser = false;
+                    
+                    if (roomType === "2v1") {
+                      const currentUserId = sessionStorage.getItem("userId");
+                      isCurrentUser = message.sender_id === currentUserId;
+                      
+                      if (isAssistant) {
+                        // Confederate messages always on the right
+                        messageAlignment = "justify-end";
+                      } else if (isUser) {
+                        // Determine user position in the room
+                        const sortedMembers = members.sort((a, b) => a.user_id.localeCompare(b.user_id));
+                        const userIndex = sortedMembers.findIndex(member => member.user_id === currentUserId);
+                        
+                        if (userIndex === 0) {
+                          // User 1: messages on the right (same side as confederate)
+                          messageAlignment = "justify-end";
+                        } else {
+                          // User 2: messages on the left (opposite side from confederate)
+                          messageAlignment = "justify-start";
+                        }
+                      } else {
+                        // System/moderator messages on the left
+                        messageAlignment = "justify-start";
+                      }
+                    } else {
+                      // 1v1 room: use original logic
+                      messageAlignment = isUser ? "justify-end" : "justify-start";
+                      isCurrentUser = isUser;
+                    }
+
+                    const showAvatarOnLeft = messageAlignment === "justify-start";
+
                     return (
                       <MessageAnimation
                         key={message.id || index}
-                        isUser={isUser}
+                        isUser={isCurrentUser}
                         delay={index * 0.05}
-                        className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
+                        className={cn("flex gap-3", messageAlignment)}
                       >
-                        {!isUser && (
+                        {showAvatarOnLeft && (
                           <div className="relative mt-1 flex-shrink-0">
                             <Avatar className="h-9 w-9 border-2 border-white">
-                                                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                              {message.role === "system"
-                                ? "M"
-                                : getAvatarInitial(senderName)}
-                            </div>
+                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                {message.role === "system"
+                                  ? "M"
+                                  : getAvatarInitial(senderName)}
+                              </div>
                             </Avatar>
                             <span
                               className={cn(
@@ -1666,7 +1701,7 @@ function ChatPage(): JSX.Element {
                           </div>
                         )}
 
-                        <div className={cn("flex max-w-[75%] flex-col", isUser ? "items-end" : "items-start")}>
+                        <div className={cn("flex max-w-[75%] flex-col", messageAlignment === "justify-end" ? "items-end" : "items-start")}>
                           <div className="mb-1 flex items-center gap-2">
                             <span className="text-sm font-medium capitalize">
                               {senderName}
@@ -1676,10 +1711,10 @@ function ChatPage(): JSX.Element {
                           <motion.div
                             className={cn(
                               "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
-                              isUser
+                              messageAlignment === "justify-end"
                                 ? "rounded-tr-sm bg-primary text-primary-foreground"
                                 : message.role === "system"
-                                  ? "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200" // Example style for system/moderator messages
+                                  ? "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
                                   : "rounded-tl-sm bg-white text-foreground",
                             )}
                             initial={{ scale: 0.95 }}
@@ -1692,12 +1727,12 @@ function ChatPage(): JSX.Element {
                           <span className="mt-1 text-xs text-muted-foreground">{getCurrentTime()}</span>
                         </div>
 
-                        {isUser && (
+                        {!showAvatarOnLeft && (
                           <div className="relative mt-1 flex-shrink-0">
                             <Avatar className="h-9 w-9 border-2 border-white">
-                                                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                              {getAvatarInitial(senderName)}
-                            </div>
+                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                {getAvatarInitial(senderName)}
+                              </div>
                             </Avatar>
                             <span
                               className={cn(
@@ -1712,33 +1747,50 @@ function ChatPage(): JSX.Element {
                   })}
                   {isLoading && sessionStarted && !sessionEnded && !sessionPaused && (
                     <MessageAnimation delay={0.1}>
-                      <div className="flex gap-3">
-                        <div className="relative mt-1 flex-shrink-0">
-                          <Avatar className="h-9 w-9 border-2 border-white">
-                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                              {roomMembers.find((m) => m.role === "confederate")?.name?.[0] || "C"}
-                            </div>
-                          </Avatar>
-                          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
-                        </div>
-                        <div className="flex max-w-[75%] flex-col items-start">
+                      <div className={cn("flex gap-3", roomType === "2v1" ? "justify-end" : "justify-start")}>
+                        {roomType !== "2v1" && (
+                          <div className="relative mt-1 flex-shrink-0">
+                            <Avatar className="h-9 w-9 border-2 border-white">
+                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                {roomMembers.find((m) => m.role === "confederate")?.name?.[0] || "C"}
+                              </div>
+                            </Avatar>
+                            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
+                          </div>
+                        )}
+                        <div className={cn("flex max-w-[75%] flex-col", roomType === "2v1" ? "items-end" : "items-start")}>
                           <div className="mb-1 flex items-center gap-2">
                             <span className="text-sm font-medium">
                               {roomMembers.find((m) => m.role === "confederate")?.name || "Confederate"}
                             </span>
                           </div>
-                          <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-2.5 text-sm shadow-sm">
+                          <div className={cn(
+                            "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                            roomType === "2v1" 
+                              ? "rounded-tr-sm bg-primary text-primary-foreground" 
+                              : "rounded-tl-sm bg-white"
+                          )}>
                             <div className="flex items-center gap-2">
                               <motion.div
                                 animate={{ rotate: 360 }}
                                 transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1, ease: "linear" }}
                               >
-                                <Loader2 className="h-4 w-4 text-muted-foreground" />
+                                <Loader2 className={cn("h-4 w-4", roomType === "2v1" ? "text-primary-foreground" : "text-muted-foreground")} />
                               </motion.div>
-                              <span className="text-muted-foreground">Typing...</span>
+                              <span className={cn(roomType === "2v1" ? "text-primary-foreground" : "text-muted-foreground")}>Typing...</span>
                             </div>
                           </div>
                         </div>
+                        {roomType === "2v1" && (
+                          <div className="relative mt-1 flex-shrink-0">
+                            <Avatar className="h-9 w-9 border-2 border-white">
+                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                {roomMembers.find((m) => m.role === "confederate")?.name?.[0] || "C"}
+                              </div>
+                            </Avatar>
+                            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500"></span>
+                          </div>
+                        )}
                       </div>
                     </MessageAnimation>
                   )}
