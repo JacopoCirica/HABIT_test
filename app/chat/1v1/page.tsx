@@ -22,7 +22,7 @@ import { OpinionTrackerVisualization } from "@/components/ui/opinion-tracker-vis
 import { PostSurvey } from "@/components/ui/post-survey"
 import { SurveyThankYou } from "@/components/ui/survey-thank-you"
 import { ModeratorControls } from "@/components/ui/moderator-controls"
-import { CountdownTimer } from "@/components/ui/countdown-timer"
+
 import {
   MessageSquare,
   Send,
@@ -37,14 +37,13 @@ import {
   ChevronRight,
   X,
   Loader2,
-  AlertTriangle,
-  BarChart2,
+
 } from "lucide-react"
 
 // Import necessary types and utilities
 import { ChatMessage, ChatRoom } from "@/lib/chat-rooms"
-import { trackOpinion, OpinionTrackingData } from "@/lib/opinion-tracker"
-import { PostSurveyResponses } from "@/lib/post-survey-actions"
+import { OpinionTrackingData } from "@/lib/opinion-tracker"
+import { PostSurveyResponses } from "@/components/ui/post-survey"
 
 export default function Chat1v1Page() {
   const router = useRouter()
@@ -189,8 +188,9 @@ export default function Chat1v1Page() {
 
   const handleOpinionUpdate = (value: number, reason: string) => {
     if (debateTopic) {
-      const updatedData = trackOpinion(debateTopic, value, reason)
-      setOpinionTrackingData(updatedData)
+      // Note: Opinion tracking functionality needs to be implemented
+      // const updatedData = trackOpinion(debateTopic, value, reason)
+      // setOpinionTrackingData(updatedData)
       setShowOpinionPoll(false)
     }
   }
