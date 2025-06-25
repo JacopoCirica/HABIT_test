@@ -108,8 +108,15 @@ function Chat1v1Component() {
 
   // Initialize 1v1 room
   useEffect(() => {
-    if (topic && roomId) {
-      // Load from localStorage or create new room
+    // Always initialize, even without topic and roomId
+    const defaultTopic = topic || "social-media-regulation" // Default topic if none provided
+    const defaultRoomId = roomId || `room_${Date.now()}` // Generate roomId if none provided
+    
+    setDebateTopic(defaultTopic)
+    setUserName(sessionStorage.getItem("userName") || "User")
+    
+    if (roomId) {
+      // Load existing room from localStorage if roomId is provided
       const storedRooms = JSON.parse(localStorage.getItem("chatRooms") || "[]")
       const room = storedRooms.find((r: ChatRoom) => r.id === roomId)
       
@@ -125,9 +132,35 @@ function Chat1v1Component() {
           created_at: msg.timestamp?.toISOString() || new Date().toISOString(),
         })))
       }
+    } else {
+      // Create a new room if no roomId is provided
+      const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
+      const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
       
-      setDebateTopic(topic)
-      setUserName(sessionStorage.getItem("userName") || "User")
+      const newRoom: ChatRoom = {
+        id: defaultRoomId,
+        userId: sessionStorage.getItem("userId") || `user_${Date.now()}`,
+        userName: sessionStorage.getItem("userName") || "User",
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        sessionStarted: false,
+        sessionEnded: false,
+        sessionPaused: false,
+        sessionTime: 0,
+        sessionTimeRemaining: 15 * 60,
+        debateTopic: defaultTopic,
+        userOpinions: {},
+        timeAdjustments: [],
+        moderatorPresent: false,
+        confederateName: randomConfederate,
+      }
+      
+      setCurrentRoom(newRoom)
+      
+      // Save to localStorage
+      const storedRooms = JSON.parse(localStorage.getItem("chatRooms") || "[]")
+      storedRooms.push(newRoom)
+      localStorage.setItem("chatRooms", JSON.stringify(storedRooms))
     }
   }, [topic, roomId])
 
@@ -231,7 +264,7 @@ function Chat1v1Component() {
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
+    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !currentRoom) return
 
     const trimmedInput = input.trim()
     setInput("")
@@ -257,15 +290,15 @@ function Chat1v1Component() {
     setMessages(prev => [...prev, userMessage])
     
     // Save to localStorage
-    if (currentRoom) {
-      const chatMessageForStorage: ChatMessage = {
-        ...userMessage,
-        roomId: roomId,
-        timestamp: new Date(),
+          if (currentRoom) {
+        const chatMessageForStorage: ChatMessage = {
+          ...userMessage,
+          roomId: currentRoom.id,
+          timestamp: new Date(),
+        }
+        const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+        localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
       }
-      const existingMessages = JSON.parse(localStorage.getItem(`messages_${roomId}`) || "[]")
-      localStorage.setItem(`messages_${roomId}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-    }
 
     // Handle AI response
     try {
@@ -286,7 +319,7 @@ function Chat1v1Component() {
         messages: messages,
         userTraits,
         topic: debateTopic ? topicDisplayNames[debateTopic] : "the current topic",
-        roomId: roomId,
+        roomId: currentRoom.id,
         debateTopic: debateTopic ? topicDisplayNames[debateTopic] : null,
         userPosition: opinionTrackingData
           ? opinionTrackingData.initialOpinion.value > 4
@@ -322,15 +355,15 @@ function Chat1v1Component() {
       setMessages(prev => [...prev, assistantMessage])
       
       // Save to localStorage
-      if (currentRoom) {
-        const chatMessageForStorage: ChatMessage = {
-          ...assistantMessage,
-          roomId: roomId,
-          timestamp: new Date(),
+              if (currentRoom) {
+          const chatMessageForStorage: ChatMessage = {
+            ...assistantMessage,
+            roomId: currentRoom.id,
+            timestamp: new Date(),
+          }
+          const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+          localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
         }
-        const existingMessages = JSON.parse(localStorage.getItem(`messages_${roomId}`) || "[]")
-        localStorage.setItem(`messages_${roomId}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-      }
       
     } catch (error) {
       console.error("Error in chat submit:", error)
@@ -347,15 +380,15 @@ function Chat1v1Component() {
       
       setMessages(prev => [...prev, fallbackMessage])
       
-      if (currentRoom) {
-        const chatMessageForStorage: ChatMessage = {
-          ...fallbackMessage,
-          roomId: roomId,
-          timestamp: new Date(),
+              if (currentRoom) {
+          const chatMessageForStorage: ChatMessage = {
+            ...fallbackMessage,
+            roomId: currentRoom.id,
+            timestamp: new Date(),
+          }
+          const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+          localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
         }
-        const existingMessages = JSON.parse(localStorage.getItem(`messages_${roomId}`) || "[]")
-        localStorage.setItem(`messages_${roomId}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-      }
     } finally {
       setIsLoading(false)
     }
@@ -366,7 +399,7 @@ function Chat1v1Component() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  if (!currentRoom || !roomId) {
+  if (!currentRoom) {
     return (
       <PageTransition>
         <div className="flex h-screen items-center justify-center">

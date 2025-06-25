@@ -106,48 +106,48 @@ function Chat2v1Component() {
 
   // Initialize 2v1 room
   useEffect(() => {
-    if (topic) {
-      setDebateTopic(topic)
-      setLoadingRoom(true)
-      
-      // Get or create consistent user ID
-      let userId = sessionStorage.getItem("userId")
-      if (!userId) {
-        userId = `user_${Date.now()}`
-        sessionStorage.setItem("userId", userId)
-      }
-      
-      const userName = sessionStorage.getItem("userName") || "User"
-      
-      // Set basic user state
-      setUserName(userName)
-      
-      // Immediately cache the current user's name
-      setUserNameCache(prev => {
-        const updated = {
-          ...prev,
-          [userId!]: userName
-        }
-        setCacheVersion(v => v + 1)
-        return updated
-      })
-      
-      fetch('/api/rooms/2v1/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, user_name: userName }),
-      })
-        .then(res => res.json())
-        .then(({ room }) => {
-          console.log('Joined 2v1 room:', room)
-          setRoom(room)
-          setRoomId(room.id)
-          setWaitingForUser(room.status === 'waiting')
-        })
-        .catch(() => setRoom(null))
-        .finally(() => setLoadingRoom(false))
+    // Always initialize, with or without topic
+    const defaultTopic = topic || "social-media-regulation" // Default topic if none provided
+    setDebateTopic(defaultTopic)
+    setLoadingRoom(true)
+    
+    // Get or create consistent user ID
+    let userId = sessionStorage.getItem("userId")
+    if (!userId) {
+      userId = `user_${Date.now()}`
+      sessionStorage.setItem("userId", userId)
     }
-  }, [topic])
+    
+    const userName = sessionStorage.getItem("userName") || "User"
+    
+    // Set basic user state
+    setUserName(userName)
+    
+    // Immediately cache the current user's name
+    setUserNameCache(prev => {
+      const updated = {
+        ...prev,
+        [userId!]: userName
+      }
+      setCacheVersion(v => v + 1)
+      return updated
+    })
+    
+    fetch('/api/rooms/2v1/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, user_name: userName }),
+    })
+      .then(res => res.json())
+      .then(({ room }) => {
+        console.log('Joined 2v1 room:', room)
+        setRoom(room)
+        setRoomId(room.id)
+        setWaitingForUser(room.status === 'waiting')
+      })
+      .catch(() => setRoom(null))
+      .finally(() => setLoadingRoom(false))
+  }, [topic]) // Keep topic as dependency but handle when it's null
 
   // Poll for room status if waiting
   useEffect(() => {
