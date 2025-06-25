@@ -674,13 +674,13 @@ function ChatPage() {
 
       // --- Calculate realistic delay before showing the LLM response ---
       // 1. Reading time (user message): 350 words/min = 5.83 words/sec
-      // 2. Typing time (LLM response): 40 words/min = 0.67 words/sec
+      // 2. Typing time (LLM response): 80 words/min = 1.33 words/sec
       // 3. Reflection: 0.5-2s random
       const getWordCount = (text: string) => (text ? text.trim().split(/\s+/).length : 0)
       const userWords = getWordCount(userMessage.content)
       const llmWords = getWordCount(data.content || "")
       const readingTime = userWords / (350 / 60) // seconds
-      const typingTime = llmWords / (40 / 60) // seconds
+      const typingTime = llmWords / (80 / 60) // seconds
       const reflectionTime = 0.5 + Math.random() * 1.5 // 0.5 to 2.0 seconds
       const totalDelay = readingTime + typingTime + reflectionTime
 
