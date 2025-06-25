@@ -1653,17 +1653,8 @@ function ChatPage(): JSX.Element {
                         // Confederate messages always on the right
                         messageAlignment = "justify-end";
                       } else if (isUser) {
-                        // Determine user position in the room
-                        const sortedMembers = members.sort((a, b) => a.user_id.localeCompare(b.user_id));
-                        const userIndex = sortedMembers.findIndex(member => member.user_id === currentUserId);
-                        
-                        if (userIndex === 0) {
-                          // User 1: messages on the right (same side as confederate)
-                          messageAlignment = "justify-end";
-                        } else {
-                          // User 2: messages on the left (opposite side from confederate)
-                          messageAlignment = "justify-start";
-                        }
+                        // Both User 1 and User 2: messages on the right (same side as confederate)
+                        messageAlignment = "justify-end";
                       } else {
                         // System/moderator messages on the left
                         messageAlignment = "justify-start";
