@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
@@ -45,7 +45,7 @@ import { ChatMessage, ChatRoom } from "@/lib/chat-rooms"
 import { OpinionTrackingData } from "@/lib/opinion-tracker"
 import { PostSurveyResponses } from "@/components/ui/post-survey"
 
-export default function Chat1v1Page() {
+function Chat1v1Component() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -665,5 +665,20 @@ export default function Chat1v1Page() {
         {showSurveyThankYou && <SurveyThankYou onClose={handleThankYouClose} />}
       </div>
     </PageTransition>
+  )
+}
+
+export default function Chat1v1Page() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+          <p className="mt-2 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <Chat1v1Component />
+    </Suspense>
   )
 } 
