@@ -289,6 +289,7 @@ function Chat1v1Component() {
       created_at: new Date().toISOString(),
     }
     
+    // Update local state
     setMessages(prev => [...prev, userMessage])
     
     // Save to localStorage
@@ -317,8 +318,11 @@ function Chat1v1Component() {
         employment: storedOccupation,
       }
       
+      // Include the new user message in the API call
+      const messagesForAPI = [...messages, userMessage]
+      
       const requestBody = {
-        messages: messages,
+        messages: messagesForAPI,
         userTraits,
         topic: debateTopic ? topicDisplayNames[debateTopic] : "the current topic",
         roomId: currentRoom.id,
@@ -334,6 +338,7 @@ function Chat1v1Component() {
       }
       
       console.log("Sending API request with confederate:", currentRoom?.confederateName)
+      console.log("Messages being sent to API:", messagesForAPI)
       console.log("Request body:", requestBody)
       
       const response = await fetch("/api/chat", {
