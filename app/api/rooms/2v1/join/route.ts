@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   // Find a waiting room with only one user
   const { data: waitingRooms, error: waitingRoomsError } = await supabase
     .from('rooms')
-    .select('id, status')
+    .select('id, status, confederate_name')
     .eq('type', '2v1')
     .eq('status', 'waiting')
 
@@ -52,10 +52,20 @@ export async function POST(req: NextRequest) {
     }
   } else {
     console.log('No waiting room found, creating new room');
+    
+    // Assign a random confederate name for the room
+    const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
+    const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
+    console.log('Assigning confederate for new 2v1 room:', randomConfederate);
+    
     // Create new room and join as first user
     const { data: newRoom, error: newRoomError } = await supabase
       .from('rooms')
-      .insert([{ type: '2v1', status: 'waiting' }])
+      .insert([{ 
+        type: '2v1', 
+        status: 'waiting',
+        confederate_name: randomConfederate 
+      }])
       .select()
       .single();
     if (newRoomError || !newRoom) {

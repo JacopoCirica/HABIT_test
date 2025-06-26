@@ -133,7 +133,12 @@ function Chat2v1Component() {
       .then(res => res.json())
       .then(({ room }) => {
         console.log('Joined 2v1 room:', room)
-        setRoom(room)
+        // Transform snake_case to camelCase for client
+        const transformedRoom = {
+          ...room,
+          confederateName: room.confederate_name
+        }
+        setRoom(transformedRoom)
         setRoomId(room.id)
         setWaitingForUser(room.status === 'waiting')
       })
@@ -149,7 +154,12 @@ function Chat2v1Component() {
         const res = await fetch(`/api/rooms/${room.id}`)
         const updatedRoom = await res.json()
         if (updatedRoom.status === "active") {
-          setRoom(updatedRoom)
+          // Transform snake_case to camelCase for client
+          const transformedRoom = {
+            ...updatedRoom,
+            confederateName: updatedRoom.confederate_name
+          }
+          setRoom(transformedRoom)
           setWaitingForUser(false)
           clearInterval(interval)
         }
