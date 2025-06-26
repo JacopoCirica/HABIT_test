@@ -107,6 +107,27 @@ function Chat1v1Component() {
     setDebateTopic(selectedTopic)
     setUserName(sessionStorage.getItem("userName") || "User")
     
+    // Add initial moderator message for new rooms
+    const addInitialModeratorMessage = (roomId: string) => {
+      const moderatorMessage = {
+        id: `moderator_welcome_${Date.now()}`,
+        role: "system" as const,
+        content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and another participant to debate the topic: "${chatTopicDisplayNames[selectedTopic] || selectedTopic}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+        sender_id: "moderator",
+        created_at: new Date().toISOString(),
+      }
+      
+      setMessages([moderatorMessage])
+      
+      // Save to localStorage
+      const chatMessageForStorage: ChatMessage = {
+        ...moderatorMessage,
+        roomId: roomId,
+        timestamp: new Date(),
+      }
+      localStorage.setItem(`messages_${roomId}`, JSON.stringify([chatMessageForStorage]))
+    }
+    
     if (roomId) {
       // Load existing room from localStorage if roomId is provided
       const storedRooms = JSON.parse(localStorage.getItem("chatRooms") || "[]")
@@ -116,13 +137,18 @@ function Chat1v1Component() {
         setCurrentRoom(room)
         // Load messages from localStorage
         const storedMessages = JSON.parse(localStorage.getItem(`messages_${roomId}`) || "[]")
-        setMessages(storedMessages.map((msg: ChatMessage) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          sender_id: msg.sender_id || "user",
-          created_at: msg.timestamp?.toISOString() || new Date().toISOString(),
-        })))
+        if (storedMessages.length > 0) {
+          setMessages(storedMessages.map((msg: ChatMessage) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            sender_id: msg.sender_id || "user",
+            created_at: msg.timestamp?.toISOString() || new Date().toISOString(),
+          })))
+        } else {
+          // No existing messages, add initial moderator message
+          addInitialModeratorMessage(roomId)
+        }
       }
     } else {
       // Create a new room if no roomId is provided
@@ -155,6 +181,9 @@ function Chat1v1Component() {
       const storedRooms = JSON.parse(localStorage.getItem("chatRooms") || "[]")
       storedRooms.push(newRoom)
       localStorage.setItem("chatRooms", JSON.stringify(storedRooms))
+      
+      // Add initial moderator message for new room
+      addInitialModeratorMessage(defaultRoomId)
     }
   }, [topic, roomId])
 
