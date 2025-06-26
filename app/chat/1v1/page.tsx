@@ -79,6 +79,10 @@ function Chat1v1Component() {
   const [showExitSurvey, setShowExitSurvey] = useState(false)
   const [showSurveyThankYou, setShowSurveyThankYou] = useState(false)
   
+  // Loading state for simulating user connection
+  const [waitingForUser, setWaitingForUser] = useState(true)
+  const [connectionMessage, setConnectionMessage] = useState("Connecting to chat room...")
+  
   // Error handling
   const [useSimulatedResponses, setUseSimulatedResponses] = useState(false)
   const [apiErrorCount, setApiErrorCount] = useState(0)
@@ -185,6 +189,24 @@ function Chat1v1Component() {
       // Add initial moderator message for new room
       addInitialModeratorMessage(defaultRoomId)
     }
+    
+    // Simulate waiting for another user to connect (3-8 seconds)
+    const simulateUserConnection = () => {
+      const randomDelay = Math.floor(Math.random() * (8000 - 3000 + 1)) + 3000 // 3-8 seconds
+      
+      // Update connection message after 1 second
+      setTimeout(() => {
+        setConnectionMessage("Waiting for another user to join...")
+      }, 1000)
+      
+      // Show chat interface after random delay
+      setTimeout(() => {
+        setWaitingForUser(false)
+      }, randomDelay)
+    }
+    
+    // Start the connection simulation
+    simulateUserConnection()
   }, [topic, roomId])
 
   // Helper functions
@@ -434,6 +456,27 @@ function Chat1v1Component() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Show loading state while waiting for another user
+  if (waitingForUser) {
+    return (
+      <PageTransition>
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-6">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            </div>
+            <h2 className="mb-2 text-2xl font-bold">{connectionMessage}</h2>
+            <p className="text-muted-foreground">
+              {connectionMessage.includes("Connecting") 
+                ? "Setting up your 1-on-1 debate session..." 
+                : "This should only take a moment..."}
+            </p>
+          </div>
+        </div>
+      </PageTransition>
+    )
+  }
 
   if (!currentRoom) {
     return (
