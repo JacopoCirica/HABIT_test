@@ -41,6 +41,7 @@ import {
 import { supabase } from "@/lib/supabaseClient"
 import { OpinionTrackingData } from "@/lib/opinion-tracker"
 import { PostSurveyResponses } from "@/components/ui/post-survey"
+import { getChatTopicFromOpinions, chatTopicDisplayNames } from "@/lib/opinion-analyzer"
 
 function Chat2v1Component() {
   const router = useRouter()
@@ -92,23 +93,14 @@ function Chat2v1Component() {
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
 
-  // Topic display names
-  const topicDisplayNames: Record<string, string> = {
-    "social-media-regulation": "Social Media Regulation",
-    "climate-change-policy": "Climate Change Policy",
-    "universal-basic-income": "Universal Basic Income",
-    "artificial-intelligence-ethics": "Artificial Intelligence Ethics",
-    "healthcare-system-reform": "Healthcare System Reform",
-  }
-
-  const sessionTitle = debateTopic ? topicDisplayNames[debateTopic] : "Opinion Discussion"
+  const sessionTitle = debateTopic ? chatTopicDisplayNames[debateTopic] : "Opinion Discussion"
   const sessionDescription = "Discuss and debate various social and political topics"
 
   // Initialize 2v1 room
   useEffect(() => {
     // Always initialize, with or without topic
-    const defaultTopic = topic || "social-media-regulation" // Default topic if none provided
-    setDebateTopic(defaultTopic)
+    const selectedTopic = topic || getChatTopicFromOpinions() // Use demographics-based topic selection
+    setDebateTopic(selectedTopic)
     setLoadingRoom(true)
     
     // Get or create consistent user ID
@@ -491,9 +483,9 @@ function Chat2v1Component() {
       const requestBody = {
         messages: messages,
         userTraits,
-        topic: debateTopic ? topicDisplayNames[debateTopic] : "the current topic",
+        topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
         roomId: roomId,
-        debateTopic: debateTopic ? topicDisplayNames[debateTopic] : null,
+        debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
         userPosition: opinionTrackingData
           ? opinionTrackingData.initialOpinion.value > 4
             ? "agree"

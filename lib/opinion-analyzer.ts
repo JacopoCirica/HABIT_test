@@ -26,6 +26,28 @@ export const topicDisplayNames: Record<OpinionTopic, string> = {
   universalHealthcare: "Universal Healthcare Access",
 }
 
+// Map opinion topics to chat topic keys
+export const opinionToChatTopicMap: Record<OpinionTopic, string> = {
+  vaccination: "vaccination-policy",
+  climateChange: "climate-change-policy", 
+  immigration: "immigration-policy",
+  gunControl: "gun-control-policy",
+  universalHealthcare: "healthcare-system-reform",
+}
+
+// Map chat topic keys to display names for chat interface
+export const chatTopicDisplayNames: Record<string, string> = {
+  "vaccination-policy": "Vaccination Policy",
+  "climate-change-policy": "Climate Change Policy",
+  "immigration-policy": "Immigration Policy", 
+  "gun-control-policy": "Gun Control Policy",
+  "healthcare-system-reform": "Healthcare System Reform",
+  // Keep existing fallback topics
+  "social-media-regulation": "Social Media Regulation",
+  "universal-basic-income": "Universal Basic Income",
+  "artificial-intelligence-ethics": "Artificial Intelligence Ethics",
+}
+
 // Map topics to their corresponding statements from the survey
 const topicStatements: Record<OpinionTopic, string> = {
   vaccination: "Vaccines are safe and effective for most people.",
@@ -154,5 +176,36 @@ export function getTopicToDebate(opinions: UserOpinions): TopicAnalysis | null {
       // Otherwise, randomly choose one of the most extreme topics
       return mostExtreme[Math.floor(Math.random() * mostExtreme.length)]
     }
+  }
+}
+
+/**
+ * Gets the chat topic key based on user's most extreme opinion from demographics
+ */
+export function getChatTopicFromOpinions(): string {
+  try {
+    // Get user opinions from session storage
+    const opinionsStr = sessionStorage.getItem("userOpinions")
+    if (!opinionsStr) {
+      console.log("No user opinions found, using default topic")
+      return "social-media-regulation" // Fallback to default
+    }
+
+    const opinions: UserOpinions = JSON.parse(opinionsStr)
+    const selectedTopic = getTopicToDebate(opinions)
+    
+    if (!selectedTopic) {
+      console.log("No extreme topic found, using default topic")
+      return "social-media-regulation" // Fallback to default
+    }
+
+    const chatTopicKey = opinionToChatTopicMap[selectedTopic.topic]
+    console.log(`Selected debate topic: ${selectedTopic.topic} (${selectedTopic.displayName}) -> ${chatTopicKey}`)
+    console.log(`User position: ${selectedTopic.position} (${selectedTopic.rawValue}/7)`)
+    
+    return chatTopicKey
+  } catch (error) {
+    console.error("Error getting chat topic from opinions:", error)
+    return "social-media-regulation" // Fallback to default
   }
 }

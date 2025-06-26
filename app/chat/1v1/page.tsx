@@ -44,6 +44,7 @@ import {
 import { ChatMessage, ChatRoom } from "@/lib/chat-rooms"
 import { OpinionTrackingData } from "@/lib/opinion-tracker"
 import { PostSurveyResponses } from "@/components/ui/post-survey"
+import { getChatTopicFromOpinions, chatTopicDisplayNames } from "@/lib/opinion-analyzer"
 
 function Chat1v1Component() {
   const router = useRouter()
@@ -87,16 +88,7 @@ function Chat1v1Component() {
   const [opinionTrackingData, setOpinionTrackingData] = useState<OpinionTrackingData | null>(null)
   const [debateTopic, setDebateTopic] = useState<string | null>(null)
 
-  // Topic display names
-  const topicDisplayNames: Record<string, string> = {
-    "social-media-regulation": "Social Media Regulation",
-    "climate-change-policy": "Climate Change Policy",
-    "universal-basic-income": "Universal Basic Income",
-    "artificial-intelligence-ethics": "Artificial Intelligence Ethics",
-    "healthcare-system-reform": "Healthcare System Reform",
-  }
-
-  const sessionTitle = debateTopic ? topicDisplayNames[debateTopic] : "Opinion Discussion"
+  const sessionTitle = debateTopic ? chatTopicDisplayNames[debateTopic] : "Opinion Discussion"
   const sessionDescription = "Discuss and debate various social and political topics"
 
   // Room members for 1v1
@@ -109,10 +101,10 @@ function Chat1v1Component() {
   // Initialize 1v1 room
   useEffect(() => {
     // Always initialize, even without topic and roomId
-    const defaultTopic = topic || "social-media-regulation" // Default topic if none provided
+    const selectedTopic = topic || getChatTopicFromOpinions() // Use demographics-based topic selection
     const defaultRoomId = roomId || `room_${Date.now()}` // Generate roomId if none provided
     
-    setDebateTopic(defaultTopic)
+    setDebateTopic(selectedTopic)
     setUserName(sessionStorage.getItem("userName") || "User")
     
     if (roomId) {
@@ -150,7 +142,7 @@ function Chat1v1Component() {
         sessionPaused: false,
         sessionTime: 0,
         sessionTimeRemaining: 15 * 60,
-        debateTopic: defaultTopic,
+        debateTopic: selectedTopic,
         userOpinions: {},
         timeAdjustments: [],
         moderatorPresent: false,
@@ -324,9 +316,9 @@ function Chat1v1Component() {
       const requestBody = {
         messages: messagesForAPI,
         userTraits,
-        topic: debateTopic ? topicDisplayNames[debateTopic] : "the current topic",
+        topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
         roomId: currentRoom.id,
-        debateTopic: debateTopic ? topicDisplayNames[debateTopic] : null,
+        debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
         userPosition: opinionTrackingData
           ? opinionTrackingData.initialOpinion.value > 4
             ? "agree"
