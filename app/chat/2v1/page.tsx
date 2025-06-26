@@ -480,8 +480,20 @@ function Chat2v1Component() {
         employment: storedOccupation,
       }
       
+      // Include the new user message in the API call (fix timing issue)
+      const messagesForAPI = [...messages, {
+        id: insertedMessage.id,
+        role: insertedMessage.sender_role,
+        content: insertedMessage.content,
+        sender_id: insertedMessage.sender_id,
+        created_at: insertedMessage.created_at,
+      }]
+      
+      console.log("Sending API request for 2v1 with confederate:", room?.confederateName)
+      console.log("Messages being sent to API:", messagesForAPI)
+      
       const requestBody = {
-        messages: messages,
+        messages: messagesForAPI,
         userTraits,
         topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
         roomId: roomId,
@@ -502,11 +514,16 @@ function Chat2v1Component() {
         body: JSON.stringify(requestBody),
       })
       
+      console.log("API response status:", response.status)
+      
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error("API response error:", errorText)
+        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
       }
       
       const data = await response.json()
+      console.log("API response data:", data)
       
       // Insert AI response into Supabase
       const assistantMessage = {
