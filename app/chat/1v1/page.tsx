@@ -137,6 +137,8 @@ function Chat1v1Component() {
       const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
       const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
       
+      console.log("Creating new 1v1 room with confederate:", randomConfederate)
+      
       const newRoom: ChatRoom = {
         id: defaultRoomId,
         userId: sessionStorage.getItem("userId") || `user_${Date.now()}`,
@@ -331,17 +333,25 @@ function Chat1v1Component() {
         confederateName: currentRoom?.confederateName || null,
       }
       
+      console.log("Sending API request with confederate:", currentRoom?.confederateName)
+      console.log("Request body:", requestBody)
+      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       })
       
+      console.log("API response status:", response.status)
+      
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error("API response error:", errorText)
+        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
       }
       
       const data = await response.json()
+      console.log("API response data:", data)
       
       // Add AI response
       const assistantMessage = {
