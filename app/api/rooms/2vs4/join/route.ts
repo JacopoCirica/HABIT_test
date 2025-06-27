@@ -53,31 +53,33 @@ export async function POST(req: NextRequest) {
   } else {
     console.log('No waiting room found, creating new room');
     
-    // Assign LLM names for the room
+    // Assign confederate names for all 4 LLMs (1 main confederate + 3 LLM users)
     const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
-    const llmUserNames = ["Sam", "Jordan", "Casey", "Riley", "Morgan", "Avery", "Quinn", "Sage"]
     
-    const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
+    // Shuffle and select 4 unique confederate names
+    const shuffledConfederates = [...confederateNames].sort(() => 0.5 - Math.random())
+    const mainConfederate = shuffledConfederates[0]
+    const llmUser1 = shuffledConfederates[1]
+    const llmUser2 = shuffledConfederates[2] 
+    const llmUser3 = shuffledConfederates[3]
     
-    // Select 3 unique LLM user names
-    const shuffledLLMNames = [...llmUserNames].sort(() => 0.5 - Math.random())
-    const selectedLLMUsers = shuffledLLMNames.slice(0, 3)
-    
-    console.log('Assigning LLMs for new 2vs4 room:', {
-      confederate: randomConfederate,
-      llmUsers: selectedLLMUsers
+    console.log('Assigning confederates for new 2vs4 room:', {
+      mainConfederate,
+      llmUser1,
+      llmUser2,
+      llmUser3
     });
     
-    // Create new room and join as first user
+    // Create new room with confederate names
     const { data: newRoom, error: newRoomError } = await supabase
       .from('rooms')
       .insert([{ 
         type: '2vs4', 
         status: 'waiting',
-        confederate_id: randomConfederate,
-        llm_user_1: selectedLLMUsers[0],
-        llm_user_2: selectedLLMUsers[1],
-        llm_user_3: selectedLLMUsers[2]
+        confederate_id: mainConfederate,
+        llm_user_1: llmUser1,
+        llm_user_2: llmUser2,
+        llm_user_3: llmUser3
       }])
       .select()
       .single();

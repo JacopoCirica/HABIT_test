@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       userPosition,
       confederateName,
       conversationContext,
+      roomType,
+      responderId,
     }: {
       messages: CoreMessage[]
       userTraits: any
@@ -65,6 +67,8 @@ export async function POST(request: Request) {
         recentMessageCount: number
         shouldModerate: boolean
       }
+      roomType?: string
+      responderId?: string
     } = body
 
     if (!messages || !Array.isArray(messages)) {
@@ -142,10 +146,12 @@ ${contextGuidance}
 You are participating as a "USER" - a research assistant who appears to be a regular participant but is actually part of the research team. Your responses should appear natural and conversational, not like an AI assistant.
 
 ## Current Session Context
-- Session Type: Opinion Debate
+- Session Type: ${roomType === "2vs4" ? "Multi-participant Opinion Debate (2 users vs 4 AI)" : "Opinion Debate"}
 - Phase: Topic Discussion
 - Room ID: ${roomId || "unknown"}
-- Your Goal: Engage in a natural debate with the user about a topic they have strong opinions on
+- Your Goal: ${roomType === "2vs4" 
+  ? "Participate naturally in a 6-way conversation with 2 real users and 3 other AI participants"
+  : "Engage in a natural debate with the user about a topic they have strong opinions on"}
 
 ${debateGuidance}
 
@@ -159,6 +165,10 @@ ${debateGuidance}
 7. Use a relaxed and informal writing style. It's okay to occasionally use lowercase letters after a period if it feels natural for a casual chat, or use common chat abbreviations (like "lol", "idk", "btw") sparingly. Don't overdo it or force errors, as the goal is to sound like a real person, not a broken bot. Avoid sounding overly formal or academic.
 8. Avoid revealing that you are an AI or part of the research team. Maintain the persona of a fellow human participant.
 9. Never break character as a human confederate participant.
+${roomType === "2vs4" ? `
+10. **Multi-participant Context**: You're in a 6-way conversation. Reference other participants naturally ("I agree with what [Name] said", "That's an interesting point, but I think...").
+11. **Varied Perspectives**: Each AI participant should have slightly different viewpoints to create natural disagreement and discussion.
+12. **Natural Flow**: Don't feel obligated to respond to every message - let the conversation flow naturally between all participants.` : ""}
 
 ${
   isFirstMessage

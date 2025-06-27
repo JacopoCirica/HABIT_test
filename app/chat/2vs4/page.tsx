@@ -604,9 +604,116 @@ function Chat2vs4Component() {
       })
     }
 
-    // TODO: Implement LLM response logic for 2vs4
-    // For now, just end loading
-    setIsLoading(false)
+    // Implement LLM response logic for 2vs4
+    try {
+      const storedName = sessionStorage.getItem("userName") || "User"
+      const storedAge = sessionStorage.getItem("userAge") || "Unknown"
+      const storedSex = sessionStorage.getItem("userSex") || "Unknown"
+      const storedEducation = sessionStorage.getItem("userEducation") || "Unknown"
+      const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown"
+      
+      const userTraits = {
+        gender: storedSex,
+        age: storedAge,
+        education: storedEducation,
+        employment: storedOccupation,
+      }
+      
+      // Include the new user message in the API call
+      const messagesForAPI = [...messages, {
+        id: insertedMessage.id,
+        role: insertedMessage.sender_role,
+        content: insertedMessage.content,
+        sender_id: insertedMessage.sender_id,
+        created_at: insertedMessage.created_at,
+      }]
+      
+      console.log("Sending API request for 2vs4 with confederates:", {
+        main: room?.confederateName,
+        llm1: room?.llmUser1,
+        llm2: room?.llmUser2,
+        llm3: room?.llmUser3
+      })
+      
+      // Determine which AI participants should respond (1-3 of them)
+      const aiParticipants = [
+        { id: "confederate", name: room?.confederateName },
+        { id: "llm_user_1", name: room?.llmUser1 },
+        { id: "llm_user_2", name: room?.llmUser2 },
+        { id: "llm_user_3", name: room?.llmUser3 }
+      ]
+      
+      // Randomly select 1-3 AI participants to respond
+      const numResponders = Math.floor(Math.random() * 3) + 1 // 1-3 responders
+      const shuffledAI = [...aiParticipants].sort(() => 0.5 - Math.random())
+      const selectedResponders = shuffledAI.slice(0, numResponders)
+      
+      console.log(`Selected ${numResponders} AI responders:`, selectedResponders.map(r => r.name))
+      
+      // Generate responses for each selected AI participant
+      for (let i = 0; i < selectedResponders.length; i++) {
+        const responder = selectedResponders[i]
+        
+        // Add delay between responses (2-8 seconds)
+        const delay = Math.random() * 6000 + 2000
+        
+        setTimeout(async () => {
+          try {
+            const requestBody = {
+              messages: messagesForAPI,
+              userTraits,
+              topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
+              roomId: roomId2vs4,
+              debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
+              userPosition: "neutral", // For 2vs4, we'll use neutral position
+              confederateName: responder.name,
+              roomType: "2vs4",
+              responderId: responder.id
+            }
+            
+            const response = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(requestBody),
+            })
+            
+            if (!response.ok) {
+              throw new Error(`API request failed: ${response.status}`)
+            }
+            
+            const data = await response.json()
+            
+            // Insert AI response into Supabase
+            const aiMessage = {
+              room_id: roomId2vs4,
+              sender_id: responder.id,
+              sender_role: "assistant",
+              content: data.content || "I'm not sure how to respond to that.",
+            }
+            
+            const { data: insertedAIMessage, error: aiError } = await supabase
+              .from("messages")
+              .insert([aiMessage])
+              .select()
+              .single()
+              
+            if (aiError) {
+              console.error(`Failed to send ${responder.name} message:`, aiError)
+            } else {
+              console.log(`${responder.name} responded successfully`)
+            }
+            
+          } catch (error) {
+            console.error(`Error generating response for ${responder.name}:`, error)
+          }
+        }, delay)
+      }
+      
+    } catch (error) {
+      console.error("Error in 2vs4 chat submit:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Auto-scroll to bottom
