@@ -93,8 +93,8 @@ function Chat2v1Component() {
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
 
-  // State for tracking moderator message
-  const [moderatorMessageSent, setModeratorMessageSent] = useState(false)
+  // Ref for tracking moderator message (more reliable than state)
+  const moderatorMessageSentRef = useRef(false)
 
   const sessionTitle = debateTopic ? chatTopicDisplayNames[debateTopic] : "Opinion Discussion"
   const sessionDescription = "Discuss and debate various social and political topics"
@@ -167,8 +167,8 @@ function Chat2v1Component() {
           clearInterval(interval)
           
           // Add moderator message when room becomes active (only if not sent yet)
-          if (!moderatorMessageSent) {
-            setTimeout(() => addInitialModeratorMessage(), 1000)
+          if (!moderatorMessageSentRef.current) {
+            console.log('Room became active, but letting member fetch handle moderator message')
           }
         }
       }, 2000)
@@ -205,7 +205,7 @@ function Chat2v1Component() {
             })
             
             // Add moderator message when we have both users (only if not sent yet)
-            if (data && data.length >= 2 && room?.status === 'active' && !moderatorMessageSent) {
+            if (data && data.length >= 2 && room?.status === 'active' && !moderatorMessageSentRef.current) {
               setTimeout(() => addInitialModeratorMessage(), 500)
             }
           }
@@ -250,7 +250,7 @@ function Chat2v1Component() {
         // Check if moderator message already exists
         const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
         if (hasModeratorMessage) {
-          setModeratorMessageSent(true)
+          moderatorMessageSentRef.current = true
         }
       } else {
         console.error('Error fetching messages:', error)
@@ -331,20 +331,45 @@ function Chat2v1Component() {
 
   // Add initial moderator message when session starts
   const addInitialModeratorMessage = async () => {
-    if (!roomId || !debateTopic || moderatorMessageSent) return
+    if (!roomId || !debateTopic || moderatorMessageSentRef.current) {
+      console.log('Moderator message blocked:', { roomId: !!roomId, debateTopic: !!debateTopic, alreadySent: moderatorMessageSentRef.current })
+      return
+    }
     
-    // Check if moderator message already exists in messages
+    // Double-check database for existing moderator messages
+    try {
+      const { data: existingMessages, error } = await supabase
+        .from("messages")
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('sender_id', 'moderator')
+        .limit(1)
+      
+      if (existingMessages && existingMessages.length > 0) {
+        console.log('Moderator message already exists in database, skipping')
+        moderatorMessageSentRef.current = true
+        return
+      }
+    } catch (error) {
+      console.error('Error checking for existing moderator messages:', error)
+    }
+    
+    // Check if moderator message already exists in local messages
     const hasModeratorMessage = messages.some(msg => msg.sender_id === "moderator")
     if (hasModeratorMessage) {
-      setModeratorMessageSent(true)
+      console.log('Moderator message found in local messages, skipping')
+      moderatorMessageSentRef.current = true
       return
     }
     
     // Only add moderator message when both users are present
-    if (members.length < 2) return
+    if (members.length < 2) {
+      console.log('Not enough members yet:', members.length)
+      return
+    }
     
     console.log('Adding initial moderator message...')
-    setModeratorMessageSent(true) // Set this immediately to prevent duplicates
+    moderatorMessageSentRef.current = true // Set this immediately to prevent duplicates
     
     const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
     const moderatorMessage = {
@@ -379,11 +404,11 @@ function Chat2v1Component() {
         })
       } else {
         console.error('Error inserting moderator message:', error)
-        setModeratorMessageSent(false) // Reset on error
+        moderatorMessageSentRef.current = false // Reset on error
       }
     } catch (error) {
       console.error("Error adding moderator message:", error)
-      setModeratorMessageSent(false) // Reset on error
+      moderatorMessageSentRef.current = false // Reset on error
     }
   }
 
@@ -405,8 +430,8 @@ function Chat2v1Component() {
     }, 1000)
 
     // Add initial moderator message when session starts (only if not sent yet)
-    if (!moderatorMessageSent) {
-      addInitialModeratorMessage()
+    if (!moderatorMessageSentRef.current) {
+      console.log('Session started, but letting member fetch handle moderator message')
     }
   }
 
