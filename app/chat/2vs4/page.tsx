@@ -802,7 +802,7 @@ function Chat2vs4Component() {
                         <div className="flex flex-col">
                           <div className="font-medium">{member.name}</div>
                           <div className="text-xs text-muted-foreground capitalize">
-                            {member.role === "llm_user" ? "AI User" : member.role}
+                            {member.role === "llm_user" ? "User" : member.role}
                           </div>
                         </div>
                       </motion.div>
