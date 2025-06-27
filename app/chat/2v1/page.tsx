@@ -136,7 +136,7 @@ function Chat2v1Component() {
         // Transform snake_case to camelCase for client
         const transformedRoom = {
           ...room,
-          confederateName: room.confederate_name
+          confederateName: room.confederate_id
         }
         setRoom(transformedRoom)
         setRoomId(room.id)
@@ -157,7 +157,7 @@ function Chat2v1Component() {
           // Transform snake_case to camelCase for client
           const transformedRoom = {
             ...updatedRoom,
-            confederateName: updatedRoom.confederate_name
+            confederateName: updatedRoom.confederate_id
           }
           setRoom(transformedRoom)
           setWaitingForUser(false)

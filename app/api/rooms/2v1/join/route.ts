@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   // Find a waiting room with only one user
   const { data: waitingRooms, error: waitingRoomsError } = await supabase
     .from('rooms')
-    .select('id, status, confederate_name')
+    .select('id, status, confederate_id')
     .eq('type', '2v1')
     .eq('status', 'waiting')
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       .insert([{ 
         type: '2v1', 
         status: 'waiting',
-        confederate_name: randomConfederate 
+        confederate_id: randomConfederate 
       }])
       .select()
       .single();
