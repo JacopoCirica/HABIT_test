@@ -85,11 +85,17 @@ function Chat2vs4Component() {
   // Get dynamic topic from demographics survey
   const getChatTopicFromOpinions = () => {
     try {
-      const demographicsData = JSON.parse(sessionStorage.getItem("demographicsData") || "{}")
+      const demographicsDataRaw = sessionStorage.getItem("demographicsData")
+      console.log("2vs4 Demographics data raw:", demographicsDataRaw)
+      
+      const demographicsData = JSON.parse(demographicsDataRaw || "{}")
+      console.log("2vs4 Demographics data parsed:", demographicsData)
+      
       const opinions = demographicsData.opinions || {}
+      console.log("2vs4 Opinions:", opinions)
       
       if (Object.keys(opinions).length === 0) {
-        console.log("No opinions found, using default topic")
+        console.log("2vs4 No opinions found, using default topic")
         return "social-media-regulation"
       }
 
@@ -99,6 +105,7 @@ function Chat2vs4Component() {
       
       Object.entries(opinions).forEach(([topic, value]: [string, any]) => {
         const distance = Math.abs(value - 4)
+        console.log(`2vs4 Topic ${topic}: value=${value}, distance=${distance}`)
         if (distance > maxDistance || (distance === maxDistance && value < 4)) {
           maxDistance = distance
           mostExtreme = topic
@@ -117,15 +124,25 @@ function Chat2vs4Component() {
       const mappedTopic = mostExtreme ? topicMapping[mostExtreme] : null
       const finalTopic = mappedTopic || "social-media-regulation"
       
-      console.log("Selected chat topic:", finalTopic, "from opinion:", mostExtreme, "value:", opinions[mostExtreme || ""])
+      console.log("2vs4 Selected chat topic:", finalTopic, "from opinion:", mostExtreme, "value:", opinions[mostExtreme || ""], "mapping:", topicMapping[mostExtreme || ""])
       return finalTopic
     } catch (error) {
-      console.error("Error getting topic from opinions:", error)
+      console.error("2vs4 Error getting topic from opinions:", error)
       return "social-media-regulation"
     }
   }
 
   const debateTopic = topic || getChatTopicFromOpinions()
+  
+  // Debug topic selection
+  useEffect(() => {
+    console.log("2vs4 Topic selection debug:", {
+      urlTopic: topic,
+      dynamicTopic: getChatTopicFromOpinions(),
+      finalTopic: debateTopic,
+      topicDisplayName: chatTopicDisplayNames[debateTopic] || debateTopic
+    })
+  }, [topic, debateTopic])
 
   // Join or create 2vs4 room
   useEffect(() => {
