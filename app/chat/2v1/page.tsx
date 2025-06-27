@@ -162,6 +162,9 @@ function Chat2v1Component() {
           setRoom(transformedRoom)
           setWaitingForUser(false)
           clearInterval(interval)
+          
+          // Add moderator message when room becomes active
+          setTimeout(() => addInitialModeratorMessage(), 1000)
         }
       }, 2000)
       return () => clearInterval(interval)
@@ -195,6 +198,11 @@ function Chat2v1Component() {
               setCacheVersion(v => v + 1)
               return updated
             })
+            
+            // Add moderator message when we have both users
+            if (data && data.length >= 2 && room?.status === 'active') {
+              setTimeout(() => addInitialModeratorMessage(), 500)
+            }
           }
         } catch (error) {
           console.error('Error fetching members:', error)
@@ -310,6 +318,53 @@ function Chat2v1Component() {
   }
   const handleExitCancel = () => setExitDialogOpen(false)
 
+  // Add initial moderator message when session starts
+  const addInitialModeratorMessage = async () => {
+    if (!roomId || !debateTopic) return
+    
+    // Check if moderator message already exists
+    const hasModeratorMessage = messages.some(msg => msg.sender_id === "moderator")
+    if (hasModeratorMessage) return
+    
+    // Only add moderator message when both users are present
+    if (members.length < 2) return
+    
+    const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+    const moderatorMessage = {
+      room_id: roomId,
+      sender_id: "moderator",
+      sender_role: "system",
+      content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you two participants and our confederate to debate the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+    }
+
+    try {
+      const { data: insertedMessage, error } = await supabase
+        .from("messages")
+        .insert([moderatorMessage])
+        .select()
+        .single()
+        
+      if (!error && insertedMessage) {
+        const localMessage = {
+          id: insertedMessage.id,
+          role: insertedMessage.sender_role,
+          content: insertedMessage.content,
+          sender_id: insertedMessage.sender_id,
+          created_at: insertedMessage.created_at,
+        }
+        
+        setMessages(prev => {
+          if (prev.some(msg => msg.id === localMessage.id)) {
+            return prev
+          }
+          return [localMessage, ...prev]
+        })
+      }
+    } catch (error) {
+      console.error("Error adding moderator message:", error)
+    }
+  }
+
   const handleTrainingComplete = () => {
     setShowTraining(false)
     setSessionStarted(true)
@@ -326,6 +381,9 @@ function Chat2v1Component() {
       })
       setSessionTime((prev) => prev + 1)
     }, 1000)
+
+    // Add initial moderator message when session starts
+    addInitialModeratorMessage()
   }
 
   const handleSessionEnd = () => {
