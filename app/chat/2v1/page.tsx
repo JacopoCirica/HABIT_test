@@ -93,6 +93,9 @@ function Chat2v1Component() {
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
 
+  // State for tracking moderator message
+  const [moderatorMessageSent, setModeratorMessageSent] = useState(false)
+
   const sessionTitle = debateTopic ? chatTopicDisplayNames[debateTopic] : "Opinion Discussion"
   const sessionDescription = "Discuss and debate various social and political topics"
 
@@ -163,8 +166,10 @@ function Chat2v1Component() {
           setWaitingForUser(false)
           clearInterval(interval)
           
-          // Add moderator message when room becomes active
-          setTimeout(() => addInitialModeratorMessage(), 1000)
+          // Add moderator message when room becomes active (only if not sent yet)
+          if (!moderatorMessageSent) {
+            setTimeout(() => addInitialModeratorMessage(), 1000)
+          }
         }
       }, 2000)
       return () => clearInterval(interval)
@@ -199,8 +204,8 @@ function Chat2v1Component() {
               return updated
             })
             
-            // Add moderator message when we have both users
-            if (data && data.length >= 2 && room?.status === 'active') {
+            // Add moderator message when we have both users (only if not sent yet)
+            if (data && data.length >= 2 && room?.status === 'active' && !moderatorMessageSent) {
               setTimeout(() => addInitialModeratorMessage(), 500)
             }
           }
@@ -231,16 +236,22 @@ function Chat2v1Component() {
         .order('created_at', { ascending: true })
       if (!error && data) {
         console.log('Fetched messages:', data)
-        setMessages(
-          data.map((msg) => ({
-            id: msg.id,
-            role: msg.sender_role,
-            content: msg.content,
-            sender_id: msg.sender_id,
-            created_at: msg.created_at,
-          }))
-        )
+        const fetchedMessages = data.map((msg) => ({
+          id: msg.id,
+          role: msg.sender_role,
+          content: msg.content,
+          sender_id: msg.sender_id,
+          created_at: msg.created_at,
+        }))
+        
+        setMessages(fetchedMessages)
         setFetchError(null)
+        
+        // Check if moderator message already exists
+        const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
+        if (hasModeratorMessage) {
+          setModeratorMessageSent(true)
+        }
       } else {
         console.error('Error fetching messages:', error)
         setFetchError(error)
@@ -320,14 +331,20 @@ function Chat2v1Component() {
 
   // Add initial moderator message when session starts
   const addInitialModeratorMessage = async () => {
-    if (!roomId || !debateTopic) return
+    if (!roomId || !debateTopic || moderatorMessageSent) return
     
-    // Check if moderator message already exists
+    // Check if moderator message already exists in messages
     const hasModeratorMessage = messages.some(msg => msg.sender_id === "moderator")
-    if (hasModeratorMessage) return
+    if (hasModeratorMessage) {
+      setModeratorMessageSent(true)
+      return
+    }
     
     // Only add moderator message when both users are present
     if (members.length < 2) return
+    
+    console.log('Adding initial moderator message...')
+    setModeratorMessageSent(true) // Set this immediately to prevent duplicates
     
     const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
     const moderatorMessage = {
@@ -345,6 +362,7 @@ function Chat2v1Component() {
         .single()
         
       if (!error && insertedMessage) {
+        console.log('Moderator message inserted successfully')
         const localMessage = {
           id: insertedMessage.id,
           role: insertedMessage.sender_role,
@@ -359,9 +377,13 @@ function Chat2v1Component() {
           }
           return [localMessage, ...prev]
         })
+      } else {
+        console.error('Error inserting moderator message:', error)
+        setModeratorMessageSent(false) // Reset on error
       }
     } catch (error) {
       console.error("Error adding moderator message:", error)
+      setModeratorMessageSent(false) // Reset on error
     }
   }
 
@@ -382,8 +404,10 @@ function Chat2v1Component() {
       setSessionTime((prev) => prev + 1)
     }, 1000)
 
-    // Add initial moderator message when session starts
-    addInitialModeratorMessage()
+    // Add initial moderator message when session starts (only if not sent yet)
+    if (!moderatorMessageSent) {
+      addInitialModeratorMessage()
+    }
   }
 
   const handleSessionEnd = () => {
