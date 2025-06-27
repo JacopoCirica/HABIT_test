@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       debateTopic,
       userPosition,
       confederateName,
+      conversationContext,
     }: {
       messages: CoreMessage[]
       userTraits: any
@@ -58,6 +59,12 @@ export async function POST(request: Request) {
       debateTopic: string
       userPosition: "agree" | "disagree" | "neutral"
       confederateName?: string
+      conversationContext?: {
+        isDebateActive: boolean
+        uniqueUserCount: number
+        recentMessageCount: number
+        shouldModerate: boolean
+      }
     } = body
 
     if (!messages || !Array.isArray(messages)) {
@@ -99,9 +106,38 @@ export async function POST(request: Request) {
       ? `\n\n## Your Persona\n${confederateDescriptions[confederateName]}\n`
       : ""
 
+    // Add conversation context guidance
+    let contextGuidance = ""
+    if (conversationContext) {
+      if (conversationContext.isDebateActive && conversationContext.uniqueUserCount > 1) {
+        contextGuidance = `
+## Conversation Context
+- Multiple users are actively debating
+- Your role: Moderate the discussion and add thoughtful perspective
+- Approach: Be more measured and diplomatic, help facilitate productive dialogue
+- Consider: "That's an interesting point from both sides..." or "I can see merit in what you're both saying, but..."
+`
+      } else if (conversationContext.shouldModerate) {
+        contextGuidance = `
+## Conversation Context  
+- Discussion may need gentle moderation
+- Your role: Help redirect to productive debate
+- Approach: Acknowledge different viewpoints and steer toward constructive discussion
+`
+      } else if (conversationContext.uniqueUserCount === 1) {
+        contextGuidance = `
+## Conversation Context
+- Only one user has been active recently
+- Your role: Encourage broader participation and engagement
+- Approach: Ask open-ended questions that invite others to share their perspectives
+`
+      }
+    }
+
     const systemPrompt = `
 You are a confederate participant in a research study on the HABIT platform (Human Agent Behavioral Interaction Toolkit).
 ${personaDescription}
+${contextGuidance}
 ## Your Role
 You are participating as a "USER" - a research assistant who appears to be a regular participant but is actually part of the research team. Your responses should appear natural and conversational, not like an AI assistant.
 
@@ -172,7 +208,7 @@ Use this information subtly to tailor your arguments, but never directly referen
         model: openai("gpt-4o"), // Using gpt-4o as an example, you can choose another
         messages: messages.filter(
           (msg): msg is CoreMessage =>
-            typeof msg.content === "string" && !(msg.role === "system" && msg.id === "__userData"),
+            typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
         ),
         system: systemPrompt,
         temperature: 0.8,

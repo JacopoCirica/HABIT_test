@@ -418,7 +418,76 @@ function Chat2v1Component() {
     return "Unknown"
   }
 
-  // Chat submit handler
+  // Helper function to determine if AI should respond
+  const shouldAIRespond = (messages: any[], newMessage: any) => {
+    if (messages.length === 0) return true // Always respond to first message
+    
+    const recentMessages = messages.slice(-5) // Look at last 5 messages
+    const userMessages = recentMessages.filter(msg => msg.role === "user")
+    const aiMessages = recentMessages.filter(msg => msg.role === "assistant")
+    
+    // Count consecutive user messages (users talking to each other)
+    let consecutiveUserMessages = 0
+    for (let i = recentMessages.length - 1; i >= 0; i--) {
+      if (recentMessages[i].role === "user") {
+        consecutiveUserMessages++
+      } else {
+        break
+      }
+    }
+    
+    // Get unique user IDs in recent conversation
+    const recentUserIds = new Set(userMessages.map(msg => msg.sender_id))
+    const currentUserId = sessionStorage.getItem("userId")
+    
+    // AI response probability based on different factors
+    let responseChance = 0.3 // Base 30% chance
+    
+    // Increase chance if:
+    // - Only one user has been talking (encourage other user)
+    if (recentUserIds.size === 1) {
+      responseChance += 0.4 // +40%
+    }
+    
+    // - AI hasn't responded recently
+    if (aiMessages.length === 0) {
+      responseChance += 0.3 // +30%
+    }
+    
+    // - Message seems to ask for opinion or contains question marks
+    if (newMessage.content.includes('?') || 
+        newMessage.content.toLowerCase().includes('think') ||
+        newMessage.content.toLowerCase().includes('opinion') ||
+        newMessage.content.toLowerCase().includes('agree') ||
+        newMessage.content.toLowerCase().includes('disagree')) {
+      responseChance += 0.3 // +30%
+    }
+    
+    // Decrease chance if:
+    // - Users are actively debating (2+ consecutive user messages from different users)
+    if (consecutiveUserMessages >= 2 && recentUserIds.size > 1) {
+      responseChance -= 0.4 // -40%
+    }
+    
+    // - AI just responded
+    if (recentMessages[recentMessages.length - 2]?.role === "assistant") {
+      responseChance -= 0.5 // -50%
+    }
+    
+    // Ensure bounds
+    responseChance = Math.max(0.1, Math.min(0.9, responseChance))
+    
+    console.log(`AI response chance: ${(responseChance * 100).toFixed(1)}%`, {
+      consecutiveUserMessages,
+      recentUserIds: recentUserIds.size,
+      recentAIMessages: aiMessages.length,
+      hasQuestion: newMessage.content.includes('?')
+    })
+    
+    return Math.random() < responseChance
+  }
+
+  // Enhanced chat submit handler with intelligent AI response logic
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
@@ -475,6 +544,27 @@ function Chat2v1Component() {
       })
     }
 
+    // Determine if AI should respond using intelligent logic
+    const newMessageForAnalysis = {
+      id: insertedMessage.id,
+      role: insertedMessage.sender_role,
+      content: insertedMessage.content,
+      sender_id: insertedMessage.sender_id,
+      created_at: insertedMessage.created_at,
+    }
+    
+    const shouldRespond = shouldAIRespond(messages, newMessageForAnalysis)
+    console.log(`AI decision: ${shouldRespond ? 'RESPOND' : 'STAY SILENT'}`)
+    
+    if (!shouldRespond) {
+      setIsLoading(false)
+      return // AI chooses not to respond this time
+    }
+
+    // Add natural delay before AI responds (1-4 seconds)
+    const responseDelay = Math.random() * 3000 + 1000 // 1-4 seconds
+    await new Promise(resolve => setTimeout(resolve, responseDelay))
+
     // Handle AI response
     try {
       const storedName = sessionStorage.getItem("userName") || "User"
@@ -491,16 +581,16 @@ function Chat2v1Component() {
       }
       
       // Include the new user message in the API call (fix timing issue)
-      const messagesForAPI = [...messages, {
-        id: insertedMessage.id,
-        role: insertedMessage.sender_role,
-        content: insertedMessage.content,
-        sender_id: insertedMessage.sender_id,
-        created_at: insertedMessage.created_at,
-      }]
+      const messagesForAPI = [...messages, newMessageForAnalysis]
       
       console.log("Sending API request for 2v1 with confederate:", room?.confederateName)
       console.log("Messages being sent to API:", messagesForAPI)
+      
+      // Analyze conversation context for AI
+      const recentMessages = messagesForAPI.slice(-5)
+      const userMessages = recentMessages.filter(msg => msg.role === "user")
+      const uniqueUsers = new Set(userMessages.map(msg => msg.sender_id))
+      const isDebateActive = uniqueUsers.size > 1 && userMessages.length >= 2
       
       const requestBody = {
         messages: messagesForAPI,
@@ -516,6 +606,12 @@ function Chat2v1Component() {
               : "neutral"
           : null,
         confederateName: room?.confederateName || null,
+        conversationContext: {
+          isDebateActive,
+          uniqueUserCount: uniqueUsers.size,
+          recentMessageCount: recentMessages.length,
+          shouldModerate: isDebateActive && recentMessages.length >= 3
+        }
       }
       
       const response = await fetch("/api/chat", {
