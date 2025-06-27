@@ -29,6 +29,17 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>2vs4 Room</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Join a room with another user and debate against 4 LLMs (1 confederate + 3 LLM users).</p>
+            <Link href="/chat?type=2vs4">
+              <Button className="mt-4 w-full">Start 2vs4</Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

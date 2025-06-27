@@ -15,7 +15,13 @@ function ChatRouter() {
 
   useEffect(() => {
     // Build the URL for the specific chat page
-    const baseUrl = roomType === "2v1" ? "/chat/2v1" : "/chat/1v1"
+    let baseUrl = "/chat/1v1" // default
+    if (roomType === "2v1") {
+      baseUrl = "/chat/2v1"
+    } else if (roomType === "2vs4") {
+      baseUrl = "/chat/2vs4"
+    }
+    
     const params = new URLSearchParams()
     
     if (topic) params.set("topic", topic)
