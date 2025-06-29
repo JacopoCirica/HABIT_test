@@ -6,7 +6,7 @@ export default function RoomSelectionPage() {
   return (
     <div className="container mx-auto py-16">
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
-      <div className="flex flex-col md:flex-row gap-8 justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-center">
         <Card>
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
@@ -15,6 +15,17 @@ export default function RoomSelectionPage() {
             <p>Chat with a confederate (LLM) in a private session.</p>
             <Link href="/chat?type=1v1">
               <Button className="mt-4 w-full">Start 1-on-1</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>1v1 Human Room</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Chat with a human confederate in a private session.</p>
+            <Link href="/chat?type=1v1-human">
+              <Button className="mt-4 w-full">Start 1v1 Human</Button>
             </Link>
           </CardContent>
         </Card>
