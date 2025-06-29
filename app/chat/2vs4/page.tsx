@@ -544,6 +544,8 @@ function Chat2vs4Component() {
       content: trimmedInput,
     }
 
+    console.log("2vs4 Inserting user message:", userMessage)
+
     const { data: insertedMessage, error: userError } = await supabase
       .from("messages")
       .insert([userMessage])
@@ -551,10 +553,12 @@ function Chat2vs4Component() {
       .single()
       
     if (userError) {
-      console.error("Failed to send message:", userError)
+      console.error("2vs4 Failed to send message:", userError)
       setIsLoading(false)
       return
     }
+    
+    console.log("2vs4 Message inserted successfully:", insertedMessage)
     
     // Immediately add to local state
     if (insertedMessage) {
@@ -600,11 +604,13 @@ function Chat2vs4Component() {
         created_at: insertedMessage.created_at,
       }]
       
-      console.log("Sending API request for 2vs4 with confederates:", {
+      console.log("2vs4 Sending API request with confederates:", {
         main: room?.confederateName,
         llm1: room?.llmUser1,
         llm2: room?.llmUser2,
-        llm3: room?.llmUser3
+        llm3: room?.llmUser3,
+        messagesCount: messagesForAPI.length,
+        debateTopic: debateTopic
       })
       
       // Determine which AI participants should respond (1-3 of them)
@@ -620,7 +626,7 @@ function Chat2vs4Component() {
       const shuffledAI = [...aiParticipants].sort(() => 0.5 - Math.random())
       const selectedResponders = shuffledAI.slice(0, numResponders)
       
-      console.log(`Selected ${numResponders} AI responders:`, selectedResponders.map(r => r.name))
+      console.log(`2vs4 Selected ${numResponders} AI responders:`, selectedResponders.map(r => r.name))
       
       // Generate responses for each selected AI participant
       for (let i = 0; i < selectedResponders.length; i++) {
@@ -631,6 +637,8 @@ function Chat2vs4Component() {
         
         setTimeout(async () => {
           try {
+            console.log(`2vs4 Generating response for ${responder.name} after ${delay}ms delay`)
+            
             const requestBody = {
               messages: messagesForAPI,
               userTraits,
@@ -642,6 +650,8 @@ function Chat2vs4Component() {
               roomType: "2vs4",
               responderId: responder.id
             }
+            
+            console.log(`2vs4 API request body for ${responder.name}:`, requestBody)
             
             const response = await fetch("/api/chat", {
               method: "POST",
@@ -670,13 +680,13 @@ function Chat2vs4Component() {
               .single()
               
             if (aiError) {
-              console.error(`Failed to send ${responder.name} message:`, aiError)
+              console.error(`2vs4 Failed to send ${responder.name} message:`, aiError)
             } else {
-              console.log(`${responder.name} responded successfully`)
+              console.log(`2vs4 ${responder.name} responded successfully:`, insertedAIMessage)
             }
             
           } catch (error) {
-            console.error(`Error generating response for ${responder.name}:`, error)
+            console.error(`2vs4 Error generating response for ${responder.name}:`, error)
           }
         }, delay)
       }
