@@ -6,7 +6,7 @@ export default function RoomSelectionPage() {
   return (
     <div className="container mx-auto py-16">
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-center">
         <Card>
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
@@ -48,6 +48,17 @@ export default function RoomSelectionPage() {
             <p>Join a room with another user and debate against 4 LLMs (1 confederate + 3 LLM users).</p>
             <Link href="/chat?type=2vs4">
               <Button className="mt-4 w-full">Start 2vs4</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Team vs Team</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Red Team vs Blue Team: 8 participants (4 humans + 4 LLMs) with random team assignment.</p>
+            <Link href="/chat?type=team-vs-team">
+              <Button className="mt-4 w-full">Join Battle</Button>
             </Link>
           </CardContent>
         </Card>

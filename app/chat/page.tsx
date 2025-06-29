@@ -22,6 +22,8 @@ function ChatRouter() {
       baseUrl = "/chat/2v1"
     } else if (roomType === "2vs4") {
       baseUrl = "/chat/2vs4"
+    } else if (roomType === "team-vs-team") {
+      baseUrl = "/chat/team-vs-team"
     }
     
     const params = new URLSearchParams()
