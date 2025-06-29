@@ -48,10 +48,10 @@ function Chat2vs4Component() {
   // Enhanced chat topic display names
   const chatTopicDisplayNames: Record<string, string> = {
     "vaccination-policy": "Vaccination Policy",
-    "climate-change": "Climate Change Policy", 
+    "climate-change-policy": "Climate Change Policy", 
     "immigration-policy": "Immigration Policy",
-    "gun-control": "Gun Control Policy",
-    "universal-healthcare": "Universal Healthcare Policy",
+    "gun-control-policy": "Gun Control Policy",
+    "healthcare-system-reform": "Healthcare System Reform",
     "social-media-regulation": "Social Media Regulation"
   }
 
@@ -82,67 +82,22 @@ function Chat2vs4Component() {
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
 
-  // Get dynamic topic from demographics survey
-  const getChatTopicFromOpinions = () => {
-    try {
-      const demographicsDataRaw = sessionStorage.getItem("demographicsData")
-      console.log("2vs4 Demographics data raw:", demographicsDataRaw)
-      
-      const demographicsData = JSON.parse(demographicsDataRaw || "{}")
-      console.log("2vs4 Demographics data parsed:", demographicsData)
-      
-      const opinions = demographicsData.opinions || {}
-      console.log("2vs4 Opinions:", opinions)
-      
-      if (Object.keys(opinions).length === 0) {
-        console.log("2vs4 No opinions found, using default topic")
-        return "social-media-regulation"
-      }
-
-      // Find most extreme position (furthest from neutral 4)
-      let mostExtreme = null
-      let maxDistance = 0
-      
-      Object.entries(opinions).forEach(([topic, value]: [string, any]) => {
-        const distance = Math.abs(value - 4)
-        console.log(`2vs4 Topic ${topic}: value=${value}, distance=${distance}`)
-        if (distance > maxDistance || (distance === maxDistance && value < 4)) {
-          maxDistance = distance
-          mostExtreme = topic
-        }
-      })
-
-      // Map opinion topics to chat topics
-      const topicMapping: Record<string, string> = {
-        vaccination: "vaccination-policy",
-        climateChange: "climate-change",
-        immigration: "immigration-policy", 
-        gunControl: "gun-control",
-        universalHealthcare: "universal-healthcare"
-      }
-
-      const mappedTopic = mostExtreme ? topicMapping[mostExtreme] : null
-      const finalTopic = mappedTopic || "social-media-regulation"
-      
-      console.log("2vs4 Selected chat topic:", finalTopic, "from opinion:", mostExtreme, "value:", opinions[mostExtreme || ""], "mapping:", topicMapping[mostExtreme || ""])
-      return finalTopic
-    } catch (error) {
-      console.error("2vs4 Error getting topic from opinions:", error)
-      return "social-media-regulation"
-    }
+  // Random topic selection for 2vs4 rooms from demographics survey topics
+  const getRandomTopicFor2vs4 = () => {
+    const availableTopics = [
+      "vaccination-policy",
+      "climate-change-policy", 
+      "immigration-policy",
+      "gun-control-policy",
+      "healthcare-system-reform"
+    ]
+    const randomIndex = Math.floor(Math.random() * availableTopics.length)
+    const selectedTopic = availableTopics[randomIndex]
+    console.log("2vs4 Random topic selected:", selectedTopic, "from available topics:", availableTopics)
+    return selectedTopic
   }
 
-  const debateTopic = topic || getChatTopicFromOpinions()
-  
-  // Debug topic selection
-  useEffect(() => {
-    console.log("2vs4 Topic selection debug:", {
-      urlTopic: topic,
-      dynamicTopic: getChatTopicFromOpinions(),
-      finalTopic: debateTopic,
-      topicDisplayName: chatTopicDisplayNames[debateTopic] || debateTopic
-    })
-  }, [topic, debateTopic])
+  const debateTopic = topic || getRandomTopicFor2vs4()
 
   // Join or create 2vs4 room
   useEffect(() => {
