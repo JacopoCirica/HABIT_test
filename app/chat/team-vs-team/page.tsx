@@ -73,22 +73,8 @@ function ChatTeamVsTeamComponent() {
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
 
-  // Random topic selection for team-vs-team rooms
-  const getRandomTopicForTeams = () => {
-    const availableTopics = [
-      "vaccination-policy",
-      "climate-change-policy", 
-      "immigration-policy",
-      "gun-control-policy",
-      "healthcare-system-reform"
-    ]
-    const randomIndex = Math.floor(Math.random() * availableTopics.length)
-    const selectedTopic = availableTopics[randomIndex]
-    console.log("Team-vs-team random topic selected:", selectedTopic)
-    return selectedTopic
-  }
-
-  const debateTopic = topic || getRandomTopicForTeams()
+  // Use room's topic or fallback to a default
+  const [debateTopic, setDebateTopic] = useState<string | null>(null)
 
   // Join or create team-vs-team room
   useEffect(() => {
@@ -120,6 +106,15 @@ function ChatTeamVsTeamComponent() {
         setRoom(room)
         setRoomIdTeamVsTeam(room.id)
         setWaitingForUsers(room.status !== 'active')
+        // Set the debate topic from the room
+        if (room.topic) {
+          setDebateTopic(room.topic)
+          console.log('Team-vs-team using room topic:', room.topic)
+        } else {
+          // Fallback to a default topic if none set
+          setDebateTopic('healthcare-system-reform')
+          console.log('Team-vs-team using fallback topic')
+        }
       })
       .catch(() => setRoom(null))
       .finally(() => setLoadingRoom(false))
@@ -383,7 +378,7 @@ function ChatTeamVsTeamComponent() {
     console.log('Team-vs-team adding initial moderator message...')
     moderatorMessageSentRef.current = true
     
-    const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+    const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "Healthcare System Reform"
     const moderatorMessage = {
       room_id: roomIdTeamVsTeam,
       sender_id: "moderator",
@@ -693,19 +688,70 @@ function ChatTeamVsTeamComponent() {
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="teams" className="mt-4 space-y-4">
-                    {/* Red Team */}
-                    <div className="border rounded-lg p-3 bg-red-50">
-                      <h3 className="font-semibold text-red-700 mb-2">🔴 Red Team</h3>
-                      {/* TODO: Show red team members */}
-                      <div className="text-sm text-muted-foreground">4 participants</div>
-                    </div>
+                    {(() => {
+                      // Assign teams based on join order: first 4 to Red Team, next 4 to Blue Team
+                      const redTeam = members.slice(0, 4)
+                      const blueTeam = members.slice(4, 8)
+                      
+                      return (
+                        <>
+                          {/* Red Team */}
+                          <div className="border rounded-lg p-3 bg-red-50">
+                            <h3 className="font-semibold text-red-700 mb-2">🔴 Red Team</h3>
+                            <div className="space-y-2">
+                              {redTeam.map((member, index) => {
+                                const memberName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
+                                const isLLM = member.user_id.includes('llm_')
+                                return (
+                                  <div key={member.user_id} className="flex items-center gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                        {getAvatarInitial(memberName || 'U')}
+                                      </div>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
+                                    {isLLM && <Badge variant="secondary" className="text-xs">AI</Badge>}
+                                  </div>
+                                )
+                              })}
+                              {redTeam.length < 4 && (
+                                <div className="text-xs text-muted-foreground">
+                                  Waiting for {4 - redTeam.length} more members...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Blue Team */}
+                          <div className="border rounded-lg p-3 bg-blue-50">
+                            <h3 className="font-semibold text-blue-700 mb-2">🔵 Blue Team</h3>
+                            <div className="space-y-2">
+                              {blueTeam.map((member, index) => {
+                                const memberName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
+                                const isLLM = member.user_id.includes('llm_')
+                                return (
+                                  <div key={member.user_id} className="flex items-center gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                        {getAvatarInitial(memberName || 'U')}
+                                      </div>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
+                                    {isLLM && <Badge variant="secondary" className="text-xs">AI</Badge>}
+                                  </div>
+                                )
+                              })}
+                              {blueTeam.length < 4 && (
+                                <div className="text-xs text-muted-foreground">
+                                  Waiting for {4 - blueTeam.length} more members...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )
+                    })()}
                     
-                    {/* Blue Team */}
-                    <div className="border rounded-lg p-3 bg-blue-50">
-                      <h3 className="font-semibold text-blue-700 mb-2">🔵 Blue Team</h3>
-                      {/* TODO: Show blue team members */}
-                      <div className="text-sm text-muted-foreground">4 participants</div>
-                    </div>
                     
                     {/* Moderator */}
                     <div className="border rounded-lg p-3">
@@ -726,7 +772,7 @@ function ChatTeamVsTeamComponent() {
                     <Card>
                       <CardContent className="p-4 text-sm">
                         <h3 className="mb-2 font-semibold">Battle Topic</h3>
-                        <p className="mb-4 text-muted-foreground">{chatTopicDisplayNames[debateTopic] || debateTopic}</p>
+                        <p className="mb-4 text-muted-foreground">{debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "Healthcare System Reform"}</p>
                         <h3 className="mb-2 font-semibold">Format</h3>
                         <p className="mb-4 text-muted-foreground">Red Team vs Blue Team (4v4)</p>
                         <h3 className="mb-2 font-semibold">Duration</h3>

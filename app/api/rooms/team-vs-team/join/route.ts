@@ -76,7 +76,17 @@ export async function POST(req: NextRequest) {
     const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
     const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
     
-    console.log('Creating new team-vs-team room with confederate:', randomConfederate);
+    // Select a random topic for this room
+    const availableTopics = [
+      "vaccination-policy",
+      "climate-change-policy", 
+      "immigration-policy",
+      "gun-control-policy",
+      "healthcare-system-reform"
+    ]
+    const randomTopic = availableTopics[Math.floor(Math.random() * availableTopics.length)]
+    
+    console.log('Creating new team-vs-team room with confederate:', randomConfederate, 'and topic:', randomTopic);
     
     // Create new room
     const { data: newRoom, error: newRoomError } = await supabase
@@ -84,7 +94,8 @@ export async function POST(req: NextRequest) {
       .insert([{ 
         type: 'team-vs-team', 
         status: 'filling',
-        confederate_id: randomConfederate
+        confederate_id: randomConfederate,
+        topic: randomTopic
       }])
       .select()
       .single();
