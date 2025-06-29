@@ -430,10 +430,9 @@ function ChatTeamVsTeamComponent() {
       return "Moderator"
     } else if (message.role === "assistant") {
       // Check if it's a team LLM
-      if (message.sender_id?.includes('llm_red')) {
-        return message.sender_id === 'llm_red_confederate' ? room?.red_team_confederate : room?.red_team_llm
-      } else if (message.sender_id?.includes('llm_blue')) {
-        return message.sender_id === 'llm_blue_confederate' ? room?.blue_team_confederate : room?.blue_team_llm
+      if (message.sender_id?.includes('llm_')) {
+        // Use the cached name or fallback
+        return userNameCache[message.sender_id] || "AI Participant"
       }
       return "AI Participant"
     } else if (message.role === "user") {

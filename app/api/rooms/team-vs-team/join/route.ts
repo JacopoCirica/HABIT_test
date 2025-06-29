@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   // Find a room that's not full (has less than 4 human participants)
   const { data: availableRooms, error: roomsError } = await supabase
     .from('rooms')
-    .select('id, status, red_team_confederate, blue_team_confederate, red_team_llm, blue_team_llm')
+    .select('id, status, confederate_id')
     .eq('type', 'team-vs-team')
     .in('status', ['waiting', 'filling'])
 
@@ -72,24 +72,11 @@ export async function POST(req: NextRequest) {
   } else {
     console.log('No available room found, creating new room');
     
-    // Assign confederate names for both teams
+    // Assign a main confederate for the room
     const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
-    const shuffledConfederates = [...confederateNames].sort(() => 0.5 - Math.random())
-    const redConfederate = shuffledConfederates[0]
-    const blueConfederate = shuffledConfederates[1]
+    const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
     
-    // Assign LLM names for both teams
-    const llmNames = ["Sam", "Jordan", "Casey", "Riley", "Morgan", "Avery"]
-    const shuffledLLMs = [...llmNames].sort(() => 0.5 - Math.random())
-    const redLLM = shuffledLLMs[0]
-    const blueLLM = shuffledLLMs[1]
-    
-    console.log('Creating new team-vs-team room with:', {
-      redConfederate,
-      blueConfederate,
-      redLLM,
-      blueLLM
-    });
+    console.log('Creating new team-vs-team room with confederate:', randomConfederate);
     
     // Create new room
     const { data: newRoom, error: newRoomError } = await supabase
@@ -97,10 +84,7 @@ export async function POST(req: NextRequest) {
       .insert([{ 
         type: 'team-vs-team', 
         status: 'filling',
-        red_team_confederate: redConfederate,
-        blue_team_confederate: blueConfederate,
-        red_team_llm: redLLM,
-        blue_team_llm: blueLLM
+        confederate_id: randomConfederate
       }])
       .select()
       .single();
@@ -134,7 +118,7 @@ async function activateRoomWithLLMs(roomId: string) {
   // Get room details
   const { data: room, error: roomError } = await supabase
     .from('rooms')
-    .select('red_team_confederate, blue_team_confederate, red_team_llm, blue_team_llm')
+    .select('confederate_id')
     .eq('id', roomId)
     .single()
     
@@ -143,13 +127,23 @@ async function activateRoomWithLLMs(roomId: string) {
     return
   }
 
-  // Add 4 LLM participants (teams will be assigned client-side)
+  // Create 4 LLM participants with different names
+  const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
+  const llmNames = ["Sam", "Jordan", "Casey", "Riley", "Morgan", "Avery"]
+  
+  // Remove the main confederate from available names
+  const availableConfederates = confederateNames.filter(name => name !== room.confederate_id)
+  const shuffledConfederates = [...availableConfederates].sort(() => 0.5 - Math.random())
+  const shuffledLLMs = [...llmNames].sort(() => 0.5 - Math.random())
+
   const llmsToAdd = [
-    { user_id: 'llm_red_confederate', user_name: room.red_team_confederate },
-    { user_id: 'llm_red_member', user_name: room.red_team_llm },
-    { user_id: 'llm_blue_confederate', user_name: room.blue_team_confederate },
-    { user_id: 'llm_blue_member', user_name: room.blue_team_llm }
+    { user_id: 'llm_confederate_1', user_name: shuffledConfederates[0] },
+    { user_id: 'llm_confederate_2', user_name: shuffledConfederates[1] },
+    { user_id: 'llm_member_1', user_name: shuffledLLMs[0] },
+    { user_id: 'llm_member_2', user_name: shuffledLLMs[1] }
   ]
+
+  console.log('Adding LLMs to team battle:', llmsToAdd.map(llm => llm.user_name));
 
   // Insert LLM participants
   const { error: llmInsertError } = await supabase
