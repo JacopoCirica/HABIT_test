@@ -738,17 +738,22 @@ function Chat1v1HumanComponent() {
                   </TabsList>
                   <TabsContent value="members" className="mt-4 space-y-4">
                     {[
-                      ...members.map(member => {
-                        const memberRole = member.role || "user"
+                      ...members.map((member, memberIndex) => {
                         const currentUserId = sessionStorage.getItem("userId")
                         const isCurrentUser = member.user_id === currentUserId
                         
-                        // Get position for participants (not confederates)
-                        const position = memberRole === "participant" && !isCurrentUser ? getUserPosition(member.user_id) : null
+                        // Determine role based on order: first user = participant, second user = confederate
+                        const isConfederate = members.length >= 2 && memberIndex === 1
+                        const memberRole = isConfederate ? "confederate" : "user"
+                        
+                        // Show participant's position to confederate (if current user is confederate viewing participant)
+                        const currentUserIsConfederate = members.length >= 2 && members.findIndex(m => m.user_id === currentUserId) === 1
+                        const isParticipant = !isConfederate
+                        const position = currentUserIsConfederate && isParticipant ? getUserPosition(member.user_id) : null
                         
                         return {
                           name: member.user_name,
-                          role: memberRole === "confederate" ? "confederate" : "user",
+                          role: memberRole,
                           position: position,
                           isCurrentUser: isCurrentUser
                         }

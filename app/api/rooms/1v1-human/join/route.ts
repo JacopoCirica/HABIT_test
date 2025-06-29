@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     console.log('Joining existing waiting room:', room.id);
     // Join as second user (confederate)
     const { error: userInsertError } = await supabase.from('room_users').insert([
-      { room_id: room.id, user_id, user_name, role: 'confederate' }
+      { room_id: room.id, user_id, user_name }
     ]);
     if (userInsertError) {
       console.error('Error adding confederate user to existing room:', userInsertError);
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     room = newRoom;
     // First user joins as regular participant
     const { error: userInsertError } = await supabase.from('room_users').insert([
-      { room_id: room.id, user_id, user_name, role: 'participant' }
+      { room_id: room.id, user_id, user_name }
     ]);
     if (userInsertError) {
       console.error('Error adding participant to new room:', userInsertError);
