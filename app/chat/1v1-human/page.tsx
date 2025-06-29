@@ -76,6 +76,60 @@ function Chat1v1HumanComponent() {
   // Use shared topic selection logic
   const debateTopic = topic || getChatTopicFromOpinions()
 
+  // Function to get user's position on the current topic
+  const getUserPosition = (userId: string) => {
+    try {
+      const opinionsStr = sessionStorage.getItem("userOpinions")
+      if (!opinionsStr) return null
+
+      const opinions = JSON.parse(opinionsStr)
+      
+      // Map debate topics back to opinion keys
+      const topicToOpinionMap: Record<string, string> = {
+        "vaccination-policy": "vaccination",
+        "climate-change-policy": "climateChange", 
+        "immigration-policy": "immigration",
+        "gun-control-policy": "gunControl",
+        "healthcare-system-reform": "universalHealthcare"
+      }
+      
+      const opinionKey = topicToOpinionMap[debateTopic]
+      if (!opinionKey || !opinions[opinionKey]) return null
+      
+      const value = parseInt(opinions[opinionKey])
+      if (isNaN(value)) return null
+      
+      // Determine position and intensity
+      if (value <= 3) {
+        const intensity = (4 - value) / 3 // 0.33 to 1.0
+        return { 
+          stance: "against", 
+          intensity: intensity.toFixed(1),
+          color: "text-red-600",
+          bgColor: "bg-red-50"
+        }
+      } else if (value >= 5) {
+        const intensity = (value - 4) / 3 // 0.33 to 1.0
+        return { 
+          stance: "for", 
+          intensity: intensity.toFixed(1),
+          color: "text-green-600",
+          bgColor: "bg-green-50"
+        }
+      } else {
+        return { 
+          stance: "neutral", 
+          intensity: "0.0",
+          color: "text-gray-600",
+          bgColor: "bg-gray-50"
+        }
+      }
+    } catch (error) {
+      console.error("Error getting user position:", error)
+      return null
+    }
+  }
+
   // Join or create 1v1-human room
   useEffect(() => {
     const userName = sessionStorage.getItem("userName") || "User"
@@ -539,8 +593,8 @@ function Chat1v1HumanComponent() {
       <PageTransition>
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
-            <div className="mb-4 text-2xl font-bold">Waiting for human confederate to join...</div>
-            <div className="text-muted-foreground">A human confederate will join this session shortly.</div>
+            <div className="mb-4 text-2xl font-bold">Waiting for another participant to join...</div>
+            <div className="text-muted-foreground">The second person to join will become the confederate.</div>
           </div>
         </div>
       </PageTransition>
@@ -684,12 +738,22 @@ function Chat1v1HumanComponent() {
                   </TabsList>
                   <TabsContent value="members" className="mt-4 space-y-4">
                     {[
-                      ...members.map(member => ({
-                        name: member.user_name,
-                        role: "user",
-                      })),
-                      { name: room?.confederate_id || "Confederate", role: "confederate" },
-                      { name: "Moderator", role: "moderator" },
+                      ...members.map(member => {
+                        const memberRole = member.role || "user"
+                        const currentUserId = sessionStorage.getItem("userId")
+                        const isCurrentUser = member.user_id === currentUserId
+                        
+                        // Get position for participants (not confederates)
+                        const position = memberRole === "participant" && !isCurrentUser ? getUserPosition(member.user_id) : null
+                        
+                        return {
+                          name: member.user_name,
+                          role: memberRole === "confederate" ? "confederate" : "user",
+                          position: position,
+                          isCurrentUser: isCurrentUser
+                        }
+                      }),
+                      { name: "Moderator", role: "moderator", position: null, isCurrentUser: false },
                     ].map((member, index) => (
                       <motion.div
                         key={member.name}
@@ -703,10 +767,21 @@ function Chat1v1HumanComponent() {
                             {getAvatarInitial(member.name)}
                           </div>
                         </Avatar>
-                        <div className="flex flex-col">
-                          <div className="font-medium">{member.name}</div>
+                        <div className="flex flex-col flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{member.name}</span>
+                            {member.position && (
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                member.position.color,
+                                member.position.bgColor
+                              )}>
+                                {member.position.stance}: {member.position.intensity}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground capitalize">
-                            {member.role === "confederate" ? "Human Confederate" : member.role}
+                            {member.role === "confederate" ? "Confederate" : member.role}
                           </div>
                         </div>
                       </motion.div>

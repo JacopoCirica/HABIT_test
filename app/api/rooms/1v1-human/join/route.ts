@@ -37,15 +37,20 @@ export async function POST(req: NextRequest) {
 
   if (room) {
     console.log('Joining existing waiting room:', room.id);
-    // Join as second user
+    // Join as second user (confederate)
     const { error: userInsertError } = await supabase.from('room_users').insert([
-      { room_id: room.id, user_id, user_name }
+      { room_id: room.id, user_id, user_name, role: 'confederate' }
     ]);
     if (userInsertError) {
-      console.error('Error adding user to existing room:', userInsertError);
+      console.error('Error adding confederate user to existing room:', userInsertError);
       return NextResponse.json({ error: 'Failed to add user to room', details: userInsertError }, { status: 500 });
     }
-    const { error: updateRoomError } = await supabase.from('rooms').update({ status: 'active' }).eq('id', room.id);
+    
+    // Update room with confederate name and set to active
+    const { error: updateRoomError } = await supabase.from('rooms').update({ 
+      status: 'active', 
+      confederate_id: user_name 
+    }).eq('id', room.id);
     if (updateRoomError) {
       console.error('Error updating room status to active:', updateRoomError);
       return NextResponse.json({ error: 'Failed to update room status', details: updateRoomError }, { status: 500 });
@@ -53,19 +58,13 @@ export async function POST(req: NextRequest) {
   } else {
     console.log('No waiting room found, creating new room');
     
-    // Assign confederate name for human confederate
-    const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
-    const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
-    
-    console.log('Assigning confederate for new 1v1-human room:', randomConfederate);
-    
-    // Create new room with confederate name
+    // Create new room without confederate assignment (will be assigned when second user joins)
     const { data: newRoom, error: newRoomError } = await supabase
       .from('rooms')
       .insert([{ 
         type: '1v1-human', 
         status: 'waiting',
-        confederate_id: randomConfederate
+        confederate_id: null
       }])
       .select()
       .single();
@@ -74,11 +73,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create room', details: newRoomError }, { status: 500 });
     }
     room = newRoom;
+    // First user joins as regular participant
     const { error: userInsertError } = await supabase.from('room_users').insert([
-      { room_id: room.id, user_id, user_name }
+      { room_id: room.id, user_id, user_name, role: 'participant' }
     ]);
     if (userInsertError) {
-      console.error('Error adding user to new room:', userInsertError);
+      console.error('Error adding participant to new room:', userInsertError);
       return NextResponse.json({ error: 'Failed to add user to room', details: userInsertError }, { status: 500 });
     }
   }
