@@ -76,6 +76,7 @@ function ChatTeamVsTeamComponent() {
   const [redTeamExpanded, setRedTeamExpanded] = useState(false)
   const [blueTeamExpanded, setBlueTeamExpanded] = useState(false)
   const [teamAssignments, setTeamAssignments] = useState<{red: any[], blue: any[]} | null>(null)
+  const [userTeam, setUserTeam] = useState<'red' | 'blue' | null>(null)
 
   // Use room's topic or fallback to a default
   const [debateTopic, setDebateTopic] = useState<string | null>(null)
@@ -228,6 +229,18 @@ function ChatTeamVsTeamComponent() {
                   red: redTeamMembers,
                   blue: blueTeamMembers
                 })
+                
+                // Determine current user's team
+                const currentUserId = sessionStorage.getItem("userId")
+                if (currentUserId) {
+                  if (serverTeamAssignments.red_team?.includes(currentUserId)) {
+                    setUserTeam('red')
+                    console.log('Team-vs-team: Current user is on Red Team')
+                  } else if (serverTeamAssignments.blue_team?.includes(currentUserId)) {
+                    setUserTeam('blue')
+                    console.log('Team-vs-team: Current user is on Blue Team')
+                  }
+                }
                 
                 console.log('Team-vs-team loaded server assignments:', {
                   red: redTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_red_confederate' ? ' (Confederate)' : ''}`),
@@ -787,13 +800,23 @@ function ChatTeamVsTeamComponent() {
                       return (
                         <>
                           {/* Red Team */}
-                          <div className="border rounded-lg bg-red-50">
+                          <div className={cn(
+                            "border rounded-lg",
+                            userTeam === 'red' ? "bg-red-100 border-red-300 shadow-md" : "bg-red-50"
+                          )}>
                             <button 
                               onClick={() => setRedTeamExpanded(!redTeamExpanded)}
                               className="w-full p-3 text-left hover:bg-red-100 transition-colors rounded-lg"
                             >
                               <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-red-700">🔴 Red Team</h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-red-700">🔴 Red Team</h3>
+                                  {userTeam === 'red' && (
+                                    <Badge variant="outline" className="text-xs bg-red-200 text-red-800 border-red-400">
+                                      Your Team
+                                    </Badge>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm text-red-600">{redTeam.length}/4</span>
                                   <motion.div
@@ -840,13 +863,23 @@ function ChatTeamVsTeamComponent() {
                           </div>
                           
                           {/* Blue Team */}
-                          <div className="border rounded-lg bg-blue-50">
+                          <div className={cn(
+                            "border rounded-lg",
+                            userTeam === 'blue' ? "bg-blue-100 border-blue-300 shadow-md" : "bg-blue-50"
+                          )}>
                             <button 
                               onClick={() => setBlueTeamExpanded(!blueTeamExpanded)}
                               className="w-full p-3 text-left hover:bg-blue-100 transition-colors rounded-lg"
                             >
                               <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-blue-700">🔵 Blue Team</h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-blue-700">🔵 Blue Team</h3>
+                                  {userTeam === 'blue' && (
+                                    <Badge variant="outline" className="text-xs bg-blue-200 text-blue-800 border-blue-400">
+                                      Your Team
+                                    </Badge>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm text-blue-600">{blueTeam.length}/4</span>
                                   <motion.div
@@ -953,15 +986,30 @@ function ChatTeamVsTeamComponent() {
                     const isAssistant = message.role === "assistant"
                     const senderName = getSenderName(message)
 
-                    // TODO: Determine team-based message alignment
+                    // Determine team-based message alignment and styling
                     let messageAlignment = "justify-start"
-                    let teamColor = ""
+                    let messageBgColor = "bg-white"
+                    let isRedTeamMessage = false
+                    let isBlueTeamMessage = false
                     
                     if (message.role === "system") {
                       messageAlignment = "justify-center"
                     } else {
-                      // TODO: Implement team-based alignment logic
-                      messageAlignment = "justify-start"
+                      // Check if sender is on red team or blue team
+                      const isRedTeamSender = teamAssignments?.red.some((m: any) => m.user_id === message.sender_id)
+                      const isBlueTeamSender = teamAssignments?.blue.some((m: any) => m.user_id === message.sender_id)
+                      
+                      if (isRedTeamSender) {
+                        messageAlignment = "justify-end" // Red team messages on right
+                        messageBgColor = "bg-red-50 border-red-200"
+                        isRedTeamMessage = true
+                      } else if (isBlueTeamSender) {
+                        messageAlignment = "justify-start" // Blue team messages on left  
+                        messageBgColor = "bg-blue-50 border-blue-200"
+                        isBlueTeamMessage = true
+                      } else {
+                        messageAlignment = "justify-start" // Default for unknown senders
+                      }
                     }
 
                     return (
@@ -971,22 +1019,35 @@ function ChatTeamVsTeamComponent() {
                         delay={index * 0.05}
                         className={cn("flex gap-3", messageAlignment)}
                       >
-                        <Avatar className="h-9 w-9 mt-1">
+                        <Avatar className={cn(
+                          "h-9 w-9 mt-1",
+                          isRedTeamMessage ? "ring-2 ring-red-300" : isBlueTeamMessage ? "ring-2 ring-blue-300" : ""
+                        )}>
                           <div className="flex h-full w-full items-center justify-center text-xs font-medium">
                             {message.role === "system" ? "M" : getAvatarInitial(senderName)}
                           </div>
                         </Avatar>
 
                         <div className="flex max-w-[75%] flex-col">
-                          <div className="mb-1">
+                          <div className="mb-1 flex items-center gap-2">
                             <span className="text-sm font-medium">{senderName}</span>
+                            {isRedTeamMessage && (
+                              <Badge variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">
+                                Red Team
+                              </Badge>
+                            )}
+                            {isBlueTeamMessage && (
+                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                                Blue Team
+                              </Badge>
+                            )}
                           </div>
                           <motion.div
                             className={cn(
-                              "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                              "rounded-2xl px-4 py-2.5 text-sm shadow-sm border",
                               message.role === "system"
-                                ? "rounded-tl-sm bg-purple-50 text-purple-700 border border-purple-200"
-                                : "rounded-tl-sm bg-white text-foreground",
+                                ? "rounded-tl-sm bg-purple-50 text-purple-700 border-purple-200"
+                                : `rounded-tl-sm ${messageBgColor} text-foreground`,
                             )}
                             initial={{ scale: 0.95 }}
                             animate={{ scale: 1 }}
