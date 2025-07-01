@@ -195,15 +195,31 @@ function ChatTeamVsTeamComponent() {
             
             // Assign teams randomly only once when we have all 8 members
             if (data && data.length >= 8 && !teamAssignments) {
-              const shuffledMembers = [...data].sort(() => 0.5 - Math.random())
+              // Find the two confederates
+              const redConfederate = data.find((m: any) => m.user_id === 'llm_red_confederate')
+              const blueConfederate = data.find((m: any) => m.user_id === 'llm_blue_confederate')
+              
+              // Get all other members (excluding confederates)
+              const otherMembers = data.filter((m: any) => 
+                m.user_id !== 'llm_red_confederate' && m.user_id !== 'llm_blue_confederate'
+              )
+              
+              // Shuffle the other members randomly
+              const shuffledOthers = [...otherMembers].sort(() => 0.5 - Math.random())
+              
+              // Assign teams: each team gets one confederate + 3 random others
+              const redTeamMembers = [redConfederate, ...shuffledOthers.slice(0, 3)].filter(Boolean)
+              const blueTeamMembers = [blueConfederate, ...shuffledOthers.slice(3, 6)].filter(Boolean)
+              
               setTeamAssignments({
-                red: shuffledMembers.slice(0, 4),
-                blue: shuffledMembers.slice(4, 8)
+                red: redTeamMembers,
+                blue: blueTeamMembers
               })
-              console.log('Team assignments created:', {
-                red: shuffledMembers.slice(0, 4).map(m => m.user_name),
-                blue: shuffledMembers.slice(4, 8).map(m => m.user_name)
-              })
+              
+                             console.log('Team assignments created with confederates:', {
+                 red: redTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_red_confederate' ? ' (Confederate)' : ''}`),
+                 blue: blueTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_blue_confederate' ? ' (Confederate)' : ''}`)
+               })
             }
           }
         } catch (error) {
@@ -735,13 +751,22 @@ function ChatTeamVsTeamComponent() {
                   </TabsList>
                   <TabsContent value="teams" className="mt-4 space-y-4">
                     {(() => {
-                      // Use stable team assignments or fallback to temporary assignment
-                      const redTeam = teamAssignments?.red || members.slice(0, 4)
-                      const blueTeam = teamAssignments?.blue || members.slice(4, 8)
+                      // Use stable team assignments or fallback to ordered assignment (no random shuffling in fallback)
+                      let redTeam, blueTeam
+                      
+                      if (teamAssignments) {
+                        // Use the stable assignments
+                        redTeam = teamAssignments.red
+                        blueTeam = teamAssignments.blue
+                      } else {
+                        // Fallback: assign by order (not random) until we have all 8 members
+                        redTeam = members.slice(0, 4)
+                        blueTeam = members.slice(4, 8)
+                      }
                       
                       // Identify confederates for each team
-                      const redConfederate = redTeam.find(m => m.user_id === 'llm_red_confederate')
-                      const blueConfederate = blueTeam.find(m => m.user_id === 'llm_blue_confederate')
+                      const redConfederate = redTeam.find((m: any) => m.user_id === 'llm_red_confederate')
+                      const blueConfederate = blueTeam.find((m: any) => m.user_id === 'llm_blue_confederate')
                       
                       return (
                         <>
