@@ -70,8 +70,12 @@ function ChatTeamVsTeamComponent() {
   const [showSurveyThankYou, setShowSurveyThankYou] = useState(false)
   const [showTraining, setShowTraining] = useState(true)
   const [fetchError, setFetchError] = useState<any>(null)
+  const [joinError, setJoinError] = useState<string | null>(null)
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
+  const [redTeamExpanded, setRedTeamExpanded] = useState(false)
+  const [blueTeamExpanded, setBlueTeamExpanded] = useState(false)
+  const [teamAssignments, setTeamAssignments] = useState<{red: any[], blue: any[]} | null>(null)
 
   // Use room's topic or fallback to a default
   const [debateTopic, setDebateTopic] = useState<string | null>(null)
@@ -100,9 +104,22 @@ function ChatTeamVsTeamComponent() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, user_name: userName }),
     })
-      .then(res => res.json())
+      .then(async res => {
+        console.log('Team-vs-team API response status:', res.status)
+        if (!res.ok) {
+          const errorText = await res.text()
+          console.error('Team-vs-team API error:', res.status, errorText)
+          throw new Error(`API error: ${res.status} - ${errorText}`)
+        }
+        return res.json()
+      })
       .then(({ room }) => {
         console.log('Joined team-vs-team room:', room)
+        if (!room) {
+          console.error('Team-vs-team: No room returned from API')
+          setRoom(null)
+          return
+        }
         setRoom(room)
         setRoomIdTeamVsTeam(room.id)
         setWaitingForUsers(room.status !== 'active')
@@ -116,7 +133,11 @@ function ChatTeamVsTeamComponent() {
           console.log('Team-vs-team using fallback topic')
         }
       })
-      .catch(() => setRoom(null))
+      .catch((error) => {
+        console.error('Team-vs-team join error:', error)
+        setJoinError(error.message || 'Failed to join team battle')
+        setRoom(null)
+      })
       .finally(() => setLoadingRoom(false))
   }, [topic])
 
@@ -170,6 +191,19 @@ function ChatTeamVsTeamComponent() {
             // Add moderator message when we have enough users
             if (data && data.length >= 8 && room?.status === 'active' && !moderatorMessageSentRef.current) {
               setTimeout(() => addInitialModeratorMessage(), 500)
+            }
+            
+            // Assign teams randomly only once when we have all 8 members
+            if (data && data.length >= 8 && !teamAssignments) {
+              const shuffledMembers = [...data].sort(() => 0.5 - Math.random())
+              setTeamAssignments({
+                red: shuffledMembers.slice(0, 4),
+                blue: shuffledMembers.slice(4, 8)
+              })
+              console.log('Team assignments created:', {
+                red: shuffledMembers.slice(0, 4).map(m => m.user_name),
+                blue: shuffledMembers.slice(4, 8).map(m => m.user_name)
+              })
             }
           }
         } catch (error) {
@@ -551,8 +585,20 @@ function ChatTeamVsTeamComponent() {
       <PageTransition>
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-            <p className="mt-2 text-muted-foreground">Setting up team battle...</p>
+            {joinError ? (
+              <>
+                <div className="mb-4 text-2xl font-bold text-red-600">Error</div>
+                <p className="mb-4 text-muted-foreground">{joinError}</p>
+                <Button onClick={() => window.location.reload()} variant="outline">
+                  Try Again
+                </Button>
+              </>
+            ) : (
+              <>
+                <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                <p className="mt-2 text-muted-foreground">Setting up team battle...</p>
+              </>
+            )}
           </div>
         </div>
       </PageTransition>
@@ -689,64 +735,120 @@ function ChatTeamVsTeamComponent() {
                   </TabsList>
                   <TabsContent value="teams" className="mt-4 space-y-4">
                     {(() => {
-                      // Assign teams based on join order: first 4 to Red Team, next 4 to Blue Team
-                      const redTeam = members.slice(0, 4)
-                      const blueTeam = members.slice(4, 8)
+                      // Use stable team assignments or fallback to temporary assignment
+                      const redTeam = teamAssignments?.red || members.slice(0, 4)
+                      const blueTeam = teamAssignments?.blue || members.slice(4, 8)
+                      
+                      // Identify confederates for each team
+                      const redConfederate = redTeam.find(m => m.user_id === 'llm_red_confederate')
+                      const blueConfederate = blueTeam.find(m => m.user_id === 'llm_blue_confederate')
                       
                       return (
                         <>
                           {/* Red Team */}
-                          <div className="border rounded-lg p-3 bg-red-50">
-                            <h3 className="font-semibold text-red-700 mb-2">🔴 Red Team</h3>
-                            <div className="space-y-2">
-                              {redTeam.map((member, index) => {
-                                const memberName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
-                                const isLLM = member.user_id.includes('llm_')
-                                return (
-                                  <div key={member.user_id} className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6">
-                                      <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                        {getAvatarInitial(memberName || 'U')}
-                                      </div>
-                                    </Avatar>
-                                    <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
-                                    {isLLM && <Badge variant="secondary" className="text-xs">AI</Badge>}
-                                  </div>
-                                )
-                              })}
-                              {redTeam.length < 4 && (
-                                <div className="text-xs text-muted-foreground">
-                                  Waiting for {4 - redTeam.length} more members...
+                          <div className="border rounded-lg bg-red-50">
+                            <button 
+                              onClick={() => setRedTeamExpanded(!redTeamExpanded)}
+                              className="w-full p-3 text-left hover:bg-red-100 transition-colors rounded-lg"
+                            >
+                              <div className="flex items-center justify-between">
+                                <h3 className="font-semibold text-red-700">🔴 Red Team</h3>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-red-600">{redTeam.length}/4</span>
+                                  <motion.div
+                                    animate={{ rotate: redTeamExpanded ? 90 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <ChevronLeft className="h-4 w-4 text-red-600" />
+                                  </motion.div>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            </button>
+                            {redTeamExpanded && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="px-3 pb-3"
+                              >
+                                <div className="space-y-2">
+                                  {redTeam.map((member, index) => {
+                                    const memberName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
+                                    const isConfederate = member.user_id === 'llm_red_confederate'
+                                    return (
+                                      <div key={member.user_id} className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                            {getAvatarInitial(memberName || 'U')}
+                                          </div>
+                                        </Avatar>
+                                        <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
+                                        {isConfederate && <Badge variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">Confederate</Badge>}
+                                      </div>
+                                    )
+                                  })}
+                                  {redTeam.length < 4 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Waiting for {4 - redTeam.length} more members...
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
                           </div>
                           
                           {/* Blue Team */}
-                          <div className="border rounded-lg p-3 bg-blue-50">
-                            <h3 className="font-semibold text-blue-700 mb-2">🔵 Blue Team</h3>
-                            <div className="space-y-2">
-                              {blueTeam.map((member, index) => {
-                                const memberName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
-                                const isLLM = member.user_id.includes('llm_')
-                                return (
-                                  <div key={member.user_id} className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6">
-                                      <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                        {getAvatarInitial(memberName || 'U')}
-                                      </div>
-                                    </Avatar>
-                                    <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
-                                    {isLLM && <Badge variant="secondary" className="text-xs">AI</Badge>}
-                                  </div>
-                                )
-                              })}
-                              {blueTeam.length < 4 && (
-                                <div className="text-xs text-muted-foreground">
-                                  Waiting for {4 - blueTeam.length} more members...
+                          <div className="border rounded-lg bg-blue-50">
+                            <button 
+                              onClick={() => setBlueTeamExpanded(!blueTeamExpanded)}
+                              className="w-full p-3 text-left hover:bg-blue-100 transition-colors rounded-lg"
+                            >
+                              <div className="flex items-center justify-between">
+                                <h3 className="font-semibold text-blue-700">🔵 Blue Team</h3>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-blue-600">{blueTeam.length}/4</span>
+                                  <motion.div
+                                    animate={{ rotate: blueTeamExpanded ? 90 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <ChevronLeft className="h-4 w-4 text-blue-600" />
+                                  </motion.div>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            </button>
+                            {blueTeamExpanded && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="px-3 pb-3"
+                              >
+                                <div className="space-y-2">
+                                  {blueTeam.map((member, index) => {
+                                    const memberName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
+                                    const isConfederate = member.user_id === 'llm_blue_confederate'
+                                    return (
+                                      <div key={member.user_id} className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                            {getAvatarInitial(memberName || 'U')}
+                                          </div>
+                                        </Avatar>
+                                        <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
+                                        {isConfederate && <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">Confederate</Badge>}
+                                      </div>
+                                    )
+                                  })}
+                                  {blueTeam.length < 4 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Waiting for {4 - blueTeam.length} more members...
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
                           </div>
                         </>
                       )

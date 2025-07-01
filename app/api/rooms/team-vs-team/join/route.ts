@@ -138,7 +138,7 @@ async function activateRoomWithLLMs(roomId: string) {
     return
   }
 
-  // Create 4 LLM participants with different names
+  // Create 4 LLM participants: 2 confederates (one for each team) + 2 regular members
   const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
   const llmNames = ["Sam", "Jordan", "Casey", "Riley", "Morgan", "Avery"]
   
@@ -148,8 +148,8 @@ async function activateRoomWithLLMs(roomId: string) {
   const shuffledLLMs = [...llmNames].sort(() => 0.5 - Math.random())
 
   const llmsToAdd = [
-    { user_id: 'llm_confederate_1', user_name: shuffledConfederates[0] },
-    { user_id: 'llm_confederate_2', user_name: shuffledConfederates[1] },
+    { user_id: 'llm_red_confederate', user_name: shuffledConfederates[0] },
+    { user_id: 'llm_blue_confederate', user_name: shuffledConfederates[1] },
     { user_id: 'llm_member_1', user_name: shuffledLLMs[0] },
     { user_id: 'llm_member_2', user_name: shuffledLLMs[1] }
   ]
