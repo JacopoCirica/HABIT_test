@@ -1001,11 +1001,11 @@ function ChatTeamVsTeamComponent() {
                       
                       if (isRedTeamSender) {
                         messageAlignment = "justify-end" // Red team messages on right
-                        messageBgColor = "bg-red-50 border-red-200"
+                        messageBgColor = "bg-red-200 border-red-400 text-red-900"
                         isRedTeamMessage = true
                       } else if (isBlueTeamSender) {
                         messageAlignment = "justify-start" // Blue team messages on left  
-                        messageBgColor = "bg-blue-50 border-blue-200"
+                        messageBgColor = "bg-blue-200 border-blue-400 text-blue-900"
                         isBlueTeamMessage = true
                       } else {
                         messageAlignment = "justify-start" // Default for unknown senders
@@ -1019,17 +1019,23 @@ function ChatTeamVsTeamComponent() {
                         delay={index * 0.05}
                         className={cn("flex gap-3", messageAlignment)}
                       >
-                        <Avatar className={cn(
-                          "h-9 w-9 mt-1",
-                          isRedTeamMessage ? "ring-2 ring-red-300" : isBlueTeamMessage ? "ring-2 ring-blue-300" : ""
-                        )}>
-                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                            {message.role === "system" ? "M" : getAvatarInitial(senderName)}
-                          </div>
-                        </Avatar>
+                        {/* Avatar - show first for left-aligned, last for right-aligned */}
+                        {!isRedTeamMessage && (
+                          <Avatar className={cn(
+                            "h-9 w-9 mt-1",
+                            isBlueTeamMessage ? "ring-2 ring-blue-300" : ""
+                          )}>
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {message.role === "system" ? "M" : getAvatarInitial(senderName)}
+                            </div>
+                          </Avatar>
+                        )}
 
                         <div className="flex max-w-[75%] flex-col">
-                          <div className="mb-1 flex items-center gap-2">
+                          <div className={cn(
+                            "mb-1 flex items-center gap-2",
+                            isRedTeamMessage ? "justify-end" : "justify-start"
+                          )}>
                             <span className="text-sm font-medium">{senderName}</span>
                             {isRedTeamMessage && (
                               <Badge variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">
@@ -1047,7 +1053,7 @@ function ChatTeamVsTeamComponent() {
                               "rounded-2xl px-4 py-2.5 text-sm shadow-sm border",
                               message.role === "system"
                                 ? "rounded-tl-sm bg-purple-50 text-purple-700 border-purple-200"
-                                : `rounded-tl-sm ${messageBgColor} text-foreground`,
+                                : `rounded-tl-sm ${messageBgColor}`,
                             )}
                             initial={{ scale: 0.95 }}
                             animate={{ scale: 1 }}
@@ -1055,6 +1061,15 @@ function ChatTeamVsTeamComponent() {
                             {message.content}
                           </motion.div>
                         </div>
+
+                        {/* Avatar - show last for right-aligned messages */}
+                        {isRedTeamMessage && (
+                          <Avatar className="h-9 w-9 mt-1 ring-2 ring-red-300">
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {getAvatarInitial(senderName)}
+                            </div>
+                          </Avatar>
+                        )}
                       </MessageAnimation>
                     )
                   })}
