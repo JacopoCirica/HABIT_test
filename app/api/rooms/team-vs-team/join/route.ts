@@ -122,11 +122,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ room })
 }
 
-// Helper function to activate room and add LLMs
+// Helper function to activate room and add LLMs with team assignments
 async function activateRoomWithLLMs(roomId: string) {
   console.log('Activating room with LLMs:', roomId);
   
-  // Get room details
+  // Get room details and current human users
   const { data: room, error: roomError } = await supabase
     .from('rooms')
     .select('confederate_id')
@@ -135,6 +135,17 @@ async function activateRoomWithLLMs(roomId: string) {
     
   if (roomError || !room) {
     console.error('Error fetching room for LLM activation:', roomError);
+    return
+  }
+
+  // Get current human members
+  const { data: humanMembers, error: membersError } = await supabase
+    .from('room_users')
+    .select('user_id, user_name')
+    .eq('room_id', roomId)
+    
+  if (membersError || !humanMembers) {
+    console.error('Error fetching human members:', membersError);
     return
   }
 
@@ -167,7 +178,11 @@ async function activateRoomWithLLMs(roomId: string) {
     
   if (llmInsertError) {
     console.error('Error adding LLMs to room:', llmInsertError);
+    return
   }
+
+  // Now assign teams server-side so all users see the same teams
+  await assignTeamsServerSide(roomId, humanMembers, llmsToAdd)
 
   // Update room status to active
   const { error: updateError } = await supabase
@@ -179,5 +194,47 @@ async function activateRoomWithLLMs(roomId: string) {
     console.error('Error updating room status:', updateError);
   }
   
-  console.log('Room activated with LLMs successfully');
+  console.log('Room activated with LLMs and team assignments successfully');
+}
+
+// Helper function to assign teams server-side
+async function assignTeamsServerSide(roomId: string, humanMembers: any[], llmMembers: any[]) {
+  // Combine all members
+  const allMembers = [...humanMembers, ...llmMembers]
+  
+  // Find confederates
+  const redConfederate = allMembers.find(m => m.user_id === 'llm_red_confederate')
+  const blueConfederate = allMembers.find(m => m.user_id === 'llm_blue_confederate')
+  
+  // Get other members (excluding confederates)
+  const otherMembers = allMembers.filter(m => 
+    m.user_id !== 'llm_red_confederate' && m.user_id !== 'llm_blue_confederate'
+  )
+  
+  // Shuffle other members randomly
+  const shuffledOthers = [...otherMembers].sort(() => 0.5 - Math.random())
+  
+  // Assign teams: each gets one confederate + 3 others
+  const redTeamMembers = [redConfederate, ...shuffledOthers.slice(0, 3)].filter(Boolean)
+  const blueTeamMembers = [blueConfederate, ...shuffledOthers.slice(3, 6)].filter(Boolean)
+  
+  // Store team assignments in room metadata
+  const teamAssignments = {
+    red_team: redTeamMembers.map(m => m.user_id),
+    blue_team: blueTeamMembers.map(m => m.user_id)
+  }
+  
+  // Update room with team assignments
+  const { error: teamError } = await supabase
+    .from('rooms')
+    .update({ 
+      team_assignments: JSON.stringify(teamAssignments)
+    })
+    .eq('id', roomId)
+    
+  if (teamError) {
+    console.error('Error storing team assignments:', teamError);
+  } else {
+    console.log('Server-side team assignments created:', teamAssignments);
+  }
 } 

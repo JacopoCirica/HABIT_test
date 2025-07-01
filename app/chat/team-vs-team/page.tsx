@@ -132,6 +132,17 @@ function ChatTeamVsTeamComponent() {
           setDebateTopic('healthcare-system-reform')
           console.log('Team-vs-team using fallback topic')
         }
+        
+        // Load team assignments from server if available
+        if (room.team_assignments) {
+          try {
+            const serverTeamAssignments = JSON.parse(room.team_assignments)
+            console.log('Team-vs-team loading server team assignments:', serverTeamAssignments)
+            // We'll use these when we have the member data
+          } catch (error) {
+            console.error('Team-vs-team error parsing server team assignments:', error)
+          }
+        }
       })
       .catch((error) => {
         console.error('Team-vs-team join error:', error)
@@ -153,7 +164,12 @@ function ChatTeamVsTeamComponent() {
           setWaitingForUsers(false)
           clearInterval(interval)
           
-          console.log('Team-vs-team room became active')
+          console.log('Team-vs-team room became active:', updatedRoom)
+          
+          // Load team assignments if available
+          if (updatedRoom.team_assignments && !teamAssignments) {
+            console.log('Team-vs-team found team assignments in updated room')
+          }
         }
       }, 2000)
       return () => clearInterval(interval)
@@ -188,38 +204,38 @@ function ChatTeamVsTeamComponent() {
               return updated
             })
             
-            // Add moderator message when we have enough users
+                        // Add moderator message when we have enough users
             if (data && data.length >= 8 && room?.status === 'active' && !moderatorMessageSentRef.current) {
               setTimeout(() => addInitialModeratorMessage(), 500)
             }
             
-            // Assign teams randomly only once when we have all 8 members
-            if (data && data.length >= 8 && !teamAssignments) {
-              // Find the two confederates
-              const redConfederate = data.find((m: any) => m.user_id === 'llm_red_confederate')
-              const blueConfederate = data.find((m: any) => m.user_id === 'llm_blue_confederate')
-              
-              // Get all other members (excluding confederates)
-              const otherMembers = data.filter((m: any) => 
-                m.user_id !== 'llm_red_confederate' && m.user_id !== 'llm_blue_confederate'
-              )
-              
-              // Shuffle the other members randomly
-              const shuffledOthers = [...otherMembers].sort(() => 0.5 - Math.random())
-              
-              // Assign teams: each team gets one confederate + 3 random others
-              const redTeamMembers = [redConfederate, ...shuffledOthers.slice(0, 3)].filter(Boolean)
-              const blueTeamMembers = [blueConfederate, ...shuffledOthers.slice(3, 6)].filter(Boolean)
-              
-              setTeamAssignments({
-                red: redTeamMembers,
-                blue: blueTeamMembers
-              })
-              
-                             console.log('Team assignments created with confederates:', {
-                 red: redTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_red_confederate' ? ' (Confederate)' : ''}`),
-                 blue: blueTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_blue_confederate' ? ' (Confederate)' : ''}`)
-               })
+            // Load team assignments from server if available and we have all members
+            if (data && data.length >= 8 && !teamAssignments && room?.team_assignments) {
+              try {
+                const serverTeamAssignments = JSON.parse(room.team_assignments)
+                console.log('Team-vs-team using server team assignments:', serverTeamAssignments)
+                
+                // Map user IDs to member objects
+                const redTeamMembers = serverTeamAssignments.red_team?.map((userId: string) => 
+                  data.find((m: any) => m.user_id === userId)
+                ).filter(Boolean) || []
+                
+                const blueTeamMembers = serverTeamAssignments.blue_team?.map((userId: string) => 
+                  data.find((m: any) => m.user_id === userId)
+                ).filter(Boolean) || []
+                
+                setTeamAssignments({
+                  red: redTeamMembers,
+                  blue: blueTeamMembers
+                })
+                
+                console.log('Team-vs-team loaded server assignments:', {
+                  red: redTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_red_confederate' ? ' (Confederate)' : ''}`),
+                  blue: blueTeamMembers.map((m: any) => `${m.user_name}${m.user_id === 'llm_blue_confederate' ? ' (Confederate)' : ''}`)
+                })
+              } catch (error) {
+                console.error('Team-vs-team error loading server team assignments:', error)
+              }
             }
           }
         } catch (error) {
