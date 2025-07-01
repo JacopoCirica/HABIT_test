@@ -624,7 +624,35 @@ function ChatTeamVsTeamComponent() {
       })
     }
 
-    // TODO: Implement team LLM response logic
+    // Trigger LLM responses after user message is sent
+    if (teamAssignments && room?.team_assignments) {
+      try {
+        console.log('Team-vs-team triggering LLM responses')
+        const response = await fetch('/api/chat/team-vs-team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: roomIdTeamVsTeam,
+            userMessage: {
+              sender_id: userId,
+              content: trimmedInput,
+              role: 'user'
+            },
+            teamAssignments: JSON.parse(room.team_assignments)
+          }),
+        })
+        
+        if (!response.ok) {
+          console.error('Team-vs-team LLM API error:', response.status)
+        } else {
+          const result = await response.json()
+          console.log('Team-vs-team LLM responses triggered:', result.respondingLLMs)
+        }
+      } catch (error) {
+        console.error('Team-vs-team error calling LLM API:', error)
+      }
+    }
+    
     setIsLoading(false)
   }
 
