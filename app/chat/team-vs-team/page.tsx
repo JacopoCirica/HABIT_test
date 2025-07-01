@@ -192,6 +192,12 @@ function ChatTeamVsTeamComponent() {
               
               setMessages(fetchedMessages)
               console.log('Team-vs-team refetched messages after activation:', fetchedMessages.length)
+              
+              // Reset the moderator message ref if moderator message exists
+              const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
+              if (hasModeratorMessage) {
+                moderatorMessageSentRef.current = true
+              }
             }
           }
         }
@@ -324,9 +330,12 @@ function ChatTeamVsTeamComponent() {
     }
     fetchMessages()
 
-    // Subscribe to new messages
+    // Subscribe to new messages with unique channel name
+    const channelName = `team-vs-team-messages-${roomIdTeamVsTeam}-${Date.now()}`
+    console.log('Team-vs-team creating subscription channel:', channelName)
+    
     const channel = supabase
-      .channel('team-vs-team-room-messages')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -336,12 +345,14 @@ function ChatTeamVsTeamComponent() {
           filter: `room_id=eq.${roomIdTeamVsTeam}`,
         },
         (payload) => {
-          console.log('Team-vs-team received new message:', payload.new)
+          console.log('Team-vs-team received new message via subscription:', payload.new)
           const newMessage = payload.new
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) {
+              console.log('Team-vs-team: Message already exists, skipping')
               return prev
             }
+            console.log('Team-vs-team: Adding new message to state')
             return [
               ...prev,
               {
@@ -355,9 +366,12 @@ function ChatTeamVsTeamComponent() {
           })
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Team-vs-team subscription status:', status)
+      })
 
     return () => {
+      console.log('Team-vs-team cleaning up subscription:', channelName)
       supabase.removeChannel(channel)
     }
   }, [roomIdTeamVsTeam])
