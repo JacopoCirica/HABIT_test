@@ -171,6 +171,29 @@ function ChatTeamVsTeamComponent() {
           if (updatedRoom.team_assignments && !teamAssignments) {
             console.log('Team-vs-team found team assignments in updated room')
           }
+          
+          // Fetch messages again now that room is active (for first user)
+          if (roomIdTeamVsTeam) {
+            console.log('Team-vs-team refetching messages after room activation')
+            const { data: newMessages, error } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('room_id', roomIdTeamVsTeam)
+              .order('created_at', { ascending: true })
+            
+            if (!error && newMessages) {
+              const fetchedMessages = newMessages.map((msg) => ({
+                id: msg.id,
+                role: msg.sender_role,
+                content: msg.content,
+                sender_id: msg.sender_id,
+                created_at: msg.created_at,
+              }))
+              
+              setMessages(fetchedMessages)
+              console.log('Team-vs-team refetched messages after activation:', fetchedMessages.length)
+            }
+          }
         }
       }, 2000)
       return () => clearInterval(interval)
