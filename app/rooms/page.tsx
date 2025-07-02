@@ -7,58 +7,58 @@ export default function RoomSelectionPage() {
     <div className="container mx-auto py-16">
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-center">
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>Chat with a confederate (LLM) in a private session.</p>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Chat with a confederate in a private session.</p>
             <Link href="/chat?type=1v1">
-              <Button className="mt-4 w-full">Start 1-on-1</Button>
+              <Button className="w-full">Start 1-on-1</Button>
             </Link>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
-            <CardTitle>1v1 Human Room</CardTitle>
+            <CardTitle>1v1 Confederate</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>Chat with a human confederate in a private session.</p>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Chat with a human confederate in a private session.</p>
             <Link href="/chat?type=1v1-human">
-              <Button className="mt-4 w-full">Start 1v1 Human</Button>
+              <Button className="w-full">Start 1v1 Confederate</Button>
             </Link>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>2-on-1 Room</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>Join a room with another user and a confederate (LLM).</p>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Join a room with another user and a confederate.</p>
             <Link href="/chat?type=2v1">
-              <Button className="mt-4 w-full">Start 2-on-1</Button>
+              <Button className="w-full">Start 2-on-1</Button>
             </Link>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>2vs4 Room</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>Join a room with another user and debate against 4 LLMs (1 confederate + 3 LLM users).</p>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Join a room with another user and debate against 4 participants (1 confederate + 3 users).</p>
             <Link href="/chat?type=2vs4">
-              <Button className="mt-4 w-full">Start 2vs4</Button>
+              <Button className="w-full">Start 2vs4</Button>
             </Link>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Team vs Team</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p>Red Team vs Blue Team: 8 participants (4 humans + 4 LLMs) with random team assignment.</p>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Red Team vs Blue Team: 8 participants (4 humans + 4 participants) with random team assignment.</p>
             <Link href="/chat?type=team-vs-team">
-              <Button className="mt-4 w-full">Join Battle</Button>
+              <Button className="w-full">Join Battle</Button>
             </Link>
           </CardContent>
         </Card>

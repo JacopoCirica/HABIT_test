@@ -707,9 +707,9 @@ function ChatTeamVsTeamComponent() {
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
             <div className="mb-4 text-2xl font-bold">Assembling teams...</div>
-            <div className="text-muted-foreground">Waiting for 4 human participants to join the battle.</div>
+            <div className="text-muted-foreground">Waiting for participants to join the battle.</div>
             <div className="mt-4 text-sm text-muted-foreground">
-              Current participants: {members.length}/4 humans
+              Current participants: {Math.min(members.length * 2, 8)}/8 total
             </div>
           </div>
         </div>
@@ -1055,6 +1055,20 @@ function ChatTeamVsTeamComponent() {
 
           {/* Main chat area */}
           <div className="flex flex-1 flex-col bg-gray-50">
+            {/* Toggle button when sidebar is closed */}
+            {!sidebarOpen && (
+              <div className="hidden md:block absolute top-20 left-4 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleSidebar}
+                  className="bg-white shadow-md hover:bg-gray-50"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto p-4">
               <div className="mx-auto max-w-4xl space-y-6">
                 <Card className="border-primary/20 bg-gradient-to-r from-red-50 via-purple-50 to-blue-50">
