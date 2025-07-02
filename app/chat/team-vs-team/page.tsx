@@ -494,6 +494,7 @@ function ChatTeamVsTeamComponent() {
     console.log('Team-vs-team adding initial moderator message...')
     moderatorMessageSentRef.current = true
     
+    // Get topic display name - use room's topic which is randomly selected from demographics survey
     const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "Healthcare System Reform"
     const moderatorMessage = {
       room_id: roomIdTeamVsTeam,
@@ -511,20 +512,7 @@ function ChatTeamVsTeamComponent() {
         
       if (!error && insertedMessage) {
         console.log('Team-vs-team moderator message inserted successfully')
-        const localMessage = {
-          id: insertedMessage.id,
-          role: insertedMessage.sender_role,
-          content: insertedMessage.content,
-          sender_id: insertedMessage.sender_id,
-          created_at: insertedMessage.created_at,
-        }
-        
-        setMessages(prev => {
-          if (prev.some(msg => msg.id === localMessage.id)) {
-            return prev
-          }
-          return [localMessage, ...prev]
-        })
+        // Don't add to local state - let the subscription handle it to avoid duplicates
       } else {
         console.error('Team-vs-team error inserting moderator message:', error)
         moderatorMessageSentRef.current = false

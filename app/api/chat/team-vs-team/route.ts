@@ -59,13 +59,22 @@ export async function POST(req: NextRequest) {
     
     console.log('LLMs selected to respond:', respondingLLMs)
 
-    // Generate responses for each selected LLM
-    for (const llmId of respondingLLMs) {
+    // Generate responses for each selected LLM with realistic delays
+    for (let i = 0; i < respondingLLMs.length; i++) {
+      const llmId = respondingLLMs[i]
+      
+      // Add initial delay before first response (2-4 seconds)
+      const initialDelay = i === 0 ? (2000 + Math.random() * 2000) : 0
+      if (initialDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, initialDelay))
+      }
+      
       await generateLLMResponse(roomId, llmId, userMessage, messages, room.topic, teamAssignments)
       
-      // Add small delay between responses to make it feel more natural
-      if (respondingLLMs.length > 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
+      // Add delay between multiple responses (3-5 seconds)
+      if (i < respondingLLMs.length - 1) {
+        const betweenDelay = 3000 + Math.random() * 2000
+        await new Promise(resolve => setTimeout(resolve, betweenDelay))
       }
     }
 
