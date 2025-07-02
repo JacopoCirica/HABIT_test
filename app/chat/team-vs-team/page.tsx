@@ -644,6 +644,45 @@ function ChatTeamVsTeamComponent() {
     setIsLoading(false)
   }
 
+  // Refetch messages when session starts (after training completion)
+  useEffect(() => {
+    if (sessionStarted && roomIdTeamVsTeam) {
+      console.log('Team-vs-team refetching messages after session started')
+      
+      // Add small delay to ensure subscription is established
+      const timer = setTimeout(async () => {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('room_id', roomIdTeamVsTeam)
+          .order('created_at', { ascending: true })
+        
+        if (!error && data) {
+          console.log('Team-vs-team refetched messages after training:', data.length)
+          const fetchedMessages = data.map((msg) => ({
+            id: msg.id,
+            role: msg.sender_role,
+            content: msg.content,
+            sender_id: msg.sender_id,
+            created_at: msg.created_at,
+          }))
+          
+          setMessages(fetchedMessages)
+          
+          // Update moderator message ref if moderator message exists
+          const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
+          if (hasModeratorMessage) {
+            moderatorMessageSentRef.current = true
+          }
+        } else {
+          console.error('Team-vs-team error refetching messages after training:', error)
+        }
+      }, 500)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [sessionStarted, roomIdTeamVsTeam])
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
