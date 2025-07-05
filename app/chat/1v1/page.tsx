@@ -323,20 +323,40 @@ function Chat1v1Component() {
 
     setIsLoading(true)
 
-    // Add user message to local state
-    const userMessage = {
-      id: `${userId}_${Date.now()}`,
-      role: "user" as const,
-      content: trimmedInput,
-      sender_id: userId,
-      created_at: new Date().toISOString(),
-    }
-    
-    // Update local state
-    setMessages(prev => [...prev, userMessage])
-    
-    // Save to localStorage
-          if (currentRoom) {
+    // First, moderate the user message
+    try {
+      console.log("Moderating user message:", trimmedInput)
+      const moderationResponse = await fetch("/api/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmedInput,
+          context: "1v1 debate discussion",
+          topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic"
+        }),
+      })
+
+      if (!moderationResponse.ok) {
+        throw new Error("Moderation service unavailable")
+      }
+
+      const moderationResult = await moderationResponse.json()
+      console.log("Moderation result:", moderationResult)
+
+      // Add user message to local state (always show user's message)
+      const userMessage = {
+        id: `${userId}_${Date.now()}`,
+        role: "user" as const,
+        content: trimmedInput,
+        sender_id: userId,
+        created_at: new Date().toISOString(),
+      }
+      
+      // Update local state with user message
+      setMessages(prev => [...prev, userMessage])
+      
+      // Save user message to localStorage
+      if (currentRoom) {
         const chatMessageForStorage: ChatMessage = {
           ...userMessage,
           roomId: currentRoom.id,
@@ -346,8 +366,38 @@ function Chat1v1Component() {
         localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
       }
 
-    // Handle AI response
-    try {
+      if (!moderationResult.isSafe) {
+        // Message is unsafe - send moderator warning instead of confederate response
+        console.log("Message flagged as unsafe:", moderationResult.reason)
+        
+        const moderatorMessage = {
+          id: `moderator_${Date.now()}`,
+          role: "assistant" as const,
+          content: `I'd like to keep our discussion focused on ${debateTopic ? chatTopicDisplayNames[debateTopic] : "the topic at hand"}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
+          sender_id: "moderator",
+          created_at: new Date().toISOString(),
+        }
+        
+        setMessages(prev => [...prev, moderatorMessage])
+        
+        // Save moderator message to localStorage
+        if (currentRoom) {
+          const chatMessageForStorage: ChatMessage = {
+            ...moderatorMessage,
+            roomId: currentRoom.id,
+            timestamp: new Date(),
+          }
+          const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+          localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+        }
+        
+        setIsLoading(false)
+        return // Don't proceed to confederate response
+      }
+
+      // Message is safe - proceed with confederate response
+      console.log("Message approved, sending to confederate")
+
       const storedName = sessionStorage.getItem("userName") || "User"
       const storedAge = sessionStorage.getItem("userAge") || "Unknown"
       const storedSex = sessionStorage.getItem("userSex") || "Unknown"
@@ -381,16 +431,12 @@ function Chat1v1Component() {
       }
       
       console.log("Sending API request with confederate:", currentRoom?.confederateName)
-      console.log("Messages being sent to API:", messagesForAPI)
-      console.log("Request body:", requestBody)
       
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       })
-      
-      console.log("API response status:", response.status)
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -401,7 +447,7 @@ function Chat1v1Component() {
       const data = await response.json()
       console.log("API response data:", data)
       
-      // Add AI response
+      // Add confederate response
       const assistantMessage = {
         id: `assistant_${Date.now()}`,
         role: "assistant" as const,
@@ -412,21 +458,21 @@ function Chat1v1Component() {
       
       setMessages(prev => [...prev, assistantMessage])
       
-      // Save to localStorage
-              if (currentRoom) {
-          const chatMessageForStorage: ChatMessage = {
-            ...assistantMessage,
-            roomId: currentRoom.id,
-            timestamp: new Date(),
-          }
-          const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-          localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+      // Save confederate response to localStorage
+      if (currentRoom) {
+        const chatMessageForStorage: ChatMessage = {
+          ...assistantMessage,
+          roomId: currentRoom.id,
+          timestamp: new Date(),
         }
+        const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+        localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+      }
       
     } catch (error) {
       console.error("Error in chat submit:", error)
       
-      // Fallback to simulated response
+      // Fallback to simulated response if both moderation and chat fail
       const simulatedResponse = getSimulatedResponse()
       const fallbackMessage = {
         id: `assistant_fallback_${Date.now()}`,
@@ -438,15 +484,15 @@ function Chat1v1Component() {
       
       setMessages(prev => [...prev, fallbackMessage])
       
-              if (currentRoom) {
-          const chatMessageForStorage: ChatMessage = {
-            ...fallbackMessage,
-            roomId: currentRoom.id,
-            timestamp: new Date(),
-          }
-          const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-          localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+      if (currentRoom) {
+        const chatMessageForStorage: ChatMessage = {
+          ...fallbackMessage,
+          roomId: currentRoom.id,
+          timestamp: new Date(),
         }
+        const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+        localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+      }
     } finally {
       setIsLoading(false)
     }
@@ -642,7 +688,7 @@ function Chat1v1Component() {
                 <div className="space-y-6">
                   {messages.map((message, index) => {
                     const isUser = message.role === "user"
-                    const senderName = isUser ? userName : (message.role === "assistant" ? (currentRoom?.confederateName || "Confederate") : "Moderator")
+                    const senderName = isUser ? userName : (message.sender_id === "moderator" ? "Moderator" : (currentRoom?.confederateName || "Confederate"))
 
                     return (
                       <MessageAnimation
