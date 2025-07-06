@@ -519,7 +519,7 @@ function Chat2vs4Component() {
     return "Unknown"
   }
 
-  // Chat submit handler - will be implemented for LLM responses
+  // Chat submit handler with silent background moderation and LLM responses
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId2vs4) return
@@ -534,9 +534,7 @@ function Chat2vs4Component() {
       sessionStorage.setItem("userId", userId)
     }
 
-    setIsLoading(true)
-
-    // Insert user message into Supabase
+    // Insert user message into Supabase immediately (always show user's message)
     const userMessage = {
       room_id: roomId2vs4,
       sender_id: userId,
@@ -554,7 +552,6 @@ function Chat2vs4Component() {
       
     if (userError) {
       console.error("2vs4 Failed to send message:", userError)
-      setIsLoading(false)
       return
     }
     
@@ -580,8 +577,92 @@ function Chat2vs4Component() {
       })
     }
 
+    // Note: No typing indicator - moderation happens silently in background
+
+    // Moderate the user message after it's displayed
+    try {
+      console.log("2vs4 moderating user message:", trimmedInput)
+      const moderationResponse = await fetch("/api/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmedInput,
+          context: "2vs4 debate discussion",
+          topic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+        }),
+      })
+
+      if (!moderationResponse.ok) {
+        throw new Error("Moderation service unavailable")
+      }
+
+      const moderationResult = await moderationResponse.json()
+      console.log("2vs4 moderation result:", moderationResult)
+
+      if (!moderationResult.isSafe) {
+        // Message is unsafe - send moderator warning
+        console.log("2vs4 message flagged as unsafe:", moderationResult.reason)
+        
+        // Wait before showing moderator response
+        setTimeout(async () => {
+          const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+          const moderatorMessage = {
+            room_id: roomId2vs4,
+            sender_id: "moderator",
+            sender_role: "system",
+            content: `I'd like to keep our discussion focused on ${topicDisplayName}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
+          }
+
+          try {
+            const { data: insertedModeratorMessage, error: moderatorError } = await supabase
+              .from("messages")
+              .insert([moderatorMessage])
+              .select()
+              .single()
+              
+            if (!moderatorError && insertedModeratorMessage) {
+              console.log('2vs4 moderator message inserted successfully')
+              const localModeratorMessage = {
+                id: insertedModeratorMessage.id,
+                role: insertedModeratorMessage.sender_role,
+                content: insertedModeratorMessage.content,
+                sender_id: insertedModeratorMessage.sender_id,
+                created_at: insertedModeratorMessage.created_at,
+                isUnsafeResponse: true, // Flag for red background
+              }
+              
+              setMessages(prev => {
+                if (prev.some(msg => msg.id === localModeratorMessage.id)) {
+                  return prev
+                }
+                return [...prev, localModeratorMessage].sort((a, b) => 
+                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
+              })
+            } else {
+              console.error('2vs4 error inserting moderator message:', moderatorError)
+            }
+          } catch (error) {
+            console.error("2vs4 error adding moderator message:", error)
+          }
+        }, 2000) // 2 second delay for moderator response
+
+        return // Don't proceed to AI responses
+      } else {
+        // Message is safe - proceed with normal AI logic
+        console.log("2vs4 message approved, proceeding with AI logic")
+      }
+      
+    } catch (error) {
+      console.error("2vs4 error in moderation:", error)
+      // If moderation fails, proceed with normal AI logic
+    }
+
     // Implement LLM response logic for 2vs4
     try {
+      // Show loading indicator when AI responses are being generated
+      setIsLoading(true)
+      
       const storedName = sessionStorage.getItem("userName") || "User"
       const storedAge = sessionStorage.getItem("userAge") || "Unknown"
       const storedSex = sessionStorage.getItem("userSex") || "Unknown"
@@ -916,6 +997,20 @@ function Chat2vs4Component() {
 
           {/* Main chat area */}
           <div className="flex flex-1 flex-col bg-gray-50">
+            {/* Toggle button when sidebar is closed */}
+            {!sidebarOpen && (
+              <div className="hidden md:block absolute top-20 left-4 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleSidebar}
+                  className="bg-white shadow-md hover:bg-gray-50"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl space-y-6">
                 <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
@@ -984,7 +1079,9 @@ function Chat2vs4Component() {
                               messageAlignment === "justify-end"
                                 ? "rounded-tr-sm bg-primary text-primary-foreground"
                                 : message.role === "system"
-                                  ? "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
+                                  ? message.isUnsafeResponse
+                                    ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
+                                    : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
                                   : "rounded-tl-sm bg-white text-foreground",
                             )}
                             initial={{ scale: 0.95 }}
