@@ -583,29 +583,22 @@ function LLMvsConfederateComponent() {
           }
         }, 1000) // Wait 1 second for position evaluation to complete
 
-        // Also try to get the position change data from the last evaluation
-        setTimeout(async () => {
-          try {
-            // Check if there's position change data in the response
-            if (data.positionEvaluation) {
-              const changeData = {
-                change: data.positionEvaluation.confidenceChange,
-                reasoning: data.positionEvaluation.reasoning
-              }
-              setLastPositionChange(changeData)
-              
-              // Add to position history
-              setPositionHistory(prev => [...prev, {
-                change: data.positionEvaluation.confidenceChange,
-                reasoning: data.positionEvaluation.reasoning,
-                messageType: data.positionEvaluation.messageType,
-                timestamp: new Date()
-              }])
-            }
-          } catch (error) {
-            console.error('Error getting position change data:', error)
+        // Check for position evaluation data immediately after AI response
+        if (data.positionEvaluation) {
+          const changeData = {
+            change: data.positionEvaluation.confidenceChange,
+            reasoning: data.positionEvaluation.reasoning
           }
-        }, 1200)
+          setLastPositionChange(changeData)
+          
+          // Add to position history
+          setPositionHistory(prev => [...prev, {
+            change: data.positionEvaluation.confidenceChange,
+            reasoning: data.positionEvaluation.reasoning,
+            messageType: data.positionEvaluation.messageType,
+            timestamp: new Date()
+          }])
+        }
 
       } catch (error) {
         console.error("Error getting AI response:", error)
@@ -807,6 +800,14 @@ function LLMvsConfederateComponent() {
                         <div className="flex flex-col flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{member.name}</span>
+                            {member.role === "ai" && process.env.NODE_ENV === "development" && (
+                              <button 
+                                onClick={() => setLastPositionChange({change: 0.15, reasoning: "Test position change"})}
+                                className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
+                              >
+                                Test
+                              </button>
+                            )}
                             {member.position && (
                               <div className="flex items-center gap-2">
                                 <span className={cn(
