@@ -153,10 +153,15 @@ function LLMvsConfederateComponent() {
               return updated
             })
             
-            // Start session and add moderator message when we have both participants
+            // Start session when we have both participants
             if (data && data.length >= 2 && !sessionStarted && !sessionEnded) {
-              console.log('Auto-starting LLM vs Confederate session with moderator message')
+              console.log('Auto-starting LLM vs Confederate session')
               handleSessionStart()
+            }
+            
+            // Add moderator message when we have both participants (separate from session start)
+            if (data && data.length >= 2 && !moderatorMessageSentRef.current) {
+              setTimeout(() => addInitialModeratorMessage(), 500)
             }
           }
         } catch (error) {
@@ -302,9 +307,6 @@ function LLMvsConfederateComponent() {
       })
       setSessionTime((prev) => prev + 1)
     }, 1000)
-    
-    // Add moderator message after a short delay
-    setTimeout(() => addInitialModeratorMessage(), 500)
   }
 
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
