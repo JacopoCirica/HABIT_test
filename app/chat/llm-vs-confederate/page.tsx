@@ -414,7 +414,7 @@ function LLMvsConfederateComponent() {
   // Chat submit handler (adapted for LLM vs Confederate)
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
+    if (sessionEnded || sessionPaused || !input.trim() || !roomId) return
 
     // Start session on first message
     if (!sessionStarted) {
@@ -534,6 +534,29 @@ function LLMvsConfederateComponent() {
       }
     }, 1000 + Math.random() * 2000) // 1-3 second delay
   }
+
+  // Start session automatically when room is ready
+  useEffect(() => {
+    if (room && roomId && members.length >= 2 && !sessionStarted && !sessionEnded) {
+      console.log('Auto-starting LLM vs Confederate session')
+      setSessionStarted(true)
+      
+      // Start session timer
+      const interval = setInterval(() => {
+        setSessionTimeRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval)
+            setSessionEnded(true)
+            return 0
+          }
+          return prev - 1
+        })
+        setSessionTime((prev) => prev + 1)
+      }, 1000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [room, roomId, members.length, sessionStarted, sessionEnded])
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -865,12 +888,12 @@ function LLMvsConfederateComponent() {
                     value={input}
                     onChange={handleInputChange}
                     placeholder="Type your message..."
-                    disabled={!sessionStarted || sessionEnded || sessionPaused || isLoading}
+                    disabled={sessionEnded || sessionPaused || isLoading}
                     className="flex-1"
                   />
                   <AnimatedButton
                     type="submit"
-                    disabled={!sessionStarted || sessionEnded || sessionPaused || !input.trim() || isLoading}
+                    disabled={sessionEnded || sessionPaused || !input.trim() || isLoading}
                   >
                     {isLoading ? "Sending..." : "Send"}
                   </AnimatedButton>
