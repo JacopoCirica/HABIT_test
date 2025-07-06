@@ -158,6 +158,11 @@ function LLMvsConfederateComponent() {
               console.log('Auto-starting LLM vs Confederate session with moderator message')
               handleSessionStart()
             }
+            
+            // Also try to add moderator message directly (backup trigger)
+            if (data && data.length >= 2 && !moderatorMessageSentRef.current) {
+              setTimeout(() => addInitialModeratorMessage(), 500)
+            }
           }
         } catch (error) {
           console.error('LLM vs Confederate error fetching members:', error)
@@ -304,7 +309,7 @@ function LLMvsConfederateComponent() {
     }, 1000)
     
     // Add moderator message after a short delay
-    setTimeout(() => addInitialModeratorMessage(), 1000)
+    setTimeout(() => addInitialModeratorMessage(), 500)
   }
 
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
@@ -331,6 +336,15 @@ function LLMvsConfederateComponent() {
 
   // Add initial moderator message when session starts
   const addInitialModeratorMessage = async () => {
+    console.log('LLM vs Confederate addInitialModeratorMessage called:', { 
+      roomId: !!roomId, 
+      debateTopic: !!debateTopic, 
+      alreadySent: moderatorMessageSentRef.current,
+      membersLength: members.length,
+      room: !!room,
+      roomData: room ? { llmName: room.llmName, llmPosition: room.llmPosition, topic: room.topic } : null
+    })
+    
     if (!roomId || !debateTopic || moderatorMessageSentRef.current) {
       console.log('LLM vs Confederate moderator message blocked:', { roomId: !!roomId, debateTopic: !!debateTopic, alreadySent: moderatorMessageSentRef.current })
       return
