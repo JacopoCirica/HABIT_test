@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
   const llmPositions = ["agree", "disagree"]
   const randomLLMPosition = llmPositions[Math.floor(Math.random() * llmPositions.length)]
   
-  // Assign random LLM name
-  const llmNames = ["Alex", "Sam", "Jordan", "Casey", "Riley", "Morgan", "Avery", "Quinn"]
+  // Assign random LLM name from the 5 defined characters
+  const llmNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
   const randomLLMName = llmNames[Math.floor(Math.random() * llmNames.length)]
   
   console.log('Creating LLM vs Confederate room:', {
@@ -71,9 +71,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Add LLM participant to room with position data
+    const intensityValues = ["0.1", "0.3", "0.5", "0.7", "1.0"]
+    const randomIntensity = intensityValues[Math.floor(Math.random() * intensityValues.length)]
+    
     const llmPositionData = {
       stance: randomLLMPosition === "agree" ? "for" : "against",
-      intensity: "1.0", // LLM has strong position
+      intensity: randomIntensity, // Random intensity between 0.1 and 1.0
       color: randomLLMPosition === "agree" ? "text-green-600" : "text-red-600",
       bgColor: randomLLMPosition === "agree" ? "bg-green-50" : "bg-red-50"
     }

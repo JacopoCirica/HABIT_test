@@ -81,7 +81,7 @@ function LLMvsConfederateComponent() {
 
   // Join LLM vs Confederate room
   useEffect(() => {
-    const confederateName = "Ben" // Default confederate name
+    const confederateName = "Marcus" // Default confederate name
     let userId = `confederate_${Date.now()}`
     
     setLoadingRoom(true)
@@ -112,7 +112,8 @@ function LLMvsConfederateComponent() {
         setUserNameCache(prev => ({
           ...prev,
           [userId]: confederateName,
-          [`llm_${room.llmName?.toLowerCase()}`]: room.llmName
+          "confederate_marcus": confederateName,
+          [`llm_${room.llmName?.toLowerCase() || 'ai'}`]: room.llmName || 'AI'
         }))
         setCacheVersion(v => v + 1)
       })
@@ -294,7 +295,8 @@ function LLMvsConfederateComponent() {
     } else if (message.role === "assistant" || message.sender_id?.includes('llm_')) {
       return userNameCache[message.sender_id] || room?.llmName || "AI"
     } else if (message.role === "user") {
-      return userNameCache[message.sender_id] || "Confederate"
+      // For confederate messages, always return Marcus
+      return "Marcus"
     }
     return "Unknown"
   }
@@ -309,7 +311,7 @@ function LLMvsConfederateComponent() {
 
     const userMessage = {
       room_id: roomId,
-      sender_id: `confederate_${Date.now()}`,
+      sender_id: "confederate_marcus",
       sender_role: "user",
       content: input.trim(),
     }
