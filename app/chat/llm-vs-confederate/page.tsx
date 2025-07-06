@@ -65,6 +65,7 @@ function LLMvsConfederateComponent() {
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
   const [debateTopic, setDebateTopic] = useState<string | null>(null)
+  const [positionUpdateTrigger, setPositionUpdateTrigger] = useState(0)
 
   // Function to get LLM's position from member data
   const getLLMPositionFromMemberData = (member: any) => {
@@ -570,11 +571,14 @@ function LLMvsConfederateComponent() {
                 nameCache[member.user_id] = userName || 'Unknown User'
               })
               setUserNameCache(prev => ({ ...prev, ...nameCache }))
+              
+              // Trigger position update to force re-render
+              setPositionUpdateTrigger(prev => prev + 1)
             }
           } catch (error) {
             console.error('Error refreshing members after position update:', error)
           }
-        }, 2000) // Wait 2 seconds for position evaluation to complete
+        }, 1000) // Wait 1 second for position evaluation to complete
 
       } catch (error) {
         console.error("Error getting AI response:", error)
@@ -588,6 +592,11 @@ function LLMvsConfederateComponent() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Force re-render when position data updates
+  useEffect(() => {
+    console.log('Position update trigger changed:', positionUpdateTrigger)
+  }, [positionUpdateTrigger])
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -757,7 +766,7 @@ function LLMvsConfederateComponent() {
                       { name: "Moderator", role: "moderator", position: null, isCurrentUser: false },
                     ].map((member, index) => (
                       <motion.div
-                        key={member.name}
+                        key={`${member.name}-${positionUpdateTrigger}`}
                         className="flex items-center gap-3 rounded-lg border p-3"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -774,10 +783,10 @@ function LLMvsConfederateComponent() {
                             {member.position && (
                               <span className={cn(
                                 "px-2 py-1 rounded-full text-xs font-medium",
-                                member.position.color,
-                                member.position.bgColor
+                                // Determine color based on intensity value, not stored color
+                                parseFloat(member.position.intensity) >= 0.5 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
                               )}>
-                                {member.position.stance === "for" ? "For" : member.position.stance === "against" ? "Against" : "Neutral"}: {member.position.intensity}
+                                {parseFloat(member.position.intensity) >= 0.5 ? "For" : "Against"}: {member.position.intensity}
                               </span>
                             )}
                           </div>

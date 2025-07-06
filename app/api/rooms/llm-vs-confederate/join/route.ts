@@ -74,11 +74,14 @@ export async function POST(req: NextRequest) {
     const intensityValues = ["0.1", "0.3", "0.5", "0.7", "1.0"]
     const randomIntensity = intensityValues[Math.floor(Math.random() * intensityValues.length)]
     
+    // Position data based on intensity value (0.1-1.0 scale)
+    // Values >= 0.5 are "for", values < 0.5 are "against"
+    const intensityFloat = parseFloat(randomIntensity)
     const llmPositionData = {
-      stance: randomLLMPosition === "agree" ? "for" : "against",
+      stance: intensityFloat >= 0.5 ? "for" : "against",
       intensity: randomIntensity, // Random intensity between 0.1 and 1.0
-      color: randomLLMPosition === "agree" ? "text-green-600" : "text-red-600",
-      bgColor: randomLLMPosition === "agree" ? "bg-green-50" : "bg-red-50"
+      color: intensityFloat >= 0.5 ? "text-green-600" : "text-red-600",
+      bgColor: intensityFloat >= 0.5 ? "bg-green-50" : "bg-red-50"
     }
 
     const { error: llmInsertError } = await supabase.from('room_users').insert([

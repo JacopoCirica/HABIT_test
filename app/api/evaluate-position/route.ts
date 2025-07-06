@@ -112,10 +112,13 @@ Respond with ONLY a JSON object:
     // Round to one decimal place
     newConfidence = Math.round(newConfidence * 10) / 10
 
-    // Create updated position data
+    // Create updated position data with correct stance based on intensity
     const updatedPosition = {
       ...currentPosition,
-      intensity: newConfidence.toString()
+      intensity: newConfidence.toString(),
+      stance: newConfidence >= 0.5 ? "for" : "against",
+      color: newConfidence >= 0.5 ? "text-green-600" : "text-red-600",
+      bgColor: newConfidence >= 0.5 ? "bg-green-50" : "bg-red-50"
     }
 
     // Update position in database
