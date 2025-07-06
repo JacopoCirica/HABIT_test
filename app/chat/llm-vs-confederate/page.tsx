@@ -38,6 +38,7 @@ function LLMvsConfederateComponent() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const moderatorMessageSentRef = useRef(false)
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const sessionTitle = "LLM vs Confederate Debate"
   const sessionDescription = "Debate against an AI opponent with a random position on a random topic"
@@ -152,9 +153,10 @@ function LLMvsConfederateComponent() {
               return updated
             })
             
-            // Add moderator message when we have both participants
-            if (data && data.length >= 2 && !moderatorMessageSentRef.current) {
-              setTimeout(() => addInitialModeratorMessage(), 500)
+            // Start session and add moderator message when we have both participants
+            if (data && data.length >= 2 && !sessionStarted && !sessionEnded) {
+              console.log('Auto-starting LLM vs Confederate session with moderator message')
+              handleSessionStart()
             }
           }
         } catch (error) {
@@ -166,7 +168,7 @@ function LLMvsConfederateComponent() {
       const interval = setInterval(fetchMembers, 2000)
       return () => clearInterval(interval)
     }
-  }, [room])
+  }, [room, sessionStarted, sessionEnded])
 
   // Set up Supabase subscription for messages (identical to 1v1-human)
   useEffect(() => {
@@ -276,6 +278,35 @@ function LLMvsConfederateComponent() {
   }
   const handleExitCancel = () => setExitDialogOpen(false)
 
+  const handleSessionStart = () => {
+    if (sessionStarted) return
+    
+    setSessionStarted(true)
+    
+    // Start session timer
+    if (sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current)
+    }
+    
+    sessionTimerRef.current = setInterval(() => {
+      setSessionTimeRemaining((prev) => {
+        if (prev <= 1) {
+          if (sessionTimerRef.current) {
+            clearInterval(sessionTimerRef.current)
+            sessionTimerRef.current = null
+          }
+          setSessionEnded(true)
+          return 0
+        }
+        return prev - 1
+      })
+      setSessionTime((prev) => prev + 1)
+    }, 1000)
+    
+    // Add moderator message after a short delay
+    setTimeout(() => addInitialModeratorMessage(), 1000)
+  }
+
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
     try {
       console.log("LLM vs Confederate survey responses:", responses)
@@ -340,14 +371,14 @@ function LLMvsConfederateComponent() {
     console.log('LLM vs Confederate adding initial moderator message...')
     moderatorMessageSentRef.current = true
     
-    const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+    const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion'
     const llmPosition = room.llmPosition === "agree" ? "supports" : "opposes"
     
     const moderatorMessage = {
       room_id: roomId,
       sender_id: "moderator",
       sender_role: "system",
-      content: `Welcome to the LLM vs Confederate debate! You are debating against "${room.llmName}" on the topic: "${topicDisplayName}". The AI ${llmPosition} this topic. Present your arguments and engage in a thoughtful debate. This session will last 15 minutes. You may begin when ready.`,
+      content: `Welcome to the LLM vs Confederate debate! You are debating against "${room.llmName || 'AI'}" on the topic: "${topicDisplayName}". The AI ${llmPosition} this topic. Present your arguments and engage in a thoughtful debate. This session will last 15 minutes. You may begin when ready.`,
     }
 
     try {
@@ -416,24 +447,6 @@ function LLMvsConfederateComponent() {
     e.preventDefault()
     if (sessionEnded || sessionPaused || !input.trim() || !roomId) return
 
-    // Start session on first message
-    if (!sessionStarted) {
-      setSessionStarted(true)
-      
-      // Start session timer
-      const interval = setInterval(() => {
-        setSessionTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval)
-            setSessionEnded(true)
-            return 0
-          }
-          return prev - 1
-        })
-        setSessionTime((prev) => prev + 1)
-      }, 1000)
-    }
-
     const trimmedInput = input.trim()
     setInput("")
 
@@ -492,9 +505,9 @@ function LLMvsConfederateComponent() {
         const requestBody = {
           messages: messagesForAPI,
           userTraits: {},
-          topic: chatTopicDisplayNames[debateTopic] || debateTopic,
+          topic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion',
           roomId: roomId,
-          debateTopic: chatTopicDisplayNames[debateTopic] || debateTopic,
+          debateTopic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion',
           userPosition: room.llmPosition === "agree" ? "disagree" : "agree", // Confederate takes opposite position
           confederateName: room.llmName,
           conversationContext: {
@@ -535,33 +548,19 @@ function LLMvsConfederateComponent() {
     }, 1000 + Math.random() * 2000) // 1-3 second delay
   }
 
-  // Start session automatically when room is ready
-  useEffect(() => {
-    if (room && roomId && members.length >= 2 && !sessionStarted && !sessionEnded) {
-      console.log('Auto-starting LLM vs Confederate session')
-      setSessionStarted(true)
-      
-      // Start session timer
-      const interval = setInterval(() => {
-        setSessionTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval)
-            setSessionEnded(true)
-            return 0
-          }
-          return prev - 1
-        })
-        setSessionTime((prev) => prev + 1)
-      }, 1000)
-      
-      return () => clearInterval(interval)
-    }
-  }, [room, roomId, members.length, sessionStarted, sessionEnded])
-
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current)
+      }
+    }
+  }, [])
 
   // Loading states (identical to 1v1-human)
   if (loadingRoom) {
@@ -757,7 +756,7 @@ function LLMvsConfederateComponent() {
                     <Card>
                       <CardContent className="p-4 text-sm">
                         <h3 className="mb-2 font-semibold">Current Topic</h3>
-                        <p className="mb-4 text-muted-foreground">{chatTopicDisplayNames[debateTopic] || debateTopic}</p>
+                        <p className="mb-4 text-muted-foreground">{debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion'}</p>
                         <h3 className="mb-2 font-semibold">Session Type</h3>
                         <p className="mb-4 text-muted-foreground">LLM vs Confederate</p>
                         <h3 className="mb-2 font-semibold">Session Duration</h3>
