@@ -101,15 +101,21 @@ export async function POST(req: NextRequest) {
   if (room) {
     console.log('Joining existing waiting room:', room.id);
     // Join as second user (confederate)
-    const { error: userInsertError } = await supabase.from('room_users').insert([
-      { 
-        room_id: room.id, 
-        user_id, 
-        user_name,
-        position_data: position_data,
-        debate_topic: debate_topic
-      }
-    ]);
+    const insertData: any = { 
+      room_id: room.id, 
+      user_id, 
+      user_name
+    }
+    
+    // Only add position data if it exists (for backward compatibility)
+    if (position_data) {
+      insertData.position_data = position_data
+    }
+    if (debate_topic) {
+      insertData.debate_topic = debate_topic
+    }
+    
+    const { error: userInsertError } = await supabase.from('room_users').insert([insertData]);
     if (userInsertError) {
       console.error('Error adding confederate user to existing room:', userInsertError);
       return NextResponse.json({ error: 'Failed to add user to room', details: userInsertError }, { status: 500 });
@@ -143,15 +149,21 @@ export async function POST(req: NextRequest) {
     }
     room = newRoom;
     // First user joins as regular participant
-    const { error: userInsertError } = await supabase.from('room_users').insert([
-      { 
-        room_id: room.id, 
-        user_id, 
-        user_name,
-        position_data: position_data,
-        debate_topic: debate_topic
-      }
-    ]);
+    const insertData: any = { 
+      room_id: room.id, 
+      user_id, 
+      user_name
+    }
+    
+    // Only add position data if it exists (for backward compatibility)
+    if (position_data) {
+      insertData.position_data = position_data
+    }
+    if (debate_topic) {
+      insertData.debate_topic = debate_topic
+    }
+    
+    const { error: userInsertError } = await supabase.from('room_users').insert([insertData]);
     if (userInsertError) {
       console.error('Error adding participant to new room:', userInsertError);
       return NextResponse.json({ error: 'Failed to add user to room', details: userInsertError }, { status: 500 });

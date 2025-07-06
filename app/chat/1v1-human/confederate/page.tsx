@@ -76,7 +76,7 @@ function ConfederateChat1v1HumanComponent() {
   // Function to get user's position from member data (for confederate to see)
   const getUserPositionFromMemberData = (member: any) => {
     try {
-      if (member.position_data) {
+      if (member && member.position_data) {
         return member.position_data
       }
       return null
