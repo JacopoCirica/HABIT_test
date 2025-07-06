@@ -505,7 +505,7 @@ function Chat1v1HumanComponent() {
     return "Unknown"
   }
 
-  // Chat submit handler - just insert message, no LLM responses
+  // Chat submit handler with moderation layer
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId1v1Human) return
@@ -520,9 +520,7 @@ function Chat1v1HumanComponent() {
       sessionStorage.setItem("userId", userId)
     }
 
-    setIsLoading(true)
-
-    // Insert user message into Supabase
+    // Insert user message into Supabase immediately (always show user's message)
     const userMessage = {
       room_id: roomId1v1Human,
       sender_id: userId,
@@ -540,7 +538,6 @@ function Chat1v1HumanComponent() {
       
     if (userError) {
       console.error("1v1-human failed to send message:", userError)
-      setIsLoading(false)
       return
     }
     
@@ -566,8 +563,94 @@ function Chat1v1HumanComponent() {
       })
     }
 
-    // No LLM responses - this is human vs human
-    setIsLoading(false)
+    // Start typing indicator after 2 seconds
+    setTimeout(() => {
+      setIsLoading(true)
+    }, 2000)
+
+    // Moderate the user message after it's displayed
+    try {
+      console.log("1v1-human moderating user message:", trimmedInput)
+      const moderationResponse = await fetch("/api/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmedInput,
+          context: "1v1 human debate discussion",
+          topic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+        }),
+      })
+
+      if (!moderationResponse.ok) {
+        throw new Error("Moderation service unavailable")
+      }
+
+      const moderationResult = await moderationResponse.json()
+      console.log("1v1-human moderation result:", moderationResult)
+
+      if (!moderationResult.isSafe) {
+        // Message is unsafe - send moderator warning
+        console.log("1v1-human message flagged as unsafe:", moderationResult.reason)
+        
+        // Wait for typing delay before showing moderator response
+        setTimeout(async () => {
+          const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+          const moderatorMessage = {
+            room_id: roomId1v1Human,
+            sender_id: "moderator",
+            sender_role: "system",
+            content: `I'd like to keep our discussion focused on ${topicDisplayName}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
+          }
+
+          try {
+            const { data: insertedModeratorMessage, error: moderatorError } = await supabase
+              .from("messages")
+              .insert([moderatorMessage])
+              .select()
+              .single()
+              
+            if (!moderatorError && insertedModeratorMessage) {
+              console.log('1v1-human moderator message inserted successfully')
+              const localModeratorMessage = {
+                id: insertedModeratorMessage.id,
+                role: insertedModeratorMessage.sender_role,
+                content: insertedModeratorMessage.content,
+                sender_id: insertedModeratorMessage.sender_id,
+                created_at: insertedModeratorMessage.created_at,
+                isUnsafeResponse: true, // Flag for red background
+              }
+              
+              setMessages(prev => {
+                if (prev.some(msg => msg.id === localModeratorMessage.id)) {
+                  return prev
+                }
+                return [...prev, localModeratorMessage].sort((a, b) => 
+                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
+              })
+            } else {
+              console.error('1v1-human error inserting moderator message:', moderatorError)
+            }
+          } catch (error) {
+            console.error("1v1-human error adding moderator message:", error)
+          }
+          
+          setIsLoading(false)
+        }, 2000) // Additional 2 second delay for moderator response
+      } else {
+        // Message is safe - no additional action needed, just clear loading
+        setTimeout(() => {
+          setIsLoading(false)
+        }, 2000)
+      }
+      
+    } catch (error) {
+      console.error("1v1-human error in moderation:", error)
+      // If moderation fails, just clear loading after delay
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 2000)
+    }
   }
 
   // Auto-scroll to bottom
@@ -811,6 +894,20 @@ function Chat1v1HumanComponent() {
 
           {/* Main chat area */}
           <div className="flex flex-1 flex-col bg-gray-50">
+            {/* Toggle button when sidebar is closed */}
+            {!sidebarOpen && (
+              <div className="hidden md:block absolute top-20 left-4 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleSidebar}
+                  className="bg-white shadow-md hover:bg-gray-50"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl space-y-6">
                 <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
@@ -878,7 +975,9 @@ function Chat1v1HumanComponent() {
                               messageAlignment === "justify-end"
                                 ? "rounded-tr-sm bg-primary text-primary-foreground"
                                 : message.role === "system"
-                                  ? "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
+                                  ? message.isUnsafeResponse
+                                    ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
+                                    : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
                                   : "rounded-tl-sm bg-white text-foreground",
                             )}
                             initial={{ scale: 0.95 }}
@@ -898,6 +997,30 @@ function Chat1v1HumanComponent() {
                       </MessageAnimation>
                     )
                   })}
+                  
+                  {isLoading && (
+                    <MessageAnimation delay={0.1}>
+                      <div className="flex gap-3">
+                        <Avatar className="h-9 w-9 mt-1">
+                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                            M
+                          </div>
+                        </Avatar>
+                        <div className="flex max-w-[75%] flex-col items-start">
+                          <div className="mb-1">
+                            <span className="text-sm font-medium">Moderator</span>
+                          </div>
+                          <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-2.5 text-sm shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              <span className="text-muted-foreground">Checking message...</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </MessageAnimation>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
               </div>
