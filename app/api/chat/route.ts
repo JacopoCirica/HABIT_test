@@ -352,29 +352,50 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       const generatedText = result.text
 
       // Enhanced timing calculation based on character and content
-      let delayMs = 1200 // Base delay for thinking
+      let delayMs = 0
       
+      // 1. Reading time (slower, more realistic)
+      let readingTime = 0
       if (lastUserMessage && typeof lastUserMessage.content === "string") {
-        delayMs += lastUserMessage.content.length * 12 // Reading time
+        readingTime = lastUserMessage.content.length * 20 // Increased from 12ms to 20ms per character
       }
-      delayMs += generatedText.length * 18 // Typing time
       
-      // Character-specific timing adjustments
+      // 2. Base thinking time (varies by response complexity)
+      let thinkingTime = 800 // Base thinking time
+      const responseWordCount = generatedText.split(/\s+/).length
+      
+      if (responseWordCount <= 5) {
+        thinkingTime += 400 // Short response: quick thinking (1.2s total base thinking)
+      } else if (responseWordCount <= 15) {
+        thinkingTime += 1200 // Medium response: moderate thinking (2.0s total base thinking)
+      } else if (responseWordCount <= 30) {
+        thinkingTime += 2000 // Long response: more thinking (2.8s total base thinking)
+      } else {
+        thinkingTime += 3000 // Very long response: deep thinking (3.8s total base thinking)
+      }
+      
+      // 3. Typing time (slower, more realistic)
+      const typingTime = generatedText.length * 25 // Increased from 18ms to 25ms per character
+      
+      // 4. Combine all timing components
+      delayMs = readingTime + thinkingTime + typingTime
+      
+      // 5. Character-specific timing adjustments
       if (confederateName === "Chuck") {
-        delayMs *= 0.8 // Chuck responds quickly, energetically
+        delayMs *= 0.75 // Chuck responds quickly, energetically (25% faster)
       } else if (confederateName === "Ben") {
-        delayMs *= 1.2 // Ben thinks more carefully
+        delayMs *= 1.3 // Ben thinks more carefully (30% slower)
       } else if (confederateName === "Taylor") {
-        delayMs *= 0.9 // Taylor is laid-back but responsive
+        delayMs *= 0.9 // Taylor is laid-back but responsive (10% faster)
       } else if (confederateName === "Jamie") {
-        delayMs *= 0.85 // Jamie is quick and playful
+        delayMs *= 0.8 // Jamie is quick and playful (20% faster)
       } else if (confederateName === "Alex") {
-        delayMs *= 1.1 // Alex is methodical
+        delayMs *= 1.15 // Alex is methodical (15% slower)
       }
 
-      // Ensure realistic bounds
-      delayMs = Math.max(delayMs, 1800) // Minimum realistic response time
-      delayMs = Math.min(delayMs, 12000) // Maximum to avoid frustration
+      // 6. Ensure realistic bounds
+      delayMs = Math.max(delayMs, 2000) // Minimum realistic response time (increased from 1800ms)
+      delayMs = Math.min(delayMs, 15000) // Maximum to avoid frustration (increased from 12000ms)
 
       if (delayMs > 1200) {
         await new Promise((resolve) => setTimeout(resolve, delayMs))
