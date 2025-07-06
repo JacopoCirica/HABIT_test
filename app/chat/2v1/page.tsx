@@ -594,7 +594,7 @@ function Chat2v1Component() {
     return Math.random() < responseChance
   }
 
-  // Enhanced chat submit handler with intelligent AI response logic
+  // Enhanced chat submit handler with intelligent AI response logic and moderation
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
@@ -609,9 +609,7 @@ function Chat2v1Component() {
       sessionStorage.setItem("userId", userId)
     }
 
-    setIsLoading(true)
-
-    // Insert user message into Supabase
+    // Insert user message into Supabase immediately (always show user's message)
     const userMessage = {
       room_id: roomId,
       sender_id: userId,
@@ -627,7 +625,6 @@ function Chat2v1Component() {
       
     if (userError) {
       console.error("Failed to send message:", userError)
-      setIsLoading(false)
       return
     }
     
@@ -651,6 +648,87 @@ function Chat2v1Component() {
       })
     }
 
+    // Note: No typing indicator - moderation happens silently in background
+
+    // Moderate the user message after it's displayed
+    try {
+      console.log("2v1 moderating user message:", trimmedInput)
+      const moderationResponse = await fetch("/api/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmedInput,
+          context: "2v1 debate discussion",
+          topic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+        }),
+      })
+
+      if (!moderationResponse.ok) {
+        throw new Error("Moderation service unavailable")
+      }
+
+      const moderationResult = await moderationResponse.json()
+      console.log("2v1 moderation result:", moderationResult)
+
+      if (!moderationResult.isSafe) {
+        // Message is unsafe - send moderator warning
+        console.log("2v1 message flagged as unsafe:", moderationResult.reason)
+        
+        // Wait before showing moderator response
+        setTimeout(async () => {
+          const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+          const moderatorMessage = {
+            room_id: roomId,
+            sender_id: "moderator",
+            sender_role: "system",
+            content: `I'd like to keep our discussion focused on ${topicDisplayName}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
+          }
+
+          try {
+            const { data: insertedModeratorMessage, error: moderatorError } = await supabase
+              .from("messages")
+              .insert([moderatorMessage])
+              .select()
+              .single()
+              
+            if (!moderatorError && insertedModeratorMessage) {
+              console.log('2v1 moderator message inserted successfully')
+              const localModeratorMessage = {
+                id: insertedModeratorMessage.id,
+                role: insertedModeratorMessage.sender_role,
+                content: insertedModeratorMessage.content,
+                sender_id: insertedModeratorMessage.sender_id,
+                created_at: insertedModeratorMessage.created_at,
+                isUnsafeResponse: true, // Flag for red background
+              }
+              
+              setMessages(prev => {
+                if (prev.some(msg => msg.id === localModeratorMessage.id)) {
+                  return prev
+                }
+                return [...prev, localModeratorMessage].sort((a, b) => 
+                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
+              })
+            } else {
+              console.error('2v1 error inserting moderator message:', moderatorError)
+            }
+          } catch (error) {
+            console.error("2v1 error adding moderator message:", error)
+          }
+        }, 2000) // 2 second delay for moderator response
+
+        return // Don't proceed to confederate response
+      } else {
+        // Message is safe - proceed with normal AI logic
+        console.log("2v1 message approved, proceeding with AI logic")
+      }
+      
+    } catch (error) {
+      console.error("2v1 error in moderation:", error)
+      // If moderation fails, proceed with normal AI logic
+    }
+
     // Determine if AI should respond using intelligent logic
     const newMessageForAnalysis = {
       id: insertedMessage.id,
@@ -664,9 +742,11 @@ function Chat2v1Component() {
     console.log(`AI decision: ${shouldRespond ? 'RESPOND' : 'STAY SILENT'}`)
     
     if (!shouldRespond) {
-      setIsLoading(false)
       return // AI chooses not to respond this time
     }
+
+    // Show loading indicator only when AI is responding
+    setIsLoading(true)
 
     // Add natural delay before AI responds (1-4 seconds)
     const responseDelay = Math.random() * 3000 + 1000 // 1-4 seconds
@@ -999,6 +1079,20 @@ function Chat2v1Component() {
 
           {/* Main chat area */}
           <div className="flex flex-1 flex-col bg-gray-50">
+            {/* Toggle button when sidebar is closed */}
+            {!sidebarOpen && (
+              <div className="hidden md:block absolute top-20 left-4 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleSidebar}
+                  className="bg-white shadow-md hover:bg-gray-50"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl space-y-6">
                 <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
@@ -1067,7 +1161,9 @@ function Chat2v1Component() {
                               messageAlignment === "justify-end"
                                 ? "rounded-tr-sm bg-primary text-primary-foreground"
                                 : message.role === "system"
-                                  ? "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
+                                  ? message.isUnsafeResponse
+                                    ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
+                                    : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
                                   : "rounded-tl-sm bg-white text-foreground",
                             )}
                             initial={{ scale: 0.95 }}
