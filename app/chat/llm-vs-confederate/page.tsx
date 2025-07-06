@@ -504,6 +504,10 @@ function LLMvsConfederateComponent() {
           content: msg.content
         }))
         
+        // Get current LLM position data for evaluation
+        const llmMember = members.find(member => member.user_id?.includes('llm_'))
+        const currentLLMPosition = llmMember ? getLLMPositionFromMemberData(llmMember) : null
+
         const requestBody = {
           messages: messagesForAPI,
           userTraits: {},
@@ -512,6 +516,8 @@ function LLMvsConfederateComponent() {
           debateTopic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion',
           userPosition: room.llmPosition === "agree" ? "disagree" : "agree", // Confederate takes opposite position
           confederateName: room.llmName,
+          responderId: `llm_${room.llmName?.toLowerCase() || 'ai'}`, // For position evaluation
+          currentPosition: currentLLMPosition, // Current AI position for evaluation
           conversationContext: {
             isDebateActive: true,
             uniqueUserCount: 2,
@@ -541,6 +547,28 @@ function LLMvsConfederateComponent() {
         }
 
         await supabase.from("messages").insert([assistantMessage])
+
+        // Refresh members data to get updated position after a short delay
+        setTimeout(async () => {
+          try {
+            const res = await fetch(`/api/rooms/${roomId}/members`)
+            const updatedMembers = await res.json()
+            if (updatedMembers) {
+              console.log('Refreshed members after position update:', updatedMembers)
+              setMembers(updatedMembers)
+              
+              // Update name cache with refreshed data
+              const nameCache: Record<string, string> = {}
+              updatedMembers.forEach((member: any) => {
+                const userName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
+                nameCache[member.user_id] = userName || 'Unknown User'
+              })
+              setUserNameCache(prev => ({ ...prev, ...nameCache }))
+            }
+          } catch (error) {
+            console.error('Error refreshing members after position update:', error)
+          }
+        }, 2000) // Wait 2 seconds for position evaluation to complete
 
       } catch (error) {
         console.error("Error getting AI response:", error)

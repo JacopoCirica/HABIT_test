@@ -401,6 +401,42 @@ Remember: You are ${confederateName || "your character"} having a real conversat
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
 
+      // Evaluate and update AI's position confidence after generating response
+      if (confederateName && debateTopic && roomId && responderId) {
+        try {
+          // Get current position data from the request context or fetch it
+          const currentPosition = body.currentPosition || {
+            stance: userPosition === "agree" ? "against" : "for", // AI takes opposite stance
+            intensity: "0.5", // Default if not provided
+            color: userPosition === "agree" ? "text-red-600" : "text-green-600",
+            bgColor: userPosition === "agree" ? "bg-red-50" : "bg-green-50"
+          }
+
+          // Call position evaluator
+          const evaluationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/evaluate-position`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: generatedText,
+              currentPosition,
+              debateTopic,
+              roomId,
+              llmUserId: responderId
+            })
+          })
+
+          if (evaluationResponse.ok) {
+            const evaluationResult = await evaluationResponse.json()
+            console.log('Position evaluation completed:', evaluationResult)
+          } else {
+            console.error('Position evaluation failed:', evaluationResponse.status)
+          }
+        } catch (evalError) {
+          console.error('Position evaluation error:', evalError)
+          // Don't fail the main response if evaluation fails
+        }
+      }
+
       return NextResponse.json({
         id: `msg_success_${Date.now()}`,
         role: "assistant",
