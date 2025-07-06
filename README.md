@@ -14,6 +14,7 @@ HABIT is a comprehensive research platform designed to study human-AI interactio
 ### Chat Room Types
 - **1v1 Chat**: Human vs AI Confederate debates
 - **1v1 Human Debate**: Human vs Human Confederate debates
+- **LLM vs Confederate**: AI opponents for confederate training (random topics/positions)
 - **2v1 Chat**: Human vs AI Confederate with intelligent responses
 - **2vs4 Chat**: Complex group debates with multiple AI participants
 - **Team vs Team**: Red vs Blue team debates with mixed participants
@@ -34,9 +35,16 @@ HABIT is a comprehensive research platform designed to study human-AI interactio
 ## Confederate Access System
 
 ### For Researchers
-Share the confederate link with external participants:
+Share confederate links with external participants:
+
+**Human vs Human Debates:**
 ```
 https://your-domain.com/chat/1v1-human/confederate
+```
+
+**LLM vs Confederate Training:**
+```
+https://your-domain.com/chat/llm-vs-confederate
 ```
 
 ### For Confederates
