@@ -551,7 +551,7 @@ function ChatTeamVsTeamComponent() {
     return "Unknown"
   }
 
-  // Chat submit handler - will implement team LLM responses
+  // Chat submit handler with silent background moderation and team LLM responses
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomIdTeamVsTeam) return
@@ -566,9 +566,7 @@ function ChatTeamVsTeamComponent() {
       sessionStorage.setItem("userId", userId)
     }
 
-    setIsLoading(true)
-
-    // Insert user message into Supabase
+    // Insert user message into Supabase immediately (always show user's message)
     const userMessage = {
       room_id: roomIdTeamVsTeam,
       sender_id: userId,
@@ -586,7 +584,6 @@ function ChatTeamVsTeamComponent() {
       
     if (userError) {
       console.error("Team-vs-team failed to send message:", userError)
-      setIsLoading(false)
       return
     }
     
@@ -612,9 +609,93 @@ function ChatTeamVsTeamComponent() {
       })
     }
 
+    // Note: No typing indicator - moderation happens silently in background
+
+    // Moderate the user message after it's displayed
+    try {
+      console.log("Team-vs-team moderating user message:", trimmedInput)
+      const moderationResponse = await fetch("/api/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmedInput,
+          context: "team-vs-team debate discussion",
+          topic: debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+        }),
+      })
+
+      if (!moderationResponse.ok) {
+        throw new Error("Moderation service unavailable")
+      }
+
+      const moderationResult = await moderationResponse.json()
+      console.log("Team-vs-team moderation result:", moderationResult)
+
+      if (!moderationResult.isSafe) {
+        // Message is unsafe - send moderator warning
+        console.log("Team-vs-team message flagged as unsafe:", moderationResult.reason)
+        
+        // Wait before showing moderator response
+        setTimeout(async () => {
+          const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "the current topic"
+          const moderatorMessage = {
+            room_id: roomIdTeamVsTeam,
+            sender_id: "moderator",
+            sender_role: "system",
+            content: `I'd like to keep our team battle focused on ${topicDisplayName}. Let's continue with a respectful debate about the subject. What are your thoughts on the main points we should be discussing?`,
+          }
+
+          try {
+            const { data: insertedModeratorMessage, error: moderatorError } = await supabase
+              .from("messages")
+              .insert([moderatorMessage])
+              .select()
+              .single()
+              
+            if (!moderatorError && insertedModeratorMessage) {
+              console.log('Team-vs-team moderator message inserted successfully')
+              const localModeratorMessage = {
+                id: insertedModeratorMessage.id,
+                role: insertedModeratorMessage.sender_role,
+                content: insertedModeratorMessage.content,
+                sender_id: insertedModeratorMessage.sender_id,
+                created_at: insertedModeratorMessage.created_at,
+                isUnsafeResponse: true, // Flag for red background
+              }
+              
+              setMessages(prev => {
+                if (prev.some(msg => msg.id === localModeratorMessage.id)) {
+                  return prev
+                }
+                return [...prev, localModeratorMessage].sort((a, b) => 
+                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
+              })
+            } else {
+              console.error('Team-vs-team error inserting moderator message:', moderatorError)
+            }
+          } catch (error) {
+            console.error("Team-vs-team error adding moderator message:", error)
+          }
+        }, 2000) // 2 second delay for moderator response
+
+        return // Don't proceed to team LLM responses
+      } else {
+        // Message is safe - proceed with normal team LLM logic
+        console.log("Team-vs-team message approved, proceeding with team LLM logic")
+      }
+      
+    } catch (error) {
+      console.error("Team-vs-team error in moderation:", error)
+      // If moderation fails, proceed with normal team LLM logic
+    }
+
     // Trigger LLM responses after user message is sent
     if (teamAssignments && room?.team_assignments) {
       try {
+        // Show loading indicator when team responses are being generated
+        setIsLoading(true)
+        
         console.log('Team-vs-team triggering LLM responses')
         const response = await fetch('/api/chat/team-vs-team', {
           method: 'POST',
@@ -636,12 +717,13 @@ function ChatTeamVsTeamComponent() {
           const result = await response.json()
           console.log('Team-vs-team LLM responses triggered:', result.respondingLLMs)
         }
+        
+        setIsLoading(false)
       } catch (error) {
         console.error('Team-vs-team error calling LLM API:', error)
+        setIsLoading(false)
       }
     }
-    
-    setIsLoading(false)
   }
 
   // Refetch messages when session starts (after training completion)
@@ -1158,7 +1240,9 @@ function ChatTeamVsTeamComponent() {
                             className={cn(
                               "rounded-2xl px-4 py-2.5 text-sm shadow-sm border",
                               message.role === "system"
-                                ? "rounded-tl-sm bg-purple-50 text-purple-700 border-purple-200"
+                                ? message.isUnsafeResponse
+                                  ? "rounded-tl-sm bg-red-100 text-red-800 border-red-300"
+                                  : "rounded-tl-sm bg-purple-50 text-purple-700 border-purple-200"
                                 : `rounded-tl-sm ${messageBgColor}`,
                             )}
                             initial={{ scale: 0.95 }}
