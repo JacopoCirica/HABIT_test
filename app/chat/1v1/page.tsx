@@ -344,10 +344,7 @@ function Chat1v1Component() {
       localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
     }
 
-    // Start typing indicator after 2 seconds
-    setTimeout(() => {
-      setIsLoading(true)
-    }, 2000)
+    // Note: No typing indicator - moderation happens silently in background
 
     // Moderate the user message after it's displayed
     try {
@@ -373,7 +370,7 @@ function Chat1v1Component() {
         // Message is unsafe - send moderator warning instead of confederate response
         console.log("Message flagged as unsafe:", moderationResult.reason)
         
-        // Wait for typing delay before showing moderator response
+        // Wait before showing moderator response
         setTimeout(() => {
           const moderatorMessage = {
             id: `moderator_${Date.now()}`,
@@ -397,8 +394,8 @@ function Chat1v1Component() {
             localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
           }
           
-          setIsLoading(false)
-        }, 2000) // Additional 2 second delay for moderator response
+          // No loading state to clear since we don't show typing indicator
+        }, 2000) // 2 second delay for moderator response
         
         return // Don't proceed to confederate response
       }
@@ -407,6 +404,7 @@ function Chat1v1Component() {
       console.log("Message approved, sending to confederate")
 
       setTimeout(async () => {
+        setIsLoading(true) // Show typing indicator only for confederate response
         try {
           const storedName = sessionStorage.getItem("userName") || "User"
           const storedAge = sessionStorage.getItem("userAge") || "Unknown"
@@ -514,6 +512,7 @@ function Chat1v1Component() {
       
       // If moderation fails, proceed with confederate response after delay
       setTimeout(async () => {
+        setIsLoading(true) // Show typing indicator only for confederate response
         try {
           const storedName = sessionStorage.getItem("userName") || "User"
           const storedAge = sessionStorage.getItem("userAge") || "Unknown"

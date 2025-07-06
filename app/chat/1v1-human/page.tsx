@@ -563,10 +563,7 @@ function Chat1v1HumanComponent() {
       })
     }
 
-    // Start typing indicator after 2 seconds
-    setTimeout(() => {
-      setIsLoading(true)
-    }, 2000)
+    // Note: No typing indicator - moderation happens silently in background
 
     // Moderate the user message after it's displayed
     try {
@@ -592,8 +589,8 @@ function Chat1v1HumanComponent() {
         // Message is unsafe - send moderator warning
         console.log("1v1-human message flagged as unsafe:", moderationResult.reason)
         
-        // Wait for typing delay before showing moderator response
-        setTimeout(async () => {
+                 // Wait before showing moderator response
+         setTimeout(async () => {
           const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
           const moderatorMessage = {
             room_id: roomId1v1Human,
@@ -635,22 +632,17 @@ function Chat1v1HumanComponent() {
             console.error("1v1-human error adding moderator message:", error)
           }
           
-          setIsLoading(false)
-        }, 2000) // Additional 2 second delay for moderator response
-      } else {
-        // Message is safe - no additional action needed, just clear loading
-        setTimeout(() => {
-          setIsLoading(false)
-        }, 2000)
-      }
+                     // No loading state to clear since we don't show typing indicator
+         }, 2000) // 2 second delay for moderator response
+       } else {
+         // Message is safe - no additional action needed
+         console.log("1v1-human message approved, no moderator intervention needed")
+       }
       
-    } catch (error) {
-      console.error("1v1-human error in moderation:", error)
-      // If moderation fails, just clear loading after delay
-      setTimeout(() => {
-        setIsLoading(false)
-      }, 2000)
-    }
+         } catch (error) {
+       console.error("1v1-human error in moderation:", error)
+       // If moderation fails, no action needed (no loading state to clear)
+     }
   }
 
   // Auto-scroll to bottom
@@ -997,29 +989,6 @@ function Chat1v1HumanComponent() {
                       </MessageAnimation>
                     )
                   })}
-                  
-                  {isLoading && (
-                    <MessageAnimation delay={0.1}>
-                      <div className="flex gap-3">
-                        <Avatar className="h-9 w-9 mt-1">
-                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                            M
-                          </div>
-                        </Avatar>
-                        <div className="flex max-w-[75%] flex-col items-start">
-                          <div className="mb-1">
-                            <span className="text-sm font-medium">Moderator</span>
-                          </div>
-                          <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-2.5 text-sm shadow-sm">
-                            <div className="flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              <span className="text-muted-foreground">Checking message...</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </MessageAnimation>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
