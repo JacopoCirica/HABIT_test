@@ -42,7 +42,7 @@ function LLMvsConfederateComponent() {
   const sessionTitle = "LLM vs Confederate Debate"
   const sessionDescription = "Debate against an AI opponent with a random position on a random topic"
 
-  // State management
+  // State management (identical to 1v1-human)
   const [room, setRoom] = useState<any>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [loadingRoom, setLoadingRoom] = useState(true)
@@ -60,7 +60,6 @@ function LLMvsConfederateComponent() {
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
   const [showExitSurvey, setShowExitSurvey] = useState(false)
   const [showSurveyThankYou, setShowSurveyThankYou] = useState(false)
-  const [showTraining, setShowTraining] = useState(true)
   const [fetchError, setFetchError] = useState<any>(null)
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
@@ -81,8 +80,8 @@ function LLMvsConfederateComponent() {
 
   // Join LLM vs Confederate room
   useEffect(() => {
-    const confederateName = "Marcus" // Default confederate name
-    let userId = `confederate_${Date.now()}`
+    const confederateName = "Marcus"
+    let userId = "confederate_marcus"
     
     setLoadingRoom(true)
     
@@ -125,395 +124,555 @@ function LLMvsConfederateComponent() {
       .finally(() => setLoadingRoom(false))
   }, [])
 
-  // Fetch members when room is available
+  // Fetch and poll members (identical to 1v1-human)
   useEffect(() => {
-    if (room?.id) {
+    if (room && room.id) {
       const fetchMembers = async () => {
         try {
-          const response = await fetch(`/api/rooms/${room.id}/members`)
-          if (response.ok) {
-            const membersData = await response.json()
-            setMembers(membersData || [])
-            
-            // Update user name cache with member names
-            const nameUpdates: Record<string, string> = {}
-            membersData?.forEach((member: any) => {
-              nameUpdates[member.user_id] = member.user_name
+          const res = await fetch(`/api/rooms/${room.id}/members`)
+          const data = await res.json()
+          console.log('LLM vs Confederate fetched members:', data)
+          setMembers(data || [])
+          
+          // Populate the user name cache with fetched members
+          if (data && data.length > 0) {
+            const nameCache: Record<string, string> = {}
+            data.forEach((member: any) => {
+              const userName = Array.isArray(member.user_name) ? member.user_name[0] : member.user_name
+              nameCache[member.user_id] = userName || 'Unknown User'
             })
-            setUserNameCache(prev => ({ ...prev, ...nameUpdates }))
-            setCacheVersion(v => v + 1)
+            console.log('LLM vs Confederate final name cache:', nameCache)
+            setUserNameCache(prev => {
+              const updated = {
+                ...prev,
+                ...nameCache
+              }
+              console.log('LLM vs Confederate cache updated:', updated)
+              setCacheVersion(v => v + 1)
+              return updated
+            })
+            
+            // Add moderator message when we have both participants
+            if (data && data.length >= 2 && !moderatorMessageSentRef.current) {
+              setTimeout(() => addInitialModeratorMessage(), 500)
+            }
           }
         } catch (error) {
-          console.error("Error fetching members:", error)
+          console.error('LLM vs Confederate error fetching members:', error)
         }
       }
       
       fetchMembers()
+      const interval = setInterval(fetchMembers, 2000)
+      return () => clearInterval(interval)
     }
-  }, [room?.id])
+  }, [room])
 
-  // Set up real-time subscriptions
+  // Set up Supabase subscription for messages (identical to 1v1-human)
   useEffect(() => {
     if (!roomId) return
 
-    console.log("Setting up LLM vs Confederate subscriptions for room:", roomId)
+    console.log('LLM vs Confederate setting up subscription for roomId:', roomId)
+
+    // Fetch all messages for this room on initial load
+    const fetchMessages = async () => {
+      console.log('LLM vs Confederate fetching messages for roomId:', roomId)
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true })
+      if (!error && data) {
+        console.log('LLM vs Confederate fetched messages:', data)
+        const fetchedMessages = data.map((msg) => ({
+          id: msg.id,
+          role: msg.sender_role,
+          content: msg.content,
+          sender_id: msg.sender_id,
+          created_at: msg.created_at,
+        }))
+        
+        setMessages(fetchedMessages)
+        setFetchError(null)
+        
+        // Check if moderator message already exists
+        const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
+        if (hasModeratorMessage) {
+          moderatorMessageSentRef.current = true
+        }
+      } else {
+        console.error('LLM vs Confederate error fetching messages:', error)
+        setFetchError(error)
+      }
+    }
+    fetchMessages()
 
     // Subscribe to new messages
-    const messagesSubscription = supabase
-      .channel(`messages:${roomId}`)
+    const channel = supabase
+      .channel('llm-vs-confederate-room-messages')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
-          console.log("New message received:", payload.new)
+          console.log('LLM vs Confederate received new message:', payload.new)
           const newMessage = payload.new
-          setMessages((prev) => [...prev, newMessage])
-        }
-      )
-      .subscribe()
-
-    // Subscribe to member changes
-    const membersSubscription = supabase
-      .channel(`members:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public", 
-          table: "room_users",
-          filter: `room_id=eq.${roomId}`,
-        },
-        () => {
-          // Refetch members when changes occur
-          fetch(`/api/rooms/${roomId}/members`)
-            .then(res => res.json())
-            .then(data => {
-              setMembers(data || [])
-              const nameUpdates: Record<string, string> = {}
-              data?.forEach((member: any) => {
-                nameUpdates[member.user_id] = member.user_name
-              })
-              setUserNameCache(prev => ({ ...prev, ...nameUpdates }))
-              setCacheVersion(v => v + 1)
-            })
-            .catch(console.error)
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === newMessage.id)) {
+              return prev
+            }
+            return [
+              ...prev,
+              {
+                id: newMessage.id,
+                role: newMessage.sender_role,
+                content: newMessage.content,
+                sender_id: newMessage.sender_id,
+                created_at: newMessage.created_at,
+              },
+            ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          })
         }
       )
       .subscribe()
 
     return () => {
-      console.log("Cleaning up LLM vs Confederate subscriptions")
-      supabase.removeChannel(messagesSubscription)
-      supabase.removeChannel(membersSubscription)
+      supabase.removeChannel(channel)
     }
   }, [roomId])
 
-  // Add initial moderator message
-  useEffect(() => {
-    if (room && !moderatorMessageSentRef.current && debateTopic) {
-      const addInitialModeratorMessage = async () => {
-        moderatorMessageSentRef.current = true
-        
-        const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
-        const llmPosition = room.llmPosition === "agree" ? "supports" : "opposes"
-        
-        const moderatorMessage = {
-          room_id: roomId,
-          sender_id: "moderator",
-          sender_role: "system",
-          content: `Welcome to the LLM vs Confederate debate! You are debating against "${room.llmName}" on the topic: "${topicDisplayName}". The AI ${llmPosition} this topic. Present your arguments and engage in a thoughtful debate. This session will last 15 minutes. You may begin when ready.`,
-        }
+  // Helper functions (identical to 1v1-human)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
 
-        try {
-          const { data: insertedMessage, error } = await supabase
-            .from("messages")
-            .insert([moderatorMessage])
-            .select()
-            .single()
-            
-          if (error) {
-            console.error('Error inserting moderator message:', error)
-            moderatorMessageSentRef.current = false
-          }
-        } catch (error) {
-          console.error("Error adding moderator message:", error)
-          moderatorMessageSentRef.current = false
-        }
-      }
+  const getTimerColor = (timeRemaining: number) => {
+    if (timeRemaining <= 60) return "text-red-600"
+    if (timeRemaining <= 300) return "text-amber-600"
+    return "text-green-600"
+  }
 
-      addInitialModeratorMessage()
+  const getTimerBgColor = (timeRemaining: number) => {
+    if (timeRemaining <= 60) return "bg-red-50"
+    if (timeRemaining <= 300) return "bg-amber-50"
+    return "bg-green-50"
+  }
+
+  const getAvatarInitial = (name: string) => name.charAt(0).toUpperCase()
+
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
+  const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen)
+
+  const handleExitClick = () => setExitDialogOpen(true)
+  const handleExitConfirm = () => {
+    setShowExitSurvey(true)
+    setExitDialogOpen(false)
+  }
+  const handleExitCancel = () => setExitDialogOpen(false)
+
+  const handleSurveySubmit = async (responses: PostSurveyResponses) => {
+    try {
+      console.log("LLM vs Confederate survey responses:", responses)
+      setShowExitSurvey(false)
+      setShowSurveyThankYou(true)
+    } catch (error) {
+      console.error("LLM vs Confederate error submitting survey:", error)
     }
-  }, [room, roomId, debateTopic])
+  }
 
-  // Session timer
-  useEffect(() => {
-    if (!sessionStarted || sessionPaused || sessionEnded) return
+  const handleSurveyClose = () => {
+    setShowExitSurvey(false)
+    router.push("/")
+  }
 
-    const timer = setInterval(() => {
-      setSessionTime(prev => prev + 1)
-      setSessionTimeRemaining(prev => {
-        if (prev <= 1) {
-          setSessionEnded(true)
-          return 0
+  const handleThankYouClose = () => {
+    setShowSurveyThankYou(false)
+    router.push("/")
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)
+
+  // Add initial moderator message when session starts
+  const addInitialModeratorMessage = async () => {
+    if (!roomId || !debateTopic || moderatorMessageSentRef.current) {
+      console.log('LLM vs Confederate moderator message blocked:', { roomId: !!roomId, debateTopic: !!debateTopic, alreadySent: moderatorMessageSentRef.current })
+      return
+    }
+    
+    // Double-check database for existing moderator messages
+    try {
+      const { data: existingMessages, error } = await supabase
+        .from("messages")
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('sender_id', 'moderator')
+        .limit(1)
+      
+      if (existingMessages && existingMessages.length > 0) {
+        console.log('LLM vs Confederate moderator message already exists in database, skipping')
+        moderatorMessageSentRef.current = true
+        return
+      }
+    } catch (error) {
+      console.error('LLM vs Confederate error checking for existing moderator messages:', error)
+    }
+    
+    // Check if moderator message already exists in local messages
+    const hasModeratorMessage = messages.some(msg => msg.sender_id === "moderator")
+    if (hasModeratorMessage) {
+      console.log('LLM vs Confederate moderator message found in local messages, skipping')
+      moderatorMessageSentRef.current = true
+      return
+    }
+    
+    // Only add moderator message when both participants are present
+    if (members.length < 2) {
+      console.log('LLM vs Confederate not enough members yet:', members.length)
+      return
+    }
+    
+    console.log('LLM vs Confederate adding initial moderator message...')
+    moderatorMessageSentRef.current = true
+    
+    const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+    const llmPosition = room.llmPosition === "agree" ? "supports" : "opposes"
+    
+    const moderatorMessage = {
+      room_id: roomId,
+      sender_id: "moderator",
+      sender_role: "system",
+      content: `Welcome to the LLM vs Confederate debate! You are debating against "${room.llmName}" on the topic: "${topicDisplayName}". The AI ${llmPosition} this topic. Present your arguments and engage in a thoughtful debate. This session will last 15 minutes. You may begin when ready.`,
+    }
+
+    try {
+      const { data: insertedMessage, error } = await supabase
+        .from("messages")
+        .insert([moderatorMessage])
+        .select()
+        .single()
+        
+      if (!error && insertedMessage) {
+        console.log('LLM vs Confederate moderator message inserted successfully')
+        const localMessage = {
+          id: insertedMessage.id,
+          role: insertedMessage.sender_role,
+          content: insertedMessage.content,
+          sender_id: insertedMessage.sender_id,
+          created_at: insertedMessage.created_at,
         }
-        return prev - 1
-      })
-    }, 1000)
+        
+        setMessages(prev => {
+          if (prev.some(msg => msg.id === localMessage.id)) {
+            return prev
+          }
+          return [...prev, localMessage].sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
+        })
+      } else {
+        console.error('LLM vs Confederate error inserting moderator message:', error)
+        moderatorMessageSentRef.current = false
+      }
+    } catch (error) {
+      console.error("LLM vs Confederate error adding moderator message:", error)
+      moderatorMessageSentRef.current = false
+    }
+  }
 
-    return () => clearInterval(timer)
-  }, [sessionStarted, sessionPaused, sessionEnded])
+  // Get sender name with cache (identical to 1v1-human)
+  function getSenderName(message: any) {
+    if (message.role === "system") {
+      return "Moderator"
+    } else if (message.role === "user") {
+      // For confederate messages, always return Marcus
+      if (message.sender_id === "confederate_marcus") {
+        return "Marcus"
+      }
+      
+      // Check cache first
+      if (userNameCache[message.sender_id]) {
+        return userNameCache[message.sender_id]
+      }
+      
+      return "Marcus" // Default for confederate
+    } else if (message.role === "assistant" || message.sender_id?.includes('llm_')) {
+      // For AI messages
+      if (userNameCache[message.sender_id]) {
+        return userNameCache[message.sender_id]
+      }
+      return room?.llmName || "AI"
+    }
+    return "Unknown"
+  }
+
+  // Chat submit handler (adapted for LLM vs Confederate)
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
+
+    // Start session on first message
+    if (!sessionStarted) {
+      setSessionStarted(true)
+      
+      // Start session timer
+      const interval = setInterval(() => {
+        setSessionTimeRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval)
+            setSessionEnded(true)
+            return 0
+          }
+          return prev - 1
+        })
+        setSessionTime((prev) => prev + 1)
+      }, 1000)
+    }
+
+    const trimmedInput = input.trim()
+    setInput("")
+
+    // Insert confederate message into Supabase
+    const userMessage = {
+      room_id: roomId,
+      sender_id: "confederate_marcus",
+      sender_role: "user",
+      content: trimmedInput,
+    }
+
+    console.log("LLM vs Confederate inserting confederate message:", userMessage)
+
+    const { data: insertedMessage, error: userError } = await supabase
+      .from("messages")
+      .insert([userMessage])
+      .select()
+      .single()
+      
+    if (userError) {
+      console.error("LLM vs Confederate failed to send message:", userError)
+      return
+    }
+    
+    console.log("LLM vs Confederate message inserted successfully:", insertedMessage)
+    
+    // Immediately add to local state
+    if (insertedMessage) {
+      const localMessage = {
+        id: insertedMessage.id,
+        role: insertedMessage.sender_role,
+        content: insertedMessage.content,
+        sender_id: insertedMessage.sender_id,
+        created_at: insertedMessage.created_at,
+      }
+      
+      setMessages(prev => {
+        if (prev.some(msg => msg.id === localMessage.id)) {
+          return prev
+        }
+        return [...prev, localMessage].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+      })
+    }
+
+    // Trigger AI response
+    setTimeout(async () => {
+      setIsLoading(true)
+      try {
+        const messagesForAPI = [...messages, insertedMessage].map(msg => ({
+          role: msg.role === "system" ? "system" : msg.role === "assistant" ? "assistant" : "user",
+          content: msg.content
+        }))
+        
+        const requestBody = {
+          messages: messagesForAPI,
+          userTraits: {},
+          topic: chatTopicDisplayNames[debateTopic] || debateTopic,
+          roomId: roomId,
+          debateTopic: chatTopicDisplayNames[debateTopic] || debateTopic,
+          userPosition: room.llmPosition === "agree" ? "disagree" : "agree", // Confederate takes opposite position
+          confederateName: room.llmName,
+          conversationContext: {
+            isDebateActive: true,
+            uniqueUserCount: 2,
+            recentMessageCount: messagesForAPI.length,
+            shouldModerate: false
+          }
+        }
+
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        })
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        // Insert AI response
+        const assistantMessage = {
+          room_id: roomId,
+          sender_id: `llm_${room.llmName?.toLowerCase() || 'ai'}`,
+          sender_role: "assistant",
+          content: data.content || "I'm not sure how to respond to that.",
+        }
+
+        await supabase.from("messages").insert([assistantMessage])
+
+      } catch (error) {
+        console.error("Error getting AI response:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }, 1000 + Math.random() * 2000) // 1-3 second delay
+  }
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Start session when first user message is sent
-  const startSession = () => {
-    if (!sessionStarted) {
-      setSessionStarted(true)
-      console.log("LLM vs Confederate session started")
-    }
-  }
-
-  // Format time display
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  // Get sender name with cache
-  function getSenderName(message: any) {
-    if (message.role === "system" || message.sender_id === "moderator") {
-      return "Moderator"
-    } else if (message.role === "assistant" || message.sender_id?.includes('llm_')) {
-      return userNameCache[message.sender_id] || room?.llmName || "AI"
-    } else if (message.role === "user") {
-      // For confederate messages, always return Marcus
-      return "Marcus"
-    }
-    return "Unknown"
-  }
-
-  // Handle message submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || !roomId) return
-
-    startSession()
-    setInput("")
-
-    const userMessage = {
-      room_id: roomId,
-      sender_id: "confederate_marcus",
-      sender_role: "user",
-      content: input.trim(),
-    }
-
-    try {
-      // Insert confederate message
-      const { data: insertedMessage, error: insertError } = await supabase
-        .from("messages")
-        .insert([userMessage])
-        .select()
-        .single()
-
-      if (insertError) {
-        console.error("Error inserting confederate message:", insertError)
-        return
-      }
-
-      // Trigger AI response
-      setTimeout(async () => {
-        setIsLoading(true)
-        try {
-          const messagesForAPI = [...messages, insertedMessage]
-          
-          const requestBody = {
-            messages: messagesForAPI,
-            userTraits: {},
-            topic: chatTopicDisplayNames[debateTopic] || debateTopic,
-            roomId: roomId,
-            debateTopic: chatTopicDisplayNames[debateTopic] || debateTopic,
-            userPosition: room.llmPosition === "agree" ? "disagree" : "agree", // Confederate takes opposite position
-            confederateName: room.llmName,
-            conversationContext: {
-              isDebateActive: true,
-              uniqueUserCount: 2,
-              recentMessageCount: messagesForAPI.length,
-              shouldModerate: false
-            }
-          }
-
-          const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
-          })
-
-          if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`)
-          }
-
-          const data = await response.json()
-
-          // Insert AI response
-          const assistantMessage = {
-            room_id: roomId,
-            sender_id: `llm_${room.llmName?.toLowerCase()}`,
-            sender_role: "assistant",
-            content: data.content || "I'm not sure how to respond to that.",
-          }
-
-          await supabase.from("messages").insert([assistantMessage])
-
-        } catch (error) {
-          console.error("Error getting AI response:", error)
-        } finally {
-          setIsLoading(false)
-        }
-      }, 1000 + Math.random() * 2000) // 1-3 second delay
-
-    } catch (error) {
-      console.error("Error sending message:", error)
-    }
-  }
-
-  // Handle exit
-  const handleExit = () => {
-    setExitDialogOpen(true)
-  }
-
-  const confirmExit = () => {
-    setExitDialogOpen(false)
-    setShowExitSurvey(true)
-  }
-
-  const handleSurveyComplete = (responses: PostSurveyResponses) => {
-    console.log("LLM vs Confederate survey responses:", responses)
-    setShowExitSurvey(false)
-    setShowSurveyThankYou(true)
-  }
-
-  const handleSurveyThankYouComplete = () => {
-    router.push("/")
-  }
-
+  // Loading states (identical to 1v1-human)
   if (loadingRoom) {
     return (
       <PageTransition>
-        <div className="flex min-h-screen items-center justify-center">
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 text-2xl font-bold">Joining room...</div>
+          </div>
+        </div>
+      </PageTransition>
+    )
+  }
+
+  if (!room || !roomId) {
+    return (
+      <PageTransition>
+        <div className="flex h-screen items-center justify-center">
           <div className="text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-            <p className="mt-2 text-muted-foreground">Setting up your LLM vs Confederate debate room...</p>
+            <p className="mt-2 text-muted-foreground">Setting up your chat room...</p>
           </div>
         </div>
       </PageTransition>
     )
   }
 
-  if (fetchError || !room) {
-    return (
-      <PageTransition>
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h2 className="mt-4 text-2xl font-bold">Unable to Create Room</h2>
-            <p className="mt-2 text-muted-foreground">
-              {fetchError?.error || "There was an error setting up your debate room."}
-            </p>
-            <Button onClick={() => router.push("/")} className="mt-4">
-              Return Home
-            </Button>
-          </div>
-        </div>
-      </PageTransition>
-    )
-  }
-
-  if (showSurveyThankYou) {
-    return (
-      <PageTransition>
-        <SurveyThankYou onComplete={handleSurveyThankYouComplete} />
-      </PageTransition>
-    )
-  }
-
+  // Show exit survey
   if (showExitSurvey) {
     return (
       <PageTransition>
-        <PostSurvey onComplete={handleSurveyComplete} />
+        <PostSurvey 
+          isOpen={showExitSurvey}
+          sessionDuration={sessionTime}
+          onSubmit={handleSurveySubmit} 
+          onClose={handleSurveyClose} 
+        />
       </PageTransition>
     )
   }
 
+  // Show thank you
+  if (showSurveyThankYou) {
+    return (
+      <PageTransition>
+        <SurveyThankYou onClose={handleThankYouClose} />
+      </PageTransition>
+    )
+  }
+
+  // Main UI component (IDENTICAL to 1v1-human)
   return (
     <PageTransition>
-      <div className="flex h-screen bg-background">
-        {/* Sidebar */}
-        <motion.div
-          className={cn(
-            "flex flex-col border-r bg-muted/30 transition-all duration-300",
-            sidebarOpen ? "w-80" : "w-0",
-            "hidden lg:flex"
-          )}
-          initial={false}
-          animate={{ width: sidebarOpen ? 320 : 0 }}
-        >
-          <div className="flex h-16 items-center justify-between border-b px-4">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              <span className="font-semibold">LLM vs Confederate</span>
+      <div className="flex h-screen flex-col">
+        {/* Header */}
+        <header className="border-b">
+          <div className="container mx-auto flex h-16 items-center justify-between px-4">
+            <div className="flex items-center gap-4">
+              <motion.button
+                onClick={toggleMobileSidebar}
+                className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 md:hidden"
+                whileTap={{ scale: 0.9 }}
+              >
+                <Menu className="h-5 w-5" />
+              </motion.button>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-6 w-6" />
+                <span className="text-xl font-bold">HABIT</span>
+              </div>
+              <Separator orientation="vertical" className="hidden h-6 md:block" />
+              <div className="hidden items-center gap-2 md:flex">
+                <Badge variant="outline" className="px-3 py-1 text-xs font-medium">
+                  {sessionTitle}
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1 text-xs font-medium">
+                  LLM vs Confederate
+                </Badge>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+
+            <div className="flex items-center gap-3">
+              <motion.div
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-3 py-1.5 transition-colors duration-300",
+                  getTimerBgColor(sessionTimeRemaining),
+                )}
+              >
+                {sessionPaused ? (
+                  <Pause className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
+                ) : (
+                  <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
+                )}
+                <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
+                  {sessionStarted ? formatTime(sessionTimeRemaining) : "15:00"}
+                </span>
+              </motion.div>
+
+              <AnimatedButton
+                variant="outline"
+                size="sm"
+                onClick={handleExitClick}
+                className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Exit Session</span>
+              </AnimatedButton>
+            </div>
           </div>
+        </header>
 
-          <div className="flex-1 overflow-auto p-4">
-            <div className="space-y-4">
-              {/* Session Info */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="mb-2 font-semibold">Session Info</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Status:</span>
-                      <Badge variant={sessionEnded ? "destructive" : sessionStarted ? "default" : "secondary"}>
-                        {sessionEnded ? "Ended" : sessionStarted ? "Active" : "Waiting"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Time:</span>
-                      <span>{formatTime(sessionTime)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Remaining:</span>
-                      <span className={sessionTimeRemaining < 60 ? "text-red-500" : ""}>
-                        {formatTime(sessionTimeRemaining)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Participants */}
-              <div className="space-y-4">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar */}
+          <motion.div
+            className={cn(
+              "hidden border-r bg-white transition-all duration-300 ease-in-out md:block",
+              sidebarOpen ? "w-80" : "w-0",
+            )}
+            animate={{ width: sidebarOpen ? "20rem" : "0rem" }}
+          >
+            <div className="flex h-full flex-col">
+              <div className="border-b p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold">Session Details</h2>
+                  <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
                 <Tabs defaultValue="members">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="members">
                       <Users className="mr-2 h-4 w-4" />
-                      Participants
+                      Members
                     </TabsTrigger>
                     <TabsTrigger value="info">
                       <Info className="mr-2 h-4 w-4" />
@@ -521,47 +680,63 @@ function LLMvsConfederateComponent() {
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="members" className="mt-4 space-y-4">
-                    {members.map((member) => {
-                      const isLLM = member.user_id?.includes('llm_')
-                      const position = isLLM ? getLLMPositionFromMemberData(member) : null
-                      
-                      return (
-                        <div key={member.user_id} className="flex items-center justify-between rounded-lg border p-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <div className="flex h-full w-full items-center justify-center bg-muted text-xs">
-                                {member.user_name?.[0]?.toUpperCase() || "?"}
-                              </div>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">{member.user_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {isLLM ? "AI Participant" : "Confederate"}
-                              </p>
-                            </div>
+                    {[
+                      ...members.map((member, memberIndex) => {
+                        const isLLM = member.user_id?.includes('llm_')
+                        const isConfederate = member.user_id === "confederate_marcus"
+                        
+                        // Show LLM's position to confederate
+                        const position = isLLM ? getLLMPositionFromMemberData(member) : null
+                        const memberRole = isLLM ? "ai" : "confederate"
+                        
+                        return {
+                          name: member.user_name,
+                          role: memberRole,
+                          position: position,
+                          isCurrentUser: isConfederate
+                        }
+                      }),
+                      { name: "Moderator", role: "moderator", position: null, isCurrentUser: false },
+                    ].map((member, index) => (
+                      <motion.div
+                        key={member.name}
+                        className="flex items-center gap-3 rounded-lg border p-3"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Avatar className="h-10 w-10">
+                          <div className="flex h-full w-full items-center justify-center text-sm font-medium">
+                            {getAvatarInitial(member.name)}
                           </div>
-                          {position && (
-                            <Badge 
-                              variant="outline" 
-                              className={cn("text-xs", position.color, position.bgColor)}
-                            >
-                              {position.stance === "for" ? "For" : position.stance === "against" ? "Against" : "Neutral"}
-                              {position.intensity !== "0.0" && ` (${(parseFloat(position.intensity) * 100).toFixed(0)}%)`}
-                            </Badge>
-                          )}
+                        </Avatar>
+                        <div className="flex flex-col flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{member.name}</span>
+                            {member.position && (
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                member.position.color,
+                                member.position.bgColor
+                              )}>
+                                {member.position.stance === "for" ? "For" : member.position.stance === "against" ? "Against" : "Neutral"}: {member.position.intensity}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground capitalize">
+                            {member.role === "ai" ? "AI Participant" : member.role === "confederate" ? "Confederate" : member.role}
+                          </div>
                         </div>
-                      )
-                    })}
+                      </motion.div>
+                    ))}
                   </TabsContent>
                   <TabsContent value="info" className="mt-4">
                     <Card>
                       <CardContent className="p-4 text-sm">
                         <h3 className="mb-2 font-semibold">Current Topic</h3>
                         <p className="mb-4 text-muted-foreground">{chatTopicDisplayNames[debateTopic] || debateTopic}</p>
-                        <h3 className="mb-2 font-semibold">AI Position</h3>
-                        <p className="mb-4 text-muted-foreground">
-                          {room.llmName} {room.llmPosition === "agree" ? "supports" : "opposes"} this topic
-                        </p>
+                        <h3 className="mb-2 font-semibold">Session Type</h3>
+                        <p className="mb-4 text-muted-foreground">LLM vs Confederate</p>
                         <h3 className="mb-2 font-semibold">Session Duration</h3>
                         <p className="text-muted-foreground">15 minutes</p>
                       </CardContent>
@@ -570,152 +745,155 @@ function LLMvsConfederateComponent() {
                 </Tabs>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* Main chat area */}
-        <div className="flex flex-1 flex-col">
-          {/* Header */}
-          <div className="flex h-16 items-center justify-between border-b px-4">
-            <div className="flex items-center gap-4">
-              {!sidebarOpen && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSidebarOpen(true)}
-                  className="hidden lg:flex"
+          {/* Main chat area */}
+          <div className="flex flex-1 flex-col bg-gray-50">
+            {/* Toggle button when sidebar is closed */}
+            {!sidebarOpen && (
+              <div className="hidden md:block absolute top-20 left-4 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleSidebar}
+                  className="bg-white shadow-md hover:bg-gray-50"
                 >
-                  <Menu className="h-4 w-4" />
+                  <Users className="h-4 w-4" />
                 </Button>
-              )}
-              <div>
-                <h1 className="font-semibold">{sessionTitle}</h1>
-                <p className="text-sm text-muted-foreground">{sessionDescription}</p>
+              </div>
+            )}
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="mx-auto max-w-3xl space-y-6">
+                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+                  <CardContent className="p-4 text-center">
+                    <h2 className="text-lg font-semibold">{sessionTitle}</h2>
+                    <p className="text-sm text-muted-foreground">{sessionDescription}</p>
+                    {sessionStarted && !sessionEnded && (
+                      <div className="mt-2 flex items-center justify-center gap-2">
+                        <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
+                        <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
+                          {formatTime(sessionTimeRemaining)} remaining
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-6">
+                  {messages.map((message, index) => {
+                    const isUser = message.role === "user"
+                    const senderName = getSenderName(message)
+
+                    // Determine message alignment
+                    let messageAlignment = "justify-start"
+                    let isCurrentUser = false
+                    
+                    isCurrentUser = message.sender_id === "confederate_marcus"
+                    
+                    if (isUser && isCurrentUser) {
+                      // Current user (confederate) messages on the right
+                      messageAlignment = "justify-end"
+                    } else if (isUser && !isCurrentUser) {
+                      // Other user messages on the left
+                      messageAlignment = "justify-start"
+                    } else {
+                      // System/moderator messages on the left
+                      messageAlignment = "justify-start"
+                    }
+
+                    const showAvatarOnLeft = messageAlignment === "justify-start"
+
+                    return (
+                      <MessageAnimation
+                        key={message.id || index}
+                        isUser={isCurrentUser}
+                        delay={index * 0.05}
+                        className={cn("flex gap-3", messageAlignment)}
+                      >
+                        {showAvatarOnLeft && (
+                          <Avatar className="h-9 w-9 mt-1">
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {message.role === "system" ? "M" : getAvatarInitial(senderName)}
+                            </div>
+                          </Avatar>
+                        )}
+
+                        <div className={cn("flex max-w-[75%] flex-col", messageAlignment === "justify-end" ? "items-end" : "items-start")}>
+                          <div className="mb-1">
+                            <span className="text-sm font-medium">{senderName}</span>
+                          </div>
+                          <motion.div
+                            className={cn(
+                              "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                              messageAlignment === "justify-end"
+                                ? "rounded-tr-sm bg-primary text-primary-foreground"
+                                : message.role === "system"
+                                  ? message.isUnsafeResponse
+                                    ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
+                                    : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
+                                  : "rounded-tl-sm bg-white text-foreground",
+                            )}
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                          >
+                            {message.content}
+                          </motion.div>
+                        </div>
+
+                        {!showAvatarOnLeft && (
+                          <Avatar className="h-9 w-9 mt-1">
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              {getAvatarInitial(senderName)}
+                            </div>
+                          </Avatar>
+                        )}
+                      </MessageAnimation>
+                    )
+                  })}
+
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {sessionStarted && !sessionEnded && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Timer className="h-4 w-4" />
-                  <span className={sessionTimeRemaining < 60 ? "text-red-500" : ""}>
-                    {formatTime(sessionTimeRemaining)}
-                  </span>
-                </div>
-              )}
-              <Button variant="outline" size="sm" onClick={handleExit}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Exit
-              </Button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="mx-auto max-w-4xl space-y-4">
-              {messages.map((message, index) => {
-                const isUser = message.role === "user" || message.sender_role === "user"
-                const isSystem = message.role === "system" || message.sender_role === "system"
-                const senderName = getSenderName(message)
-
-                return (
-                  <MessageAnimation key={message.id || index} delay={index * 0.1}>
-                    <div
-                      className={cn(
-                        "flex gap-3",
-                        isUser && "flex-row-reverse",
-                        isSystem && "justify-center"
-                      )}
-                    >
-                      {!isSystem && (
-                        <Avatar className="h-8 w-8 shrink-0">
-                          <div className="flex h-full w-full items-center justify-center bg-muted text-xs">
-                            {senderName[0]?.toUpperCase() || "?"}
-                          </div>
-                        </Avatar>
-                      )}
-                      <div
-                        className={cn(
-                          "max-w-[80%] rounded-lg px-4 py-2",
-                          isUser && "bg-primary text-primary-foreground",
-                          !isUser && !isSystem && "bg-muted",
-                          isSystem && "bg-muted/50 text-center text-sm text-muted-foreground"
-                        )}
-                      >
-                        {!isSystem && (
-                          <p className="mb-1 text-xs font-medium opacity-70">{senderName}</p>
-                        )}
-                        <p className="text-sm">{message.content}</p>
-                      </div>
-                    </div>
-                  </MessageAnimation>
-                )
-              })}
-              
-              {isLoading && (
-                <div className="flex gap-3">
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <div className="flex h-full w-full items-center justify-center bg-muted text-xs">
-                      {room.llmName?.[0]?.toUpperCase() || "A"}
-                    </div>
-                  </Avatar>
-                  <div className="max-w-[80%] rounded-lg bg-muted px-4 py-2">
-                    <p className="mb-1 text-xs font-medium opacity-70">{room.llmName}</p>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          {/* Input */}
-          {!sessionEnded && (
-            <div className="border-t p-4">
-              <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-                <div className="flex gap-2">
+            {/* Chat input */}
+            <div className="border-t bg-white p-4">
+              <div className="mx-auto max-w-3xl">
+                <form onSubmit={handleChatSubmit} className="flex gap-2">
                   <Input
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={handleInputChange}
                     placeholder="Type your message..."
-                    disabled={isLoading}
+                    disabled={!sessionStarted || sessionEnded || sessionPaused || isLoading}
                     className="flex-1"
                   />
-                  <AnimatedButton type="submit" disabled={!input.trim() || isLoading}>
-                    Send
+                  <AnimatedButton
+                    type="submit"
+                    disabled={!sessionStarted || sessionEnded || sessionPaused || !input.trim() || isLoading}
+                  >
+                    {isLoading ? "Sending..." : "Send"}
                   </AnimatedButton>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Exit Dialog */}
-      {exitDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-6">
-              <h3 className="mb-4 text-lg font-semibold">End Session?</h3>
-              <p className="mb-6 text-sm text-muted-foreground">
-                Are you sure you want to end this debate session? You'll be asked to complete a brief exit survey.
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setExitDialogOpen(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={confirmExit} className="flex-1">
-                  End Session
-                </Button>
+                </form>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Exit Confirmation Dialog */}
+        {exitDialogOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg">
+              <h3 className="text-lg font-semibold mb-2">Exit Session</h3>
+              <p className="mb-4">Are you sure you want to exit this chat session?</p>
+              <div className="flex gap-2">
+                <Button onClick={handleExitConfirm} variant="destructive">Exit</Button>
+                <Button onClick={handleExitCancel} variant="outline">Cancel</Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </PageTransition>
   )
 }
@@ -723,9 +901,14 @@ function LLMvsConfederateComponent() {
 export default function LLMvsConfederatePage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <PageTransition>
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+            <p className="mt-2 text-muted-foreground">Loading chat...</p>
+          </div>
+        </div>
+      </PageTransition>
     }>
       <LLMvsConfederateComponent />
     </Suspense>
