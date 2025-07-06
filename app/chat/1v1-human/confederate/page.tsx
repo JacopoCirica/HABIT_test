@@ -73,6 +73,19 @@ function ConfederateChat1v1HumanComponent() {
   // Confederate always uses "Ben" as name
   const confederateName = "Ben"
 
+  // Function to get user's position from member data (for confederate to see)
+  const getUserPositionFromMemberData = (member: any) => {
+    try {
+      if (member.position_data) {
+        return member.position_data
+      }
+      return null
+    } catch (error) {
+      console.error("Error getting user position from member data:", error)
+      return null
+    }
+  }
+
   // Try to join as confederate
   useEffect(() => {
     const confederateUserId = `confederate_${Date.now()}`
@@ -631,10 +644,13 @@ function ConfederateChat1v1HumanComponent() {
                         const isConfederate = members.length >= 2 && memberIndex === 1
                         const memberRole = isConfederate ? "confederate" : "user"
                         
+                        // Show participant's position to confederate (only for participants, not for confederates)
+                        const position = !isConfederate ? getUserPositionFromMemberData(member) : null
+                        
                         return {
                           name: member.user_name,
                           role: memberRole,
-                          position: null,
+                          position: position,
                           isCurrentUser: isCurrentUser
                         }
                       }),
@@ -655,6 +671,15 @@ function ConfederateChat1v1HumanComponent() {
                         <div className="flex flex-col flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{member.name}</span>
+                            {member.position && (
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                member.position.color,
+                                member.position.bgColor
+                              )}>
+                                {member.position.stance}: {member.position.intensity}
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground capitalize">
                             {member.role === "confederate" ? "Confederate" : member.role}

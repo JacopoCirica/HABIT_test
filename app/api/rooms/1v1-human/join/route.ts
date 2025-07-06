@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
 
 export async function POST(req: NextRequest) {
-  const { user_id, user_name, is_confederate } = await req.json()
-  console.log('Joining 1v1-human room:', { user_id, user_name, is_confederate });
+  const { user_id, user_name, is_confederate, position_data, debate_topic } = await req.json()
+  console.log('Joining 1v1-human room:', { user_id, user_name, is_confederate, position_data, debate_topic });
 
   // If this is a confederate joining via external link
   if (is_confederate) {
@@ -102,7 +102,13 @@ export async function POST(req: NextRequest) {
     console.log('Joining existing waiting room:', room.id);
     // Join as second user (confederate)
     const { error: userInsertError } = await supabase.from('room_users').insert([
-      { room_id: room.id, user_id, user_name }
+      { 
+        room_id: room.id, 
+        user_id, 
+        user_name,
+        position_data: position_data,
+        debate_topic: debate_topic
+      }
     ]);
     if (userInsertError) {
       console.error('Error adding confederate user to existing room:', userInsertError);
@@ -138,7 +144,13 @@ export async function POST(req: NextRequest) {
     room = newRoom;
     // First user joins as regular participant
     const { error: userInsertError } = await supabase.from('room_users').insert([
-      { room_id: room.id, user_id, user_name }
+      { 
+        room_id: room.id, 
+        user_id, 
+        user_name,
+        position_data: position_data,
+        debate_topic: debate_topic
+      }
     ]);
     if (userInsertError) {
       console.error('Error adding participant to new room:', userInsertError);

@@ -5,7 +5,7 @@ export async function GET(req: NextRequest, { params }: { params: { roomId: stri
   const { roomId } = params;
   const { data: members, error } = await supabase
     .from('room_users')
-    .select('user_id, user_name')
+    .select('user_id, user_name, position_data, debate_topic')
     .eq('room_id', roomId);
 
   if (error) {

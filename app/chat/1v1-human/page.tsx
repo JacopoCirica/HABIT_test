@@ -149,10 +149,65 @@ function Chat1v1HumanComponent() {
       return updated
     })
     
+    // Get user opinions for position calculation
+    const userOpinions = sessionStorage.getItem("userOpinions")
+    let positionData = null
+    
+    if (userOpinions && debateTopic) {
+      try {
+        const opinions = JSON.parse(userOpinions)
+        const topicToOpinionMap: Record<string, string> = {
+          "vaccination-policy": "vaccination",
+          "climate-change-policy": "climateChange", 
+          "immigration-policy": "immigration",
+          "gun-control-policy": "gunControl",
+          "healthcare-system-reform": "universalHealthcare"
+        }
+        
+        const opinionKey = topicToOpinionMap[debateTopic]
+        if (opinionKey && opinions[opinionKey]) {
+          const value = parseInt(opinions[opinionKey])
+          if (!isNaN(value)) {
+            if (value <= 3) {
+              const intensity = (4 - value) / 3
+              positionData = { 
+                stance: "against", 
+                intensity: intensity.toFixed(1),
+                color: "text-red-600",
+                bgColor: "bg-red-50"
+              }
+            } else if (value >= 5) {
+              const intensity = (value - 4) / 3
+              positionData = { 
+                stance: "for", 
+                intensity: intensity.toFixed(1),
+                color: "text-green-600",
+                bgColor: "bg-green-50"
+              }
+            } else {
+              positionData = { 
+                stance: "neutral", 
+                intensity: "0.0",
+                color: "text-gray-600",
+                bgColor: "bg-gray-50"
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing user opinions:", error)
+      }
+    }
+    
     fetch('/api/rooms/1v1-human/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, user_name: userName }),
+      body: JSON.stringify({ 
+        user_id: userId, 
+        user_name: userName,
+        position_data: positionData,
+        debate_topic: debateTopic
+      }),
     })
       .then(res => res.json())
       .then(({ room }) => {
