@@ -402,6 +402,7 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       }
 
       // Evaluate and update AI's position confidence after generating response
+      let positionEvaluationResult = null
       if (confederateName && debateTopic && roomId && responderId) {
         try {
           // Get current position data from the request context or fetch it
@@ -440,6 +441,7 @@ Remember: You are ${confederateName || "your character"} having a real conversat
           if (evaluationResponse.ok) {
             const evaluationResult = await evaluationResponse.json()
             console.log('Position evaluation completed:', evaluationResult)
+            positionEvaluationResult = evaluationResult
           } else {
             const errorText = await evaluationResponse.text()
             console.error('Position evaluation failed:', {
@@ -459,6 +461,7 @@ Remember: You are ${confederateName || "your character"} having a real conversat
         id: `msg_success_${Date.now()}`,
         role: "assistant",
         content: generatedText,
+        positionEvaluation: positionEvaluationResult
       })
     } catch (aiError) {
       const errorMessage = aiError instanceof Error ? aiError.message : String(aiError)

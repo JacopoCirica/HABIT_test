@@ -66,6 +66,9 @@ function LLMvsConfederateComponent() {
   const [cacheVersion, setCacheVersion] = useState(0)
   const [debateTopic, setDebateTopic] = useState<string | null>(null)
   const [positionUpdateTrigger, setPositionUpdateTrigger] = useState(0)
+  const [lastPositionChange, setLastPositionChange] = useState<{change: number, reasoning: string} | null>(null)
+  const [positionHistory, setPositionHistory] = useState<Array<{change: number, reasoning: string, messageType: string, timestamp: Date}>>([])
+  const [showPositionHistory, setShowPositionHistory] = useState(false)
 
   // Function to get LLM's position from member data
   const getLLMPositionFromMemberData = (member: any) => {
@@ -580,6 +583,30 @@ function LLMvsConfederateComponent() {
           }
         }, 1000) // Wait 1 second for position evaluation to complete
 
+        // Also try to get the position change data from the last evaluation
+        setTimeout(async () => {
+          try {
+            // Check if there's position change data in the response
+            if (data.positionEvaluation) {
+              const changeData = {
+                change: data.positionEvaluation.confidenceChange,
+                reasoning: data.positionEvaluation.reasoning
+              }
+              setLastPositionChange(changeData)
+              
+              // Add to position history
+              setPositionHistory(prev => [...prev, {
+                change: data.positionEvaluation.confidenceChange,
+                reasoning: data.positionEvaluation.reasoning,
+                messageType: data.positionEvaluation.messageType,
+                timestamp: new Date()
+              }])
+            }
+          } catch (error) {
+            console.error('Error getting position change data:', error)
+          }
+        }, 1200)
+
       } catch (error) {
         console.error("Error getting AI response:", error)
       } finally {
@@ -781,13 +808,29 @@ function LLMvsConfederateComponent() {
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{member.name}</span>
                             {member.position && (
-                              <span className={cn(
-                                "px-2 py-1 rounded-full text-xs font-medium",
-                                // Determine color based on intensity value, not stored color
-                                parseFloat(member.position.intensity) >= 0.5 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
-                              )}>
-                                {parseFloat(member.position.intensity) >= 0.5 ? "For" : "Against"}: {member.position.intensity}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "px-2 py-1 rounded-full text-xs font-medium",
+                                  // Determine color based on intensity value, not stored color
+                                  parseFloat(member.position.intensity) >= 0.5 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+                                )}>
+                                  {parseFloat(member.position.intensity) >= 0.5 ? "For" : "Against"}: {member.position.intensity}
+                                </span>
+                                {lastPositionChange && member.role === "ai" && (
+                                  <span className={cn(
+                                    "px-2 py-1 rounded-full text-xs font-medium border",
+                                    lastPositionChange.change > 0 
+                                      ? "text-blue-600 bg-blue-50 border-blue-200" 
+                                      : lastPositionChange.change < 0 
+                                        ? "text-orange-600 bg-orange-50 border-orange-200"
+                                        : "text-gray-600 bg-gray-50 border-gray-200"
+                                  )} 
+                                  title={lastPositionChange.reasoning}
+                                >
+                                  {lastPositionChange.change > 0 ? '+' : ''}{lastPositionChange.change.toFixed(2)}
+                                </span>
+                              )}
+                              </div>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground capitalize">
@@ -798,16 +841,56 @@ function LLMvsConfederateComponent() {
                     ))}
                   </TabsContent>
                   <TabsContent value="info" className="mt-4">
-                    <Card>
-                      <CardContent className="p-4 text-sm">
-                        <h3 className="mb-2 font-semibold">Current Topic</h3>
-                        <p className="mb-4 text-muted-foreground">{debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion'}</p>
-                        <h3 className="mb-2 font-semibold">Session Type</h3>
-                        <p className="mb-4 text-muted-foreground">LLM vs Confederate</p>
-                        <h3 className="mb-2 font-semibold">Session Duration</h3>
-                        <p className="text-muted-foreground">15 minutes</p>
-                      </CardContent>
-                    </Card>
+                    <div className="space-y-4">
+                      <Card>
+                        <CardContent className="p-4 text-sm">
+                          <h3 className="mb-2 font-semibold">Current Topic</h3>
+                          <p className="mb-4 text-muted-foreground">{debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : 'General Discussion'}</p>
+                          <h3 className="mb-2 font-semibold">Session Type</h3>
+                          <p className="mb-4 text-muted-foreground">LLM vs Confederate</p>
+                          <h3 className="mb-2 font-semibold">Session Duration</h3>
+                          <p className="text-muted-foreground">15 minutes</p>
+                        </CardContent>
+                      </Card>
+                      
+                      {positionHistory.length > 0 && (
+                        <Card>
+                          <CardContent className="p-4 text-sm">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-semibold">Position Changes</h3>
+                              <button 
+                                onClick={() => setShowPositionHistory(!showPositionHistory)}
+                                className="text-xs text-blue-600 hover:text-blue-800"
+                              >
+                                {showPositionHistory ? 'Hide' : 'Show'} History
+                              </button>
+                            </div>
+                            {showPositionHistory && (
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {positionHistory.slice(-5).reverse().map((change, index) => (
+                                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
+                                    <span className={cn(
+                                      "px-2 py-1 rounded-full font-medium",
+                                      change.change > 0 
+                                        ? "text-blue-600 bg-blue-100" 
+                                        : change.change < 0 
+                                          ? "text-orange-600 bg-orange-100"
+                                          : "text-gray-600 bg-gray-100"
+                                    )}>
+                                      {change.change > 0 ? '+' : ''}{change.change.toFixed(2)}
+                                    </span>
+                                    <div className="flex-1">
+                                      <div className="font-medium capitalize">{change.messageType}</div>
+                                      <div className="text-gray-600">{change.reasoning}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>
