@@ -69,9 +69,12 @@ function LLMvsConfederateComponent() {
   // Function to get LLM's position from member data
   const getLLMPositionFromMemberData = (member: any) => {
     try {
+      console.log('Getting LLM position from member:', member)
       if (member && member.position_data) {
+        console.log('Found position data:', member.position_data)
         return member.position_data
       }
+      console.log('No position data found for member')
       return null
     } catch (error) {
       console.error("Error getting LLM position from member data:", error)
@@ -505,8 +508,11 @@ function LLMvsConfederateComponent() {
         }))
         
         // Get current LLM position data for evaluation
+        console.log('All members:', members)
         const llmMember = members.find(member => member.user_id?.includes('llm_'))
+        console.log('Found LLM member:', llmMember)
         const currentLLMPosition = llmMember ? getLLMPositionFromMemberData(llmMember) : null
+        console.log('Current LLM position:', currentLLMPosition)
 
         const requestBody = {
           messages: messagesForAPI,

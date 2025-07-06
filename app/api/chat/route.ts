@@ -413,7 +413,19 @@ Remember: You are ${confederateName || "your character"} having a real conversat
           }
 
           // Call position evaluator
-          const evaluationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/evaluate-position`, {
+          const baseUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+          
+          console.log('Calling position evaluator with:', {
+            message: generatedText.substring(0, 100) + '...',
+            currentPosition,
+            debateTopic,
+            roomId,
+            llmUserId: responderId
+          })
+          
+          const evaluationResponse = await fetch(`${baseUrl}/api/evaluate-position`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -429,7 +441,13 @@ Remember: You are ${confederateName || "your character"} having a real conversat
             const evaluationResult = await evaluationResponse.json()
             console.log('Position evaluation completed:', evaluationResult)
           } else {
-            console.error('Position evaluation failed:', evaluationResponse.status)
+            const errorText = await evaluationResponse.text()
+            console.error('Position evaluation failed:', {
+              status: evaluationResponse.status,
+              statusText: evaluationResponse.statusText,
+              error: errorText,
+              url: `${baseUrl}/api/evaluate-position`
+            })
           }
         } catch (evalError) {
           console.error('Position evaluation error:', evalError)

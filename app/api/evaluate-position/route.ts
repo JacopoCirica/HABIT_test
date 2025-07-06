@@ -20,6 +20,15 @@ export async function POST(req: NextRequest) {
       roomId, 
       llmUserId 
     })
+    
+    // Debug: Check if we have valid position data
+    if (!currentPosition || !currentPosition.stance || !currentPosition.intensity) {
+      console.error('Invalid position data received:', currentPosition)
+      return NextResponse.json({ 
+        error: 'Invalid position data',
+        details: 'Missing stance or intensity in position data'
+      }, { status: 400 })
+    }
 
     // Skip evaluation for neutral/greeting messages
     if (isNeutralMessage(message)) {
