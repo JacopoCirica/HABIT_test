@@ -18,7 +18,6 @@ HABIT is a comprehensive research platform designed to study human-AI interactio
 - **2v1 Chat**: Human vs AI Confederate with intelligent responses
 - **2vs4 Chat**: Complex group debates with multiple AI participants
 - **Team vs Team**: Red vs Blue team debates with mixed participants
-- **General Chat**: Basic unmoderated chat functionality
 
 ### Moderation System
 - **Multi-layer Safety**: OpenAI moderation, contextual analysis, and keyword filtering
@@ -27,7 +26,7 @@ HABIT is a comprehensive research platform designed to study human-AI interactio
 - **Real-time Monitoring**: All messages are monitored and logged
 
 ### Confederate Support
-- **AI Confederates**: Intelligent AI participants using GPT-4o
+- **AI Confederates**: Intelligent AI participants using LLMs
 - **Human Confederates**: External human participants via direct links
 - **Bypass Authentication**: Confederates can join without signup/surveys
 - **Automatic Matching**: Smart room assignment and participant matching
@@ -39,12 +38,12 @@ Share confederate links with external participants:
 
 **Human vs Human Debates:**
 ```
-https://your-domain.com/chat/1v1-human/confederate
+https://www.habitsimulation.xyz/chat/1v1-human/confederate
 ```
 
 **LLM vs Confederate Training:**
 ```
-https://your-domain.com/chat/llm-vs-confederate
+https://www.habitsimulation.xyz/chat/llm-vs-confederate
 ```
 
 ### For Confederates
