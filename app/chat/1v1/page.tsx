@@ -321,9 +321,35 @@ function Chat1v1Component() {
       sessionStorage.setItem("userId", userId)
     }
 
-    setIsLoading(true)
+    // Add user message to local state immediately (always show user's message)
+    const userMessage = {
+      id: `${userId}_${Date.now()}`,
+      role: "user" as const,
+      content: trimmedInput,
+      sender_id: userId,
+      created_at: new Date().toISOString(),
+    }
+    
+    // Update local state with user message immediately
+    setMessages(prev => [...prev, userMessage])
+    
+    // Save user message to localStorage
+    if (currentRoom) {
+      const chatMessageForStorage: ChatMessage = {
+        ...userMessage,
+        roomId: currentRoom.id,
+        timestamp: new Date(),
+      }
+      const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+      localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+    }
 
-    // First, moderate the user message
+    // Start typing indicator after 2 seconds
+    setTimeout(() => {
+      setIsLoading(true)
+    }, 2000)
+
+    // Moderate the user message after it's displayed
     try {
       console.log("Moderating user message:", trimmedInput)
       const moderationResponse = await fetch("/api/moderate", {
@@ -343,158 +369,239 @@ function Chat1v1Component() {
       const moderationResult = await moderationResponse.json()
       console.log("Moderation result:", moderationResult)
 
-      // Add user message to local state (always show user's message)
-      const userMessage = {
-        id: `${userId}_${Date.now()}`,
-        role: "user" as const,
-        content: trimmedInput,
-        sender_id: userId,
-        created_at: new Date().toISOString(),
-      }
-      
-      // Update local state with user message
-      setMessages(prev => [...prev, userMessage])
-      
-      // Save user message to localStorage
-      if (currentRoom) {
-        const chatMessageForStorage: ChatMessage = {
-          ...userMessage,
-          roomId: currentRoom.id,
-          timestamp: new Date(),
-        }
-        const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-        localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-      }
-
       if (!moderationResult.isSafe) {
         // Message is unsafe - send moderator warning instead of confederate response
         console.log("Message flagged as unsafe:", moderationResult.reason)
         
-        const moderatorMessage = {
-          id: `moderator_${Date.now()}`,
-          role: "assistant" as const,
-          content: `I'd like to keep our discussion focused on ${debateTopic ? chatTopicDisplayNames[debateTopic] : "the topic at hand"}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
-          sender_id: "moderator",
-          created_at: new Date().toISOString(),
-        }
-        
-        setMessages(prev => [...prev, moderatorMessage])
-        
-        // Save moderator message to localStorage
-        if (currentRoom) {
-          const chatMessageForStorage: ChatMessage = {
-            ...moderatorMessage,
-            roomId: currentRoom.id,
-            timestamp: new Date(),
+        // Wait for typing delay before showing moderator response
+        setTimeout(() => {
+          const moderatorMessage = {
+            id: `moderator_${Date.now()}`,
+            role: "assistant" as const,
+            content: `I'd like to keep our discussion focused on ${debateTopic ? chatTopicDisplayNames[debateTopic] : "the topic at hand"}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
+            sender_id: "moderator",
+            created_at: new Date().toISOString(),
+            isUnsafeResponse: true, // Flag for red background
           }
-          const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-          localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-        }
+          
+          setMessages(prev => [...prev, moderatorMessage])
+          
+          // Save moderator message to localStorage
+          if (currentRoom) {
+            const chatMessageForStorage: ChatMessage = {
+              ...moderatorMessage,
+              roomId: currentRoom.id,
+              timestamp: new Date(),
+            }
+            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          }
+          
+          setIsLoading(false)
+        }, 2000) // Additional 2 second delay for moderator response
         
-        setIsLoading(false)
         return // Don't proceed to confederate response
       }
 
-      // Message is safe - proceed with confederate response
+      // Message is safe - proceed with confederate response after delay
       console.log("Message approved, sending to confederate")
 
-      const storedName = sessionStorage.getItem("userName") || "User"
-      const storedAge = sessionStorage.getItem("userAge") || "Unknown"
-      const storedSex = sessionStorage.getItem("userSex") || "Unknown"
-      const storedEducation = sessionStorage.getItem("userEducation") || "Unknown"
-      const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown"
-      
-      const userTraits = {
-        gender: storedSex,
-        age: storedAge,
-        education: storedEducation,
-        employment: storedOccupation,
-      }
-      
-      // Include the new user message in the API call
-      const messagesForAPI = [...messages, userMessage]
-      
-      const requestBody = {
-        messages: messagesForAPI,
-        userTraits,
-        topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
-        roomId: currentRoom.id,
-        debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
-        userPosition: opinionTrackingData
-          ? opinionTrackingData.initialOpinion.value > 4
-            ? "agree"
-            : opinionTrackingData.initialOpinion.value < 4
-              ? "disagree"
-              : "neutral"
-          : null,
-        confederateName: currentRoom?.confederateName || null,
-      }
-      
-      console.log("Sending API request with confederate:", currentRoom?.confederateName)
-      
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      })
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("API response error:", errorText)
-        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
-      }
-      
-      const data = await response.json()
-      console.log("API response data:", data)
-      
-      // Add confederate response
-      const assistantMessage = {
-        id: `assistant_${Date.now()}`,
-        role: "assistant" as const,
-        content: data.content || "I'm not sure how to respond to that.",
-        sender_id: "confederate",
-        created_at: new Date().toISOString(),
-      }
-      
-      setMessages(prev => [...prev, assistantMessage])
-      
-      // Save confederate response to localStorage
-      if (currentRoom) {
-        const chatMessageForStorage: ChatMessage = {
-          ...assistantMessage,
-          roomId: currentRoom.id,
-          timestamp: new Date(),
+      setTimeout(async () => {
+        try {
+          const storedName = sessionStorage.getItem("userName") || "User"
+          const storedAge = sessionStorage.getItem("userAge") || "Unknown"
+          const storedSex = sessionStorage.getItem("userSex") || "Unknown"
+          const storedEducation = sessionStorage.getItem("userEducation") || "Unknown"
+          const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown"
+          
+          const userTraits = {
+            gender: storedSex,
+            age: storedAge,
+            education: storedEducation,
+            employment: storedOccupation,
+          }
+          
+          // Include the new user message in the API call
+          const messagesForAPI = [...messages, userMessage]
+          
+          const requestBody = {
+            messages: messagesForAPI,
+            userTraits,
+            topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
+            roomId: currentRoom.id,
+            debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
+            userPosition: opinionTrackingData
+              ? opinionTrackingData.initialOpinion.value > 4
+                ? "agree"
+                : opinionTrackingData.initialOpinion.value < 4
+                  ? "disagree"
+                  : "neutral"
+              : null,
+            confederateName: currentRoom?.confederateName || null,
+          }
+          
+          console.log("Sending API request with confederate:", currentRoom?.confederateName)
+          
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          })
+          
+          if (!response.ok) {
+            const errorText = await response.text()
+            console.error("API response error:", errorText)
+            throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
+          }
+          
+          const data = await response.json()
+          console.log("API response data:", data)
+          
+          // Add confederate response
+          const assistantMessage = {
+            id: `assistant_${Date.now()}`,
+            role: "assistant" as const,
+            content: data.content || "I'm not sure how to respond to that.",
+            sender_id: "confederate",
+            created_at: new Date().toISOString(),
+          }
+          
+          setMessages(prev => [...prev, assistantMessage])
+          
+          // Save confederate response to localStorage
+          if (currentRoom) {
+            const chatMessageForStorage: ChatMessage = {
+              ...assistantMessage,
+              roomId: currentRoom.id,
+              timestamp: new Date(),
+            }
+            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          }
+          
+          setIsLoading(false)
+        } catch (error) {
+          console.error("Error getting confederate response:", error)
+          
+          // Fallback to simulated response
+          const simulatedResponse = getSimulatedResponse()
+          const fallbackMessage = {
+            id: `assistant_fallback_${Date.now()}`,
+            role: "assistant" as const,
+            content: simulatedResponse,
+            sender_id: "confederate",
+            created_at: new Date().toISOString(),
+          }
+          
+          setMessages(prev => [...prev, fallbackMessage])
+          
+          if (currentRoom) {
+            const chatMessageForStorage: ChatMessage = {
+              ...fallbackMessage,
+              roomId: currentRoom.id,
+              timestamp: new Date(),
+            }
+            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          }
+          
+          setIsLoading(false)
         }
-        const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-        localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-      }
+      }, 2000) // 2 second delay before confederate response
       
     } catch (error) {
-      console.error("Error in chat submit:", error)
+      console.error("Error in moderation:", error)
       
-      // Fallback to simulated response if both moderation and chat fail
-      const simulatedResponse = getSimulatedResponse()
-      const fallbackMessage = {
-        id: `assistant_fallback_${Date.now()}`,
-        role: "assistant" as const,
-        content: simulatedResponse,
-        sender_id: "confederate",
-        created_at: new Date().toISOString(),
-      }
-      
-      setMessages(prev => [...prev, fallbackMessage])
-      
-      if (currentRoom) {
-        const chatMessageForStorage: ChatMessage = {
-          ...fallbackMessage,
-          roomId: currentRoom.id,
-          timestamp: new Date(),
+      // If moderation fails, proceed with confederate response after delay
+      setTimeout(async () => {
+        try {
+          const storedName = sessionStorage.getItem("userName") || "User"
+          const storedAge = sessionStorage.getItem("userAge") || "Unknown"
+          const storedSex = sessionStorage.getItem("userSex") || "Unknown"
+          const storedEducation = sessionStorage.getItem("userEducation") || "Unknown"
+          const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown"
+          
+          const userTraits = {
+            gender: storedSex,
+            age: storedAge,
+            education: storedEducation,
+            employment: storedOccupation,
+          }
+          
+          const messagesForAPI = [...messages, userMessage]
+          
+          const requestBody = {
+            messages: messagesForAPI,
+            userTraits,
+            topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
+            roomId: currentRoom.id,
+            debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
+            userPosition: opinionTrackingData
+              ? opinionTrackingData.initialOpinion.value > 4
+                ? "agree"
+                : opinionTrackingData.initialOpinion.value < 4
+                  ? "disagree"
+                  : "neutral"
+              : null,
+            confederateName: currentRoom?.confederateName || null,
+          }
+          
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            const assistantMessage = {
+              id: `assistant_${Date.now()}`,
+              role: "assistant" as const,
+              content: data.content || "I'm not sure how to respond to that.",
+              sender_id: "confederate",
+              created_at: new Date().toISOString(),
+            }
+            
+            setMessages(prev => [...prev, assistantMessage])
+            
+            if (currentRoom) {
+              const chatMessageForStorage: ChatMessage = {
+                ...assistantMessage,
+                roomId: currentRoom.id,
+                timestamp: new Date(),
+              }
+              const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+              localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+            }
+          } else {
+            throw new Error("Confederate API failed")
+          }
+        } catch (fallbackError) {
+          console.error("Fallback error:", fallbackError)
+          const simulatedResponse = getSimulatedResponse()
+          const fallbackMessage = {
+            id: `assistant_fallback_${Date.now()}`,
+            role: "assistant" as const,
+            content: simulatedResponse,
+            sender_id: "confederate",
+            created_at: new Date().toISOString(),
+          }
+          
+          setMessages(prev => [...prev, fallbackMessage])
+          
+          if (currentRoom) {
+            const chatMessageForStorage: ChatMessage = {
+              ...fallbackMessage,
+              roomId: currentRoom.id,
+              timestamp: new Date(),
+            }
+            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
+            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          }
         }
-        const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-        localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-      }
-    } finally {
-      setIsLoading(false)
+        
+        setIsLoading(false)
+      }, 2000)
     }
   }
 
@@ -668,6 +775,20 @@ function Chat1v1Component() {
 
           {/* Main chat area */}
           <div className="flex flex-1 flex-col bg-gray-50">
+            {/* Toggle button when sidebar is closed */}
+            {!sidebarOpen && (
+              <div className="hidden md:block absolute top-20 left-4 z-10">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleSidebar}
+                  className="bg-white shadow-md hover:bg-gray-50"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl space-y-6">
                 <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
@@ -714,7 +835,9 @@ function Chat1v1Component() {
                               "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
                               isUser
                                 ? "rounded-tr-sm bg-primary text-primary-foreground"
-                                : "rounded-tl-sm bg-white text-foreground",
+                                : message.sender_id === "moderator" && message.isUnsafeResponse
+                                  ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
+                                  : "rounded-tl-sm bg-white text-foreground",
                             )}
                             initial={{ scale: 0.95 }}
                             animate={{ scale: 1 }}

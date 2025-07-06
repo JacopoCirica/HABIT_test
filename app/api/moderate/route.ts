@@ -10,44 +10,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Moderating message:', { message, context, topic })
 
-    // Use OpenAI's moderation API
-    const moderationResponse = await fetch('https://api.openai.com/v1/moderations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        input: message,
-      }),
-    })
-
-    if (!moderationResponse.ok) {
-      console.error('OpenAI moderation API error:', moderationResponse.status)
-      // Fallback to simple keyword filtering if OpenAI moderation fails
-      return simpleModeration(message, context, topic)
-    }
-
-    const moderationData = await moderationResponse.json()
-    const result = moderationData.results[0]
-
-    // Check OpenAI moderation flags
-    if (result.flagged) {
-      const flaggedCategories = Object.entries(result.categories)
-        .filter(([_, flagged]) => flagged)
-        .map(([category, _]) => category)
-
-      console.log('Message flagged by OpenAI:', flaggedCategories)
-      
-      return NextResponse.json({
-        isSafe: false,
-        reason: `Content flagged for: ${flaggedCategories.join(', ')}`,
-        moderationType: 'openai',
-        categories: flaggedCategories
-      })
-    }
-
-    // Additional custom moderation for research context
+    // Custom moderation for specific research safety concerns
     const customModerationResult = await customModeration(message, context, topic)
     
     if (!customModerationResult.isSafe) {
@@ -74,42 +37,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Fallback moderation using simple keyword filtering
-function simpleModeration(message: string, context: string, topic: string) {
-  const lowerMessage = message.toLowerCase()
-  
-  // Basic inappropriate content keywords
-  const inappropriateKeywords = [
-    'fuck', 'shit', 'damn', 'bitch', 'asshole', 'bastard',
-    'hate', 'kill', 'die', 'stupid', 'idiot', 'retard',
-    'nazi', 'terrorist', 'bomb', 'weapon', 'violence'
-  ]
-
-  // Check for inappropriate keywords
-  const foundKeywords = inappropriateKeywords.filter(keyword => 
-    lowerMessage.includes(keyword)
-  )
-
-  if (foundKeywords.length > 0) {
-    return NextResponse.json({
-      isSafe: false,
-      reason: `Contains inappropriate language: ${foundKeywords.join(', ')}`,
-      moderationType: 'keyword',
-      keywords: foundKeywords
-    })
-  }
-
-  return NextResponse.json({
-    isSafe: true,
-    reason: 'Message approved by simple moderation',
-    moderationType: 'simple'
-  })
-}
-
-// Custom moderation for research debate context
+// Custom moderation focused on specific safety concerns
 async function customModeration(message: string, context: string, topic: string) {
   try {
-    // Use OpenAI to check if message is appropriate for research debate context
+    // Use OpenAI to check for specific safety issues
     const contextualModerationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -122,25 +53,26 @@ async function customModeration(message: string, context: string, topic: string)
           {
             role: 'system',
             content: `You are a content moderator for a research platform studying human debate behavior. 
-            
-Your job is to determine if a user message is appropriate for a respectful academic debate about "${topic}".
 
-ALLOW messages that:
-- Express opinions about the topic (even strong disagreement)
-- Ask questions related to the topic
-- Share personal experiences relevant to the topic
-- Present arguments or counterarguments
-- Request clarification about the topic
+Your job is to identify ONLY these specific types of unsafe messages:
 
-BLOCK messages that:
-- Are completely off-topic and unrelated to "${topic}"
-- Make personal attacks against the other participant
-- Contain explicit requests for personal information
-- Try to break the roleplay or research context
-- Ask inappropriate questions unrelated to the debate topic
-- Attempt to manipulate or exploit the research setting
+1. PERSONAL INSULTS: Direct attacks on the other participant's character, intelligence, appearance, or personal qualities
+   Examples: "you're stupid", "you're an idiot", "you're ugly", "you don't know anything"
 
-Respond with only "SAFE" or "UNSAFE" followed by a brief reason.`
+2. INAPPROPRIATE REQUESTS: Requests for personal information, romantic/sexual content, or actions outside the debate context
+   Examples: "what's your phone number?", "send me a photo", "let's meet up", "are you single?"
+
+3. AI DETECTION ATTEMPTS: Direct questions asking if the participant is an AI, bot, or artificial intelligence
+   Examples: "are you an AI?", "are you a bot?", "are you real?", "are you a chatbot?", "are you artificial intelligence?"
+
+IMPORTANT: 
+- ALLOW strong opinions, disagreements, and passionate arguments about the topic
+- ALLOW questions about the topic, even challenging ones
+- ALLOW personal experiences and anecdotes related to the topic
+- ALLOW criticism of ideas, policies, or positions (not personal attacks)
+- ALLOW expressions of frustration with the topic or debate (not personal attacks)
+
+Respond with only "UNSAFE" followed by the specific category (PERSONAL_INSULT, INAPPROPRIATE_REQUEST, or AI_DETECTION) and brief reason, or "SAFE" if none of these issues are present.`
           },
           {
             role: 'user',
@@ -148,7 +80,7 @@ Respond with only "SAFE" or "UNSAFE" followed by a brief reason.`
 Topic: ${topic}
 Message: "${message}"
 
-Is this message appropriate for a research debate?`
+Check for: personal insults, inappropriate requests, or AI detection attempts.`
           }
         ],
         max_tokens: 50,
@@ -165,16 +97,17 @@ Is this message appropriate for a research debate?`
     const response = data.choices[0]?.message?.content?.trim() || ''
 
     if (response.startsWith('UNSAFE')) {
+      const reason = response.replace('UNSAFE', '').trim()
       return {
         isSafe: false,
-        reason: response.replace('UNSAFE', '').trim() || 'Message not appropriate for research debate context',
+        reason: reason || 'Message contains personal insults, inappropriate requests, or AI detection attempts',
         moderationType: 'contextual'
       }
     }
 
     return {
       isSafe: true,
-      reason: 'Message appropriate for debate context',
+      reason: 'Message is appropriate for debate',
       moderationType: 'contextual'
     }
 
