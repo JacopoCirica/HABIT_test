@@ -361,21 +361,21 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       }
       
       // 2. Base thinking time (varies by response complexity)
-      let thinkingTime = 800 // Base thinking time
+      let thinkingTime = 1200 // Base thinking time (increased from 800ms)
       const responseWordCount = generatedText.split(/\s+/).length
       
       if (responseWordCount <= 5) {
-        thinkingTime += 400 // Short response: quick thinking (1.2s total base thinking)
+        thinkingTime += 800 // Short response: quick thinking (2.0s total base thinking)
       } else if (responseWordCount <= 15) {
-        thinkingTime += 1200 // Medium response: moderate thinking (2.0s total base thinking)
+        thinkingTime += 1800 // Medium response: moderate thinking (3.0s total base thinking)
       } else if (responseWordCount <= 30) {
-        thinkingTime += 2000 // Long response: more thinking (2.8s total base thinking)
+        thinkingTime += 3000 // Long response: more thinking (4.2s total base thinking)
       } else {
-        thinkingTime += 3000 // Very long response: deep thinking (3.8s total base thinking)
+        thinkingTime += 4500 // Very long response: deep thinking (5.7s total base thinking)
       }
       
       // 3. Typing time (slower, more realistic)
-      const typingTime = generatedText.length * 25 // Increased from 18ms to 25ms per character
+      const typingTime = generatedText.length * 35 // Increased from 25ms to 35ms per character
       
       // 4. Combine all timing components
       delayMs = readingTime + thinkingTime + typingTime
@@ -394,8 +394,8 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       }
 
       // 6. Ensure realistic bounds
-      delayMs = Math.max(delayMs, 2000) // Minimum realistic response time (increased from 1800ms)
-      delayMs = Math.min(delayMs, 15000) // Maximum to avoid frustration (increased from 12000ms)
+      delayMs = Math.max(delayMs, 2500) // Minimum realistic response time (increased from 2000ms)
+      delayMs = Math.min(delayMs, 18000) // Maximum to avoid frustration (increased from 15000ms)
 
       if (delayMs > 1200) {
         await new Promise((resolve) => setTimeout(resolve, delayMs))
