@@ -22,6 +22,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { PostSurvey, PostSurveyResponses } from "@/components/ui/post-survey"
 import { SurveyThankYou } from "@/components/ui/survey-thank-you"
 import { OnboardingTraining } from "@/components/ui/onboarding-training"
+import { savePostSurvey } from "@/lib/post-survey-actions"
 
 // Icons
 import {
@@ -432,11 +433,26 @@ function ChatTeamVsTeamComponent() {
 
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
     try {
+      // Get session data
+      const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+      const sessionData = {
+        roomId: roomIdTeamVsTeam || undefined,
+        userId: userId,
+        roomType: "team-vs-team",
+        sessionDuration: sessionTime
+      }
+
+      // Save survey responses to Supabase
       console.log("Team-vs-team survey responses:", responses)
+      await savePostSurvey(responses, sessionData)
+      
       setShowExitSurvey(false)
       setShowSurveyThankYou(true)
     } catch (error) {
       console.error("Team-vs-team error submitting survey:", error)
+      // Still proceed to thank you page even if save fails
+      setShowExitSurvey(false)
+      setShowSurveyThankYou(true)
     }
   }
 

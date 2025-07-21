@@ -45,6 +45,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { OpinionTrackingData } from "@/lib/opinion-tracker"
 import { PostSurveyResponses } from "@/components/ui/post-survey"
 import { getChatTopicFromOpinions, chatTopicDisplayNames } from "@/lib/opinion-analyzer"
+import { savePostSurvey } from "@/lib/post-survey-actions"
 
 function Chat1v1Component() {
   const router = useRouter()
@@ -357,12 +358,26 @@ function Chat1v1Component() {
 
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
     try {
-      // Save survey responses
-      console.log("Survey responses:", responses)
+      // Get session data
+      const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+      const sessionData = {
+        roomId: roomId || undefined,
+        userId: userId,
+        roomType: "1v1",
+        sessionDuration: sessionTime
+      }
+
+      // Save survey responses to Supabase
+      console.log("1v1 survey responses:", responses)
+      await savePostSurvey(responses, sessionData)
+      
       setShowExitSurvey(false)
       setShowSurveyThankYou(true)
     } catch (error) {
-      console.error("Error submitting survey:", error)
+      console.error("Error submitting 1v1 survey:", error)
+      // Still proceed to thank you page even if save fails
+      setShowExitSurvey(false)
+      setShowSurveyThankYou(true)
     }
   }
 

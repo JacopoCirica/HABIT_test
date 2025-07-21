@@ -21,6 +21,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { PostSurvey, PostSurveyResponses } from "@/components/ui/post-survey"
 import { SurveyThankYou } from "@/components/ui/survey-thank-you"
 import { OnboardingTraining } from "@/components/ui/onboarding-training"
+import { savePostSurvey } from "@/lib/post-survey-actions"
 
 // Icons
 import {
@@ -352,11 +353,26 @@ function Chat2vs4Component() {
 
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
     try {
-      console.log("Survey responses:", responses)
+      // Get session data
+      const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+      const sessionData = {
+        roomId: roomId2vs4 || undefined,
+        userId: userId,
+        roomType: "2vs4",
+        sessionDuration: sessionTime
+      }
+
+      // Save survey responses to Supabase
+      console.log("2vs4 survey responses:", responses)
+      await savePostSurvey(responses, sessionData)
+      
       setShowExitSurvey(false)
       setShowSurveyThankYou(true)
     } catch (error) {
-      console.error("Error submitting survey:", error)
+      console.error("Error submitting 2vs4 survey:", error)
+      // Still proceed to thank you page even if save fails
+      setShowExitSurvey(false)
+      setShowSurveyThankYou(true)
     }
   }
 
