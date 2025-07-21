@@ -40,8 +40,8 @@ import {
 
 } from "lucide-react"
 
-// Import necessary types and utilities
-import { ChatMessage, ChatRoom } from "@/lib/chat-rooms"
+// Import Supabase and utilities
+import { supabase } from "@/lib/supabaseClient"
 import { OpinionTrackingData } from "@/lib/opinion-tracker"
 import { PostSurveyResponses } from "@/components/ui/post-survey"
 import { getChatTopicFromOpinions, chatTopicDisplayNames } from "@/lib/opinion-analyzer"
@@ -53,14 +53,17 @@ function Chat1v1Component() {
 
   // Get URL parameters
   const topic = searchParams.get("topic") as string
-  const roomId = searchParams.get("roomId") as string
+  const urlRoomId = searchParams.get("roomId") as string
 
   // State management
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [currentRoom, setCurrentRoom] = useState<ChatRoom | null>(null)
+  const [room, setRoom] = useState<any>(null)
+  const [roomId, setRoomId] = useState<string | null>(null)
+  const [members, setMembers] = useState<any[]>([])
   const [userName, setUserName] = useState("")
+  const [loadingRoom, setLoadingRoom] = useState(false)
   
   // Session management
   const [sessionStarted, setSessionStarted] = useState(false)
@@ -98,116 +101,146 @@ function Chat1v1Component() {
   // Room members for 1v1
   const roomMembers = [
     { name: userName, role: "user" },
-    { name: currentRoom?.confederateName || "Confederate", role: "confederate" },
+    { name: room?.confederate_id || "Confederate", role: "confederate" },
     { name: "Moderator", role: "moderator" },
   ]
 
   // Initialize 1v1 room
   useEffect(() => {
-    // Always initialize, even without topic and roomId
+    // Always initialize, with or without topic
     const selectedTopic = topic || getChatTopicFromOpinions() // Use demographics-based topic selection
-    const defaultRoomId = roomId || `room_${Date.now()}` // Generate roomId if none provided
-    
     setDebateTopic(selectedTopic)
-    setUserName(sessionStorage.getItem("userName") || "User")
+    setLoadingRoom(true)
     
-    // Add initial moderator message for new rooms
-    const addInitialModeratorMessage = (roomId: string) => {
-      const moderatorMessage = {
-        id: `moderator_welcome_${Date.now()}`,
-        role: "system" as const,
-        content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and another participant to debate the topic: "${chatTopicDisplayNames[selectedTopic] || selectedTopic}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
-        sender_id: "moderator",
-        created_at: new Date().toISOString(),
-      }
-      
-      setMessages([moderatorMessage])
-      
-      // Save to localStorage
-      const chatMessageForStorage: ChatMessage = {
-        ...moderatorMessage,
-        roomId: roomId,
-        timestamp: new Date(),
-      }
-      localStorage.setItem(`messages_${roomId}`, JSON.stringify([chatMessageForStorage]))
+    // Get or create consistent user ID
+    let userId = sessionStorage.getItem("userId")
+    if (!userId) {
+      userId = `user_${Date.now()}`
+      sessionStorage.setItem("userId", userId)
     }
     
-    if (roomId) {
-      // Load existing room from localStorage if roomId is provided
-      const storedRooms = JSON.parse(localStorage.getItem("chatRooms") || "[]")
-      const room = storedRooms.find((r: ChatRoom) => r.id === roomId)
-      
-      if (room) {
-        setCurrentRoom(room)
-        // Load messages from localStorage
-        const storedMessages = JSON.parse(localStorage.getItem(`messages_${roomId}`) || "[]")
-        if (storedMessages.length > 0) {
-          setMessages(storedMessages.map((msg: ChatMessage) => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            sender_id: msg.sender_id || "user",
-            created_at: msg.timestamp?.toISOString() || new Date().toISOString(),
-          })))
-        } else {
-          // No existing messages, add initial moderator message
-          addInitialModeratorMessage(roomId)
+    const userName = sessionStorage.getItem("userName") || "User"
+    
+    // Set basic user state
+    setUserName(userName)
+    
+    fetch('/api/rooms/1v1/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, user_name: userName }),
+    })
+      .then(res => res.json())
+      .then(({ room }) => {
+        console.log('Joined 1v1 room:', room)
+        setRoom(room)
+        setRoomId(room.id)
+        setWaitingForUser(false) // 1v1 rooms start active
+      })
+      .catch(() => setRoom(null))
+      .finally(() => setLoadingRoom(false))
+  }, [topic])
+
+  // Set up Supabase subscription for messages
+  useEffect(() => {
+    if (!roomId) return
+
+    console.log('Setting up subscription for 1v1 roomId:', roomId)
+
+    // Fetch all messages for this room on initial load
+    const fetchMessages = async () => {
+      console.log('Fetching messages for 1v1 roomId:', roomId)
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true })
+      if (!error && data) {
+        console.log('Fetched 1v1 messages:', data)
+        const fetchedMessages = data.map((msg) => ({
+          id: msg.id,
+          role: msg.sender_role,
+          content: msg.content,
+          sender_id: msg.sender_id,
+          created_at: msg.created_at,
+        }))
+        
+        setMessages(fetchedMessages)
+      } else {
+        console.error('Error fetching 1v1 messages:', error)
+      }
+    }
+    fetchMessages()
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel('1v1-room-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          console.log('Received new 1v1 message:', payload.new)
+          const newMessage = payload.new
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === newMessage.id)) {
+              return prev
+            }
+            return [
+              ...prev,
+              {
+                id: newMessage.id,
+                role: newMessage.sender_role,
+                content: newMessage.content,
+                sender_id: newMessage.sender_id,
+                created_at: newMessage.created_at,
+              },
+            ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [roomId])
+
+  // Add initial moderator message when room becomes active
+  useEffect(() => {
+    if (room && roomId && debateTopic && messages.length === 0) {
+      const addInitialModeratorMessage = async () => {
+        const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+        const moderatorMessage = {
+          room_id: roomId,
+          sender_id: "moderator",
+          sender_role: "system",
+          content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and an AI participant to debate the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+        }
+
+        try {
+          const { data: insertedMessage, error } = await supabase
+            .from("messages")
+            .insert([moderatorMessage])
+            .select()
+            .single()
+            
+          if (error) {
+            console.error('Error inserting initial moderator message:', error)
+          } else {
+            console.log('Initial moderator message added successfully')
+          }
+        } catch (error) {
+          console.error("Error adding initial moderator message:", error)
         }
       }
-    } else {
-      // Create a new room if no roomId is provided
-      const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
-      const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
       
-      console.log("Creating new 1v1 room with confederate:", randomConfederate)
-      
-      const newRoom: ChatRoom = {
-        id: defaultRoomId,
-        userId: sessionStorage.getItem("userId") || `user_${Date.now()}`,
-        userName: sessionStorage.getItem("userName") || "User",
-        createdAt: new Date(),
-        lastActivity: new Date(),
-        sessionStarted: false,
-        sessionEnded: false,
-        sessionPaused: false,
-        sessionTime: 0,
-        sessionTimeRemaining: 15 * 60,
-        debateTopic: selectedTopic,
-        userOpinions: {},
-        timeAdjustments: [],
-        moderatorPresent: false,
-        confederateName: randomConfederate,
-      }
-      
-      setCurrentRoom(newRoom)
-      
-      // Save to localStorage
-      const storedRooms = JSON.parse(localStorage.getItem("chatRooms") || "[]")
-      storedRooms.push(newRoom)
-      localStorage.setItem("chatRooms", JSON.stringify(storedRooms))
-      
-      // Add initial moderator message for new room
-      addInitialModeratorMessage(defaultRoomId)
+      setTimeout(addInitialModeratorMessage, 500)
     }
-    
-    // Simulate waiting for another user to connect (3-8 seconds)
-    const simulateUserConnection = () => {
-      const randomDelay = Math.floor(Math.random() * (8000 - 3000 + 1)) + 3000 // 3-8 seconds
-      
-      // Update connection message after 1 second
-      setTimeout(() => {
-        setConnectionMessage("Waiting for another user to join...")
-      }, 1000)
-      
-      // Show chat interface after random delay
-      setTimeout(() => {
-        setWaitingForUser(false)
-      }, randomDelay)
-    }
-    
-    // Start the connection simulation
-    simulateUserConnection()
-  }, [topic, roomId])
+  }, [room, roomId, debateTopic, messages.length])
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -309,39 +342,35 @@ function Chat1v1Component() {
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !currentRoom) return
+    if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomId) return
 
     const trimmedInput = input.trim()
     setInput("")
 
-    // Get or create consistent user ID
+    // Get consistent user ID
     let userId = sessionStorage.getItem("userId")
     if (!userId) {
       userId = `user_${Date.now()}`
       sessionStorage.setItem("userId", userId)
     }
 
-    // Add user message to local state immediately (always show user's message)
+    // Insert user message into Supabase immediately (always show user's message)
     const userMessage = {
-      id: `${userId}_${Date.now()}`,
-      role: "user" as const,
-      content: trimmedInput,
+      room_id: roomId,
       sender_id: userId,
-      created_at: new Date().toISOString(),
+      sender_role: "user",
+      content: trimmedInput,
     }
-    
-    // Update local state with user message immediately
-    setMessages(prev => [...prev, userMessage])
-    
-    // Save user message to localStorage
-    if (currentRoom) {
-      const chatMessageForStorage: ChatMessage = {
-        ...userMessage,
-        roomId: currentRoom.id,
-        timestamp: new Date(),
-      }
-      const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-      localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+
+    const { data: insertedMessage, error: userError } = await supabase
+      .from("messages")
+      .insert([userMessage])
+      .select()
+      .single()
+      
+    if (userError) {
+      console.error("Failed to send 1v1 message:", userError)
+      return
     }
 
     // Note: No typing indicator - moderation happens silently in background
@@ -371,27 +400,26 @@ function Chat1v1Component() {
         console.log("Message flagged as unsafe:", moderationResult.reason)
         
         // Wait before showing moderator response
-        setTimeout(() => {
+        setTimeout(async () => {
           const moderatorMessage = {
-            id: `moderator_${Date.now()}`,
-            role: "assistant" as const,
-            content: `I'd like to keep our discussion focused on ${debateTopic ? chatTopicDisplayNames[debateTopic] : "the topic at hand"}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
+            room_id: roomId,
             sender_id: "moderator",
-            created_at: new Date().toISOString(),
-            isUnsafeResponse: true, // Flag for red background
+            sender_role: "system",
+            content: `I'd like to keep our discussion focused on ${debateTopic ? chatTopicDisplayNames[debateTopic] : "the topic at hand"}. Let's continue with a respectful conversation about the subject. What are your thoughts on the main points we should be discussing?`,
           }
-          
-          setMessages(prev => [...prev, moderatorMessage])
-          
-          // Save moderator message to localStorage
-          if (currentRoom) {
-            const chatMessageForStorage: ChatMessage = {
-              ...moderatorMessage,
-              roomId: currentRoom.id,
-              timestamp: new Date(),
+
+          try {
+            const { data: insertedModeratorMessage, error: moderatorError } = await supabase
+              .from("messages")
+              .insert([moderatorMessage])
+              .select()
+              .single()
+              
+            if (moderatorError) {
+              console.error('Error inserting moderator message:', moderatorError)
             }
-            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          } catch (error) {
+            console.error("Error adding moderator message:", error)
           }
           
           // No loading state to clear since we don't show typing indicator
@@ -420,13 +448,20 @@ function Chat1v1Component() {
           }
           
           // Include the new user message in the API call
-          const messagesForAPI = [...messages, userMessage]
+          const newMessageForAPI = {
+            id: insertedMessage.id,
+            role: insertedMessage.sender_role,
+            content: insertedMessage.content,
+            sender_id: insertedMessage.sender_id,
+            created_at: insertedMessage.created_at,
+          }
+          const messagesForAPI = [...messages, newMessageForAPI]
           
           const requestBody = {
             messages: messagesForAPI,
             userTraits,
             topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
-            roomId: currentRoom.id,
+            roomId: roomId,
             debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
             userPosition: opinionTrackingData
               ? opinionTrackingData.initialOpinion.value > 4
@@ -435,10 +470,10 @@ function Chat1v1Component() {
                   ? "disagree"
                   : "neutral"
               : null,
-            confederateName: currentRoom?.confederateName || null,
+            confederateName: room?.confederate_id || null,
           }
           
-          console.log("Sending API request with confederate:", currentRoom?.confederateName)
+          console.log("Sending API request with confederate:", room?.confederate_id)
           
           const response = await fetch("/api/chat", {
             method: "POST",
@@ -455,26 +490,23 @@ function Chat1v1Component() {
           const data = await response.json()
           console.log("API response data:", data)
           
-          // Add confederate response
+          // Insert AI response into Supabase
           const assistantMessage = {
-            id: `assistant_${Date.now()}`,
-            role: "assistant" as const,
-            content: data.content || "I'm not sure how to respond to that.",
+            room_id: roomId,
             sender_id: "confederate",
+            sender_role: "assistant",
+            content: data.content || "I'm not sure how to respond to that.",
             created_at: new Date().toISOString(),
           }
           
-          setMessages(prev => [...prev, assistantMessage])
-          
-          // Save confederate response to localStorage
-          if (currentRoom) {
-            const chatMessageForStorage: ChatMessage = {
-              ...assistantMessage,
-              roomId: currentRoom.id,
-              timestamp: new Date(),
-            }
-            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          const { data: insertedConfMessage, error: confError } = await supabase
+            .from("messages")
+            .insert([assistantMessage])
+            .select()
+            .single()
+            
+          if (confError) {
+            console.error("Failed to send confederate message:", confError)
           }
           
           setIsLoading(false)
@@ -484,23 +516,21 @@ function Chat1v1Component() {
           // Fallback to simulated response
           const simulatedResponse = getSimulatedResponse()
           const fallbackMessage = {
-            id: `assistant_fallback_${Date.now()}`,
-            role: "assistant" as const,
-            content: simulatedResponse,
+            room_id: roomId,
             sender_id: "confederate",
+            sender_role: "assistant",
+            content: simulatedResponse,
             created_at: new Date().toISOString(),
           }
           
-          setMessages(prev => [...prev, fallbackMessage])
-          
-          if (currentRoom) {
-            const chatMessageForStorage: ChatMessage = {
-              ...fallbackMessage,
-              roomId: currentRoom.id,
-              timestamp: new Date(),
-            }
-            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+          const { data: insertedFallback, error: fallbackError } = await supabase
+            .from("messages")
+            .insert([fallbackMessage])
+            .select()
+            .single()
+            
+          if (fallbackError) {
+            console.error("Failed to send fallback message:", fallbackError)
           }
           
           setIsLoading(false)
@@ -533,7 +563,7 @@ function Chat1v1Component() {
             messages: messagesForAPI,
             userTraits,
             topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
-            roomId: currentRoom.id,
+            roomId: roomId,
             debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
             userPosition: opinionTrackingData
               ? opinionTrackingData.initialOpinion.value > 4
@@ -542,7 +572,7 @@ function Chat1v1Component() {
                   ? "disagree"
                   : "neutral"
               : null,
-            confederateName: currentRoom?.confederateName || null,
+            confederateName: room?.confederate_id || null,
           }
           
           const response = await fetch("/api/chat", {
@@ -551,53 +581,49 @@ function Chat1v1Component() {
             body: JSON.stringify(requestBody),
           })
           
-          if (response.ok) {
-            const data = await response.json()
-            const assistantMessage = {
-              id: `assistant_${Date.now()}`,
-              role: "assistant" as const,
-              content: data.content || "I'm not sure how to respond to that.",
+                      if (response.ok) {
+              const data = await response.json()
+              const assistantMessage = {
+                room_id: roomId,
+                sender_id: "confederate",
+                sender_role: "assistant",
+                content: data.content || "I'm not sure how to respond to that.",
+                created_at: new Date().toISOString(),
+              }
+              
+              const { data: insertedConfMessage, error: confError } = await supabase
+                .from("messages")
+                .insert([assistantMessage])
+                .select()
+                .single()
+                
+              if (confError) {
+                console.error("Failed to send confederate message:", confError)
+              }
+            } else {
+              throw new Error("Confederate API failed")
+            }
+                  } catch (fallbackError) {
+            console.error("Fallback error:", fallbackError)
+            const simulatedResponse = getSimulatedResponse()
+            const fallbackMessage = {
+              room_id: roomId,
               sender_id: "confederate",
+              sender_role: "assistant",
+              content: simulatedResponse,
               created_at: new Date().toISOString(),
             }
             
-            setMessages(prev => [...prev, assistantMessage])
-            
-            if (currentRoom) {
-              const chatMessageForStorage: ChatMessage = {
-                ...assistantMessage,
-                roomId: currentRoom.id,
-                timestamp: new Date(),
-              }
-              const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-              localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
+            const { data: insertedFallback, error: fallbackError2 } = await supabase
+              .from("messages")
+              .insert([fallbackMessage])
+              .select()
+              .single()
+              
+            if (fallbackError2) {
+              console.error("Failed to send fallback message:", fallbackError2)
             }
-          } else {
-            throw new Error("Confederate API failed")
           }
-        } catch (fallbackError) {
-          console.error("Fallback error:", fallbackError)
-          const simulatedResponse = getSimulatedResponse()
-          const fallbackMessage = {
-            id: `assistant_fallback_${Date.now()}`,
-            role: "assistant" as const,
-            content: simulatedResponse,
-            sender_id: "confederate",
-            created_at: new Date().toISOString(),
-          }
-          
-          setMessages(prev => [...prev, fallbackMessage])
-          
-          if (currentRoom) {
-            const chatMessageForStorage: ChatMessage = {
-              ...fallbackMessage,
-              roomId: currentRoom.id,
-              timestamp: new Date(),
-            }
-            const existingMessages = JSON.parse(localStorage.getItem(`messages_${currentRoom.id}`) || "[]")
-            localStorage.setItem(`messages_${currentRoom.id}`, JSON.stringify([...existingMessages, chatMessageForStorage]))
-          }
-        }
         
         setIsLoading(false)
       }, 2000)
@@ -630,7 +656,20 @@ function Chat1v1Component() {
     )
   }
 
-  if (!currentRoom) {
+  // Loading states
+  if (loadingRoom) {
+    return (
+      <PageTransition>
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 text-2xl font-bold">Joining 1v1 room...</div>
+          </div>
+        </div>
+      </PageTransition>
+    )
+  }
+
+  if (!room || !roomId) {
     return (
       <PageTransition>
         <div className="flex h-screen items-center justify-center">
@@ -808,7 +847,7 @@ function Chat1v1Component() {
                 <div className="space-y-6">
                   {messages.map((message, index) => {
                     const isUser = message.role === "user"
-                    const senderName = isUser ? userName : (message.sender_id === "moderator" ? "Moderator" : (currentRoom?.confederateName || "Confederate"))
+                    const senderName = isUser ? userName : (message.sender_id === "moderator" ? "Moderator" : (room?.confederate_id || "Confederate"))
 
                     return (
                       <MessageAnimation
@@ -861,12 +900,12 @@ function Chat1v1Component() {
                       <div className="flex gap-3">
                         <Avatar className="h-9 w-9 mt-1">
                           <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                            {getAvatarInitial(currentRoom?.confederateName || "Confederate")}
+                            {getAvatarInitial(room?.confederate_id || "Confederate")}
                           </div>
                         </Avatar>
                         <div className="flex max-w-[75%] flex-col items-start">
                           <div className="mb-1">
-                            <span className="text-sm font-medium">{currentRoom?.confederateName || "Confederate"}</span>
+                            <span className="text-sm font-medium">{room?.confederate_id || "Confederate"}</span>
                           </div>
                           <div className="rounded-2xl rounded-tl-sm bg-white px-4 py-2.5 text-sm shadow-sm">
                             <div className="flex items-center gap-2">
