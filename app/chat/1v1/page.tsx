@@ -135,8 +135,47 @@ function Chat1v1Component() {
         setRoom(room)
         setRoomId(room.id)
         setWaitingForUser(false) // 1v1 rooms start active
+        
+        // Add initial moderator message immediately after room setup
+        setTimeout(async () => {
+          console.log('Checking for existing moderator message after room join...')
+          const { data: existingMessages, error: checkError } = await supabase
+            .from("messages")
+            .select('id')
+            .eq('room_id', room.id)
+            .eq('sender_id', 'moderator')
+            .limit(1)
+          
+          if (!checkError && (!existingMessages || existingMessages.length === 0)) {
+            console.log('No moderator message found, adding one now...')
+            const topicDisplayName = chatTopicDisplayNames[selectedTopic] || selectedTopic
+            const moderatorMessage = {
+              room_id: room.id,
+              sender_id: "moderator",
+              sender_role: "system",
+              content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and an AI participant to debate the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+            }
+
+            const { data: insertedMessage, error } = await supabase
+              .from("messages")
+              .insert([moderatorMessage])
+              .select()
+              .single()
+              
+            if (error) {
+              console.error('Error inserting moderator message on room join:', error)
+            } else {
+              console.log('Moderator message added on room join:', insertedMessage)
+            }
+          } else {
+            console.log('Moderator message already exists or error checking:', { existingMessages, checkError })
+          }
+        }, 1500)
       })
-      .catch(() => setRoom(null))
+      .catch(err => {
+        console.error('Error joining 1v1 room:', err)
+        setRoom(null)
+      })
       .finally(() => setLoadingRoom(false))
   }, [topic])
 
@@ -155,7 +194,7 @@ function Chat1v1Component() {
         .eq('room_id', roomId)
         .order('created_at', { ascending: true })
       if (!error && data) {
-        console.log('Fetched 1v1 messages:', data)
+        console.log('Fetched 1v1 messages count:', data.length, 'messages:', data)
         const fetchedMessages = data.map((msg) => ({
           id: msg.id,
           role: msg.sender_role,
@@ -164,6 +203,7 @@ function Chat1v1Component() {
           created_at: msg.created_at,
         }))
         
+        console.log('Setting 1v1 messages:', fetchedMessages)
         setMessages(fetchedMessages)
       } else {
         console.error('Error fetching 1v1 messages:', error)
@@ -183,13 +223,18 @@ function Chat1v1Component() {
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
-          console.log('Received new 1v1 message:', payload.new)
+          console.log('Received new 1v1 message via subscription:', payload.new)
           const newMessage = payload.new
           setMessages((prev) => {
-            if (prev.some((msg) => msg.id === newMessage.id)) {
+            const messageExists = prev.some((msg) => msg.id === newMessage.id)
+            console.log('Message exists check:', messageExists, 'Current messages count:', prev.length)
+            
+            if (messageExists) {
+              console.log('Message already exists, skipping')
               return prev
             }
-            return [
+            
+            const updatedMessages = [
               ...prev,
               {
                 id: newMessage.id,
@@ -199,6 +244,9 @@ function Chat1v1Component() {
                 created_at: newMessage.created_at,
               },
             ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            
+            console.log('Updated messages after real-time insert:', updatedMessages.length, updatedMessages)
+            return updatedMessages
           })
         }
       )
@@ -211,8 +259,27 @@ function Chat1v1Component() {
 
   // Add initial moderator message when room becomes active
   useEffect(() => {
-    if (room && roomId && debateTopic && messages.length === 0) {
+    if (room && roomId && debateTopic) {
       const addInitialModeratorMessage = async () => {
+        // Check if moderator message already exists
+        const { data: existingMessages, error: checkError } = await supabase
+          .from("messages")
+          .select('id')
+          .eq('room_id', roomId)
+          .eq('sender_id', 'moderator')
+          .limit(1)
+        
+        if (checkError) {
+          console.error('Error checking for existing moderator messages:', checkError)
+          return
+        }
+        
+        if (existingMessages && existingMessages.length > 0) {
+          console.log('Moderator message already exists, skipping')
+          return
+        }
+        
+        console.log('Adding initial moderator message for 1v1 room')
         const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
         const moderatorMessage = {
           room_id: roomId,
@@ -231,16 +298,17 @@ function Chat1v1Component() {
           if (error) {
             console.error('Error inserting initial moderator message:', error)
           } else {
-            console.log('Initial moderator message added successfully')
+            console.log('Initial moderator message added successfully:', insertedMessage)
           }
         } catch (error) {
           console.error("Error adding initial moderator message:", error)
         }
       }
       
-      setTimeout(addInitialModeratorMessage, 500)
+      // Add delay to ensure room is fully set up
+      setTimeout(addInitialModeratorMessage, 1000)
     }
-  }, [room, roomId, debateTopic, messages.length])
+  }, [room, roomId, debateTopic])
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -372,6 +440,8 @@ function Chat1v1Component() {
       console.error("Failed to send 1v1 message:", userError)
       return
     }
+    
+    console.log("1v1 user message inserted successfully:", insertedMessage)
 
     // Note: No typing indicator - moderation happens silently in background
 
