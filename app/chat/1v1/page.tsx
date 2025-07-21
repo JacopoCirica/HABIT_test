@@ -95,6 +95,9 @@ function Chat1v1Component() {
   const [opinionTrackingData, setOpinionTrackingData] = useState<OpinionTrackingData | null>(null)
   const [debateTopic, setDebateTopic] = useState<string | null>(null)
 
+  // Ref for tracking moderator message (prevent duplicates)
+  const moderatorMessageSentRef = useRef(false)
+
   const sessionTitle = debateTopic ? chatTopicDisplayNames[debateTopic] : "Opinion Discussion"
   const sessionDescription = "Discuss and debate various social and political topics"
 
@@ -134,43 +137,72 @@ function Chat1v1Component() {
         console.log('Joined 1v1 room:', room)
         setRoom(room)
         setRoomId(room.id)
-        setWaitingForUser(false) // 1v1 rooms start active
         
-        // Add initial moderator message immediately after room setup
-        setTimeout(async () => {
-          console.log('Checking for existing moderator message after room join...')
-          const { data: existingMessages, error: checkError } = await supabase
-            .from("messages")
-            .select('id')
-            .eq('room_id', room.id)
-            .eq('sender_id', 'moderator')
-            .limit(1)
+        // Show waiting screen and simulate connection delay (3-8 seconds)
+        setWaitingForUser(true)
+        setConnectionMessage("Connecting to 1v1 chat room...")
+        
+        const simulateUserConnection = () => {
+          const randomDelay = Math.floor(Math.random() * (8000 - 3000 + 1)) + 3000 // 3-8 seconds
           
-          if (!checkError && (!existingMessages || existingMessages.length === 0)) {
-            console.log('No moderator message found, adding one now...')
-            const topicDisplayName = chatTopicDisplayNames[selectedTopic] || selectedTopic
-            const moderatorMessage = {
-              room_id: room.id,
-              sender_id: "moderator",
-              sender_role: "system",
-              content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and an AI participant to debate the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
-            }
-
-            const { data: insertedMessage, error } = await supabase
-              .from("messages")
-              .insert([moderatorMessage])
-              .select()
-              .single()
+          // Update connection message after 1 second
+          setTimeout(() => {
+            setConnectionMessage("Waiting for AI participant to join...")
+          }, 1000)
+          
+          // Show chat interface after random delay
+          setTimeout(() => {
+            setWaitingForUser(false)
+            
+            // Add initial moderator message after connection simulation
+            setTimeout(async () => {
+              if (moderatorMessageSentRef.current) {
+                console.log('Moderator message already sent via ref, skipping')
+                return
+              }
               
-            if (error) {
-              console.error('Error inserting moderator message on room join:', error)
-            } else {
-              console.log('Moderator message added on room join:', insertedMessage)
-            }
-          } else {
-            console.log('Moderator message already exists or error checking:', { existingMessages, checkError })
-          }
-        }, 1500)
+              console.log('Checking for existing moderator message after connection...')
+              const { data: existingMessages, error: checkError } = await supabase
+                .from("messages")
+                .select('id')
+                .eq('room_id', room.id)
+                .eq('sender_id', 'moderator')
+                .limit(1)
+              
+              if (!checkError && (!existingMessages || existingMessages.length === 0)) {
+                console.log('No moderator message found, adding one now...')
+                moderatorMessageSentRef.current = true // Set flag immediately
+                
+                const topicDisplayName = chatTopicDisplayNames[selectedTopic] || selectedTopic
+                const moderatorMessage = {
+                  room_id: room.id,
+                  sender_id: "moderator",
+                  sender_role: "system",
+                  content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and an AI participant to debate the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+                }
+
+                const { data: insertedMessage, error } = await supabase
+                  .from("messages")
+                  .insert([moderatorMessage])
+                  .select()
+                  .single()
+                  
+                if (error) {
+                  console.error('Error inserting moderator message after connection:', error)
+                  moderatorMessageSentRef.current = false // Reset flag on error
+                } else {
+                  console.log('Moderator message added after connection:', insertedMessage)
+                }
+              } else {
+                console.log('Moderator message already exists:', { existingMessages, checkError })
+                moderatorMessageSentRef.current = true // Mark as sent since it exists
+              }
+            }, 500)
+          }, randomDelay)
+        }
+        
+        // Start the connection simulation
+        simulateUserConnection()
       })
       .catch(err => {
         console.error('Error joining 1v1 room:', err)
@@ -257,58 +289,7 @@ function Chat1v1Component() {
     }
   }, [roomId])
 
-  // Add initial moderator message when room becomes active
-  useEffect(() => {
-    if (room && roomId && debateTopic) {
-      const addInitialModeratorMessage = async () => {
-        // Check if moderator message already exists
-        const { data: existingMessages, error: checkError } = await supabase
-          .from("messages")
-          .select('id')
-          .eq('room_id', roomId)
-          .eq('sender_id', 'moderator')
-          .limit(1)
-        
-        if (checkError) {
-          console.error('Error checking for existing moderator messages:', checkError)
-          return
-        }
-        
-        if (existingMessages && existingMessages.length > 0) {
-          console.log('Moderator message already exists, skipping')
-          return
-        }
-        
-        console.log('Adding initial moderator message for 1v1 room')
-        const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
-        const moderatorMessage = {
-          room_id: roomId,
-          sender_id: "moderator",
-          sender_role: "system",
-          content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you and an AI participant to debate the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
-        }
-
-        try {
-          const { data: insertedMessage, error } = await supabase
-            .from("messages")
-            .insert([moderatorMessage])
-            .select()
-            .single()
-            
-          if (error) {
-            console.error('Error inserting initial moderator message:', error)
-          } else {
-            console.log('Initial moderator message added successfully:', insertedMessage)
-          }
-        } catch (error) {
-          console.error("Error adding initial moderator message:", error)
-        }
-      }
-      
-      // Add delay to ensure room is fully set up
-      setTimeout(addInitialModeratorMessage, 1000)
-    }
-  }, [room, roomId, debateTopic])
+  // Note: Moderator message is now handled in the room join callback to prevent duplicates
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -705,7 +686,7 @@ function Chat1v1Component() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Show loading state while waiting for another user
+  // Show loading state while waiting for AI participant
   if (waitingForUser) {
     return (
       <PageTransition>
@@ -717,8 +698,8 @@ function Chat1v1Component() {
             <h2 className="mb-2 text-2xl font-bold">{connectionMessage}</h2>
             <p className="text-muted-foreground">
               {connectionMessage.includes("Connecting") 
-                ? "Setting up your 1-on-1 debate session..." 
-                : "This should only take a moment..."}
+                ? "Setting up your 1v1 debate session with AI..." 
+                : "AI participant is getting ready to join..."}
             </p>
           </div>
         </div>
