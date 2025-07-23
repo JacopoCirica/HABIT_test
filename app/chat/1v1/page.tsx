@@ -44,7 +44,7 @@ import {
 import { supabase } from "@/lib/supabaseClient"
 import { OpinionTrackingData } from "@/lib/opinion-tracker"
 import { PostSurveyResponses } from "@/components/ui/post-survey"
-import { getChatTopicFromOpinions, chatTopicDisplayNames } from "@/lib/opinion-analyzer"
+import { chatTopicDisplayNames } from "@/lib/opinion-analyzer"
 // Removed savePostSurvey import - using API endpoint instead
 
 function Chat1v1Component() {
@@ -111,12 +111,6 @@ function Chat1v1Component() {
 
   // Initialize 1v1 room
   useEffect(() => {
-    // Determine topic once and store it
-    const selectedTopic = debateTopic || topic || getChatTopicFromOpinions() // Use existing topic or get new one
-    if (!debateTopic) {
-      setDebateTopic(selectedTopic)
-      console.log('1v1 room: Setting debate topic to:', selectedTopic)
-    }
     setLoadingRoom(true)
     
     // Get or create consistent user ID
@@ -128,19 +122,40 @@ function Chat1v1Component() {
     
     const userName = sessionStorage.getItem("userName") || "User"
     
+    // Get user opinions for topic selection
+    let userOpinions = null
+    try {
+      const opinionsStr = sessionStorage.getItem("userOpinions")
+      if (opinionsStr) {
+        userOpinions = JSON.parse(opinionsStr)
+      }
+    } catch (error) {
+      console.error('Error parsing user opinions:', error)
+    }
+    
     // Set basic user state
     setUserName(userName)
     
     fetch('/api/rooms/1v1/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, user_name: userName }),
+      body: JSON.stringify({ 
+        user_id: userId, 
+        user_name: userName,
+        user_opinions: userOpinions
+      }),
     })
       .then(res => res.json())
       .then(({ room }) => {
         console.log('Joined 1v1 room:', room)
         setRoom(room)
         setRoomId(room.id)
+        
+        // Set topic from room data
+        if (room.topic && !debateTopic) {
+          setDebateTopic(room.topic)
+          console.log('1v1 room: Setting debate topic from room:', room.topic)
+        }
         
         // Show waiting screen and simulate connection delay (3-8 seconds)
         setWaitingForUser(true)
@@ -177,7 +192,8 @@ function Chat1v1Component() {
                 console.log('No moderator message found, adding one now...')
                 moderatorMessageSentRef.current = true // Set flag immediately
                 
-                const topicDisplayName = chatTopicDisplayNames[selectedTopic] || selectedTopic
+                const currentTopic = room.topic || debateTopic || "social-media-regulation"
+                const topicDisplayName = chatTopicDisplayNames[currentTopic] || currentTopic
                 const moderatorMessage = {
                   room_id: room.id,
                   sender_id: "moderator",

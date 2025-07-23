@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
 
 export async function POST(req: NextRequest) {
-  const { user_id, user_name } = await req.json()
+  const { user_id, user_name, user_opinions } = await req.json()
   console.log('Joining 1v1 room:', { user_id, user_name });
 
   // Find a waiting room with only one user (AI will be added automatically)
   const { data: waitingRooms, error: waitingRoomsError } = await supabase
     .from('rooms')
-    .select('id, status, confederate_id')
+    .select('id, status, confederate_id, topic')
     .eq('type', '1v1')
     .eq('status', 'waiting')
 
@@ -63,19 +63,41 @@ export async function POST(req: NextRequest) {
   } else {
     console.log('No waiting 1v1 room found, creating new room');
     
+    // Select topic based on first user's opinions
+    let selectedTopic = "social-media-regulation" // Default fallback
+    
+    if (user_opinions) {
+      try {
+        // Import the topic selection logic
+        const { getTopicToDebate, opinionToChatTopicMap } = await import('@/lib/opinion-analyzer')
+        const topicAnalysis = getTopicToDebate(user_opinions)
+        
+        if (topicAnalysis) {
+          selectedTopic = opinionToChatTopicMap[topicAnalysis.topic]
+          console.log(`Selected 1v1 topic: ${topicAnalysis.topic} (${topicAnalysis.displayName}) -> ${selectedTopic}`)
+          console.log(`User position: ${topicAnalysis.position} (${topicAnalysis.rawValue}/7)`)
+        }
+      } catch (error) {
+        console.error('Error selecting topic from opinions:', error)
+      }
+    }
+    
+    console.log('Final selected topic for new 1v1 room:', selectedTopic);
+    
     // Assign a random confederate name for the AI
     const confederateNames = ["Ben", "Chuck", "Jamie", "Alex", "Taylor"]
     const randomConfederate = confederateNames[Math.floor(Math.random() * confederateNames.length)]
     
     console.log('Assigning confederate for new 1v1 room:', randomConfederate);
     
-    // Create new room with AI confederate
+    // Create new room with AI confederate and selected topic
     const { data: newRoom, error: newRoomError } = await supabase
       .from('rooms')
       .insert([{ 
         type: '1v1', 
         status: 'active', // Start active since AI is always ready
-        confederate_id: randomConfederate 
+        confederate_id: randomConfederate,
+        topic: selectedTopic
       }])
       .select()
       .single();
