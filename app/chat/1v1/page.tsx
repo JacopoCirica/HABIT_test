@@ -111,9 +111,12 @@ function Chat1v1Component() {
 
   // Initialize 1v1 room
   useEffect(() => {
-    // Always initialize, with or without topic
-    const selectedTopic = topic || getChatTopicFromOpinions() // Use demographics-based topic selection
-    setDebateTopic(selectedTopic)
+    // Determine topic once and store it
+    const selectedTopic = debateTopic || topic || getChatTopicFromOpinions() // Use existing topic or get new one
+    if (!debateTopic) {
+      setDebateTopic(selectedTopic)
+      console.log('1v1 room: Setting debate topic to:', selectedTopic)
+    }
     setLoadingRoom(true)
     
     // Get or create consistent user ID
@@ -210,7 +213,7 @@ function Chat1v1Component() {
         setRoom(null)
       })
       .finally(() => setLoadingRoom(false))
-  }, [topic])
+  }, []) // Empty dependency array - only run once on mount
 
   // Set up Supabase subscription for messages
   useEffect(() => {
