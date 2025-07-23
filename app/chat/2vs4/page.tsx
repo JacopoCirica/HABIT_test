@@ -21,7 +21,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { PostSurvey, PostSurveyResponses } from "@/components/ui/post-survey"
 import { SurveyThankYou } from "@/components/ui/survey-thank-you"
 import { OnboardingTraining } from "@/components/ui/onboarding-training"
-import { savePostSurvey } from "@/lib/post-survey-actions"
+// Removed savePostSurvey import - using API endpoint instead
 
 // Icons
 import {
@@ -362,9 +362,27 @@ function Chat2vs4Component() {
         sessionDuration: sessionTime
       }
 
-      // Save survey responses to Supabase
+      // Save survey responses via API endpoint
       console.log("2vs4 survey responses:", responses)
-      await savePostSurvey(responses, sessionData)
+      
+      const response = await fetch('/api/survey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          responses,
+          sessionData
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save survey')
+      }
+
+      const result = await response.json()
+      console.log("2vs4 survey saved successfully:", result)
       
       setShowExitSurvey(false)
       setShowSurveyThankYou(true)
