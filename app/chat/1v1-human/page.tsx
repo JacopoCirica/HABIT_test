@@ -271,8 +271,10 @@ function Chat1v1HumanComponent() {
               return updated
             })
             
-            // Add moderator message when we have both users
+            // Add moderator message when we have both users (only once)
             if (data && data.length >= 2 && room?.status === 'active' && !moderatorMessageSentRef.current) {
+              console.log('1v1-human triggering initial moderator message (2 users found)')
+              moderatorMessageSentRef.current = true // Set immediately to prevent race conditions
               setTimeout(() => addInitialModeratorMessage(), 500)
             }
           }
@@ -528,17 +530,20 @@ function Chat1v1HumanComponent() {
       return
     }
     
+    console.log('1v1-human executing addInitialModeratorMessage...')
+    
     // Double-check database for existing moderator messages
     try {
       const { data: existingMessages, error } = await supabase
         .from("messages")
-        .select('id')
+        .select('id, content')
         .eq('room_id', roomId1v1Human)
         .eq('sender_id', 'moderator')
+        .ilike('content', 'Welcome! I%') // Only check for initial welcome messages
         .limit(1)
       
       if (existingMessages && existingMessages.length > 0) {
-        console.log('1v1-human moderator message already exists in database, skipping')
+        console.log('1v1-human initial moderator message already exists in database, skipping')
         moderatorMessageSentRef.current = true
         return
       }
@@ -546,10 +551,13 @@ function Chat1v1HumanComponent() {
       console.error('1v1-human error checking for existing moderator messages:', error)
     }
     
-    // Check if moderator message already exists in local messages
-    const hasModeratorMessage = messages.some(msg => msg.sender_id === "moderator")
-    if (hasModeratorMessage) {
-      console.log('1v1-human moderator message found in local messages, skipping')
+    // Check if initial moderator message already exists in local messages
+    const hasInitialModeratorMessage = messages.some(msg => 
+      msg.sender_id === "moderator" && 
+      msg.content?.startsWith("Welcome! I'm the Moderator")
+    )
+    if (hasInitialModeratorMessage) {
+      console.log('1v1-human initial moderator message found in local messages, skipping')
       moderatorMessageSentRef.current = true
       return
     }
