@@ -72,6 +72,10 @@ function Chat1v1HumanComponent() {
   const [fetchError, setFetchError] = useState<any>(null)
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [cacheVersion, setCacheVersion] = useState(0)
+  
+  // Exit notification state
+  const [showExitNotification, setShowExitNotification] = useState(false)
+  const [exitNotificationMessage, setExitNotificationMessage] = useState("")
 
   // Use shared topic selection logic
   const debateTopic = topic || getChatTopicFromOpinions()
@@ -336,6 +340,33 @@ function Chat1v1HumanComponent() {
         (payload) => {
           console.log('1v1-human received new message:', payload.new)
           const newMessage = payload.new
+          
+          // Check if this is an exit notification from another participant
+          if (newMessage.sender_role === 'system' && 
+              newMessage.content?.startsWith('PARTICIPANT_EXITED:')) {
+            const exitingUserName = newMessage.content.replace('PARTICIPANT_EXITED:', '')
+            const currentUserName = sessionStorage.getItem("userName") || "User"
+            
+            // Only trigger automatic exit if it's NOT the current user
+            if (exitingUserName !== currentUserName) {
+              console.log('Other participant exited from 1v1-human room, automatically ending session:', exitingUserName)
+              
+              // Show exit notification message
+              setExitNotificationMessage(`${exitingUserName} has left the session. You will be redirected to the exit survey shortly.`)
+              setShowExitNotification(true)
+              
+              // Show a brief notification and then trigger automatic exit
+              setTimeout(() => {
+                setShowExitNotification(false)
+                setSessionEnded(true)
+                setShowExitSurvey(true)
+              }, 3000) // 3 second delay to show the exit notification
+            }
+            
+            // Don't add exit notifications to the visible message list
+            return
+          }
+          
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) {
               return prev
@@ -385,7 +416,28 @@ function Chat1v1HumanComponent() {
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen)
 
   const handleExitClick = () => setExitDialogOpen(true)
-  const handleExitConfirm = () => {
+  const handleExitConfirm = async () => {
+    // Notify other participants before exiting
+    if (roomId1v1Human) {
+      try {
+        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+        const userName = sessionStorage.getItem("userName") || "User"
+        
+        console.log('Sending exit notification to 1v1-human room:', roomId1v1Human)
+        await fetch(`/api/rooms/${roomId1v1Human}/exit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            user_id: userId, 
+            user_name: userName 
+          })
+        })
+      } catch (error) {
+        console.error('Error sending exit notification:', error)
+        // Continue with exit even if notification fails
+      }
+    }
+    
     setShowExitSurvey(true)
     setExitDialogOpen(false)
   }
@@ -1085,6 +1137,25 @@ function Chat1v1HumanComponent() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Exit notification overlay */}
+        {showExitNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"
+          >
+            <Card className="border-amber-200 bg-amber-50 shadow-lg">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 bg-amber-500 rounded-full animate-pulse"></div>
+                  <p className="text-amber-800 font-medium">{exitNotificationMessage}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
     </PageTransition>
