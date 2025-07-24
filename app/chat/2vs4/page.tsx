@@ -72,7 +72,7 @@ function Chat2vs4Component() {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [sessionPaused, setSessionPaused] = useState(false)
   const [sessionTime, setSessionTime] = useState(0)
-  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(15 * 60)
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(30 * 60)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
@@ -464,7 +464,7 @@ function Chat2vs4Component() {
       room_id: roomId2vs4,
       sender_id: "moderator",
       sender_role: "system",
-      content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you two participants to debate with our 4 other participants on the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+      content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you two participants to debate with our 4 other participants on the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 30 minutes. Please feel free to begin when you're ready.`,
     }
 
     try {
@@ -1118,7 +1118,7 @@ function Chat2vs4Component() {
                   <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
                 )}
                 <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
-                  {sessionStarted ? formatTime(sessionTimeRemaining) : "15:00"}
+                  {sessionStarted ? formatTime(sessionTimeRemaining) : "30:00"}
                 </span>
               </motion.div>
 
@@ -1206,7 +1206,7 @@ function Chat2vs4Component() {
                         <h3 className="mb-2 font-semibold">Discussion Question</h3>
                         <p className="mb-4 text-muted-foreground">{sessionDescription}</p>
                         <h3 className="mb-2 font-semibold">Session Duration</h3>
-                        <p className="text-muted-foreground">15 minutes</p>
+                        <p className="text-muted-foreground">30 minutes</p>
                       </CardContent>
                     </Card>
                   </TabsContent>
