@@ -464,7 +464,7 @@ function Chat2vs4Component() {
       room_id: roomId2vs4,
       sender_id: "moderator",
       sender_role: "system",
-      content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you two participants to debate with our 4 AI participants (1 confederate + 3 LLM users) on the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
+      content: `Welcome! I'm the Moderator for this session. The goal of this conversation is for you two participants to debate with our 4 other participants on the topic: "${topicDisplayName}". Please maintain a respectful dialogue. I will intervene if messages are harmful or inappropriate. This session will last 15 minutes. Please feel free to begin when you're ready.`,
     }
 
     try {
@@ -728,7 +728,7 @@ function Chat2vs4Component() {
         debateTopic: debateTopic
       })
       
-      // Determine which AI participants should respond (1-3 of them)
+      // Determine which AI participants should respond based on context
       const aiParticipants = [
         { id: "confederate", name: room?.confederateName },
         { id: "llm_user_1", name: room?.llmUser1 },
@@ -736,12 +736,33 @@ function Chat2vs4Component() {
         { id: "llm_user_3", name: room?.llmUser3 }
       ]
       
-      // Randomly select 1-3 AI participants to respond
-      const numResponders = Math.floor(Math.random() * 3) + 1 // 1-3 responders
-      const shuffledAI = [...aiParticipants].sort(() => 0.5 - Math.random())
-      const selectedResponders = shuffledAI.slice(0, numResponders)
+      // Check if user directly addressed a specific AI participant
+      const lowerMessage = trimmedInput.toLowerCase()
+      const directlyAddressed = aiParticipants.find(ai => 
+        ai.name && (
+          lowerMessage.includes(ai.name.toLowerCase()) ||
+          lowerMessage.includes(`@${ai.name.toLowerCase()}`) ||
+          lowerMessage.includes(`hey ${ai.name.toLowerCase()}`) ||
+          lowerMessage.includes(`${ai.name.toLowerCase()},`) ||
+          lowerMessage.includes(`${ai.name.toLowerCase()}?`) ||
+          lowerMessage.includes(`${ai.name.toLowerCase()}!`)
+        )
+      )
       
-      console.log(`2vs4 Selected ${numResponders} AI responders:`, selectedResponders.map(r => r.name))
+      let selectedResponders = []
+      
+      if (directlyAddressed) {
+        // If someone was directly addressed, only they respond
+        selectedResponders = [directlyAddressed]
+        console.log(`2vs4 Direct address detected: ${directlyAddressed.name} will respond`)
+      } else {
+        // Normal flow: randomly select 1-2 AI participants to respond (reduced from 1-3)
+        const numResponders = Math.floor(Math.random() * 2) + 1 // 1-2 responders
+        const shuffledAI = [...aiParticipants].sort(() => 0.5 - Math.random())
+        selectedResponders = shuffledAI.slice(0, numResponders)
+             }
+       
+       console.log(`2vs4 Selected ${selectedResponders.length} AI responders:`, selectedResponders.map(r => r.name))
       
       // Generate responses for each selected AI participant
       for (let i = 0; i < selectedResponders.length; i++) {
@@ -817,6 +838,112 @@ function Chat2vs4Component() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Autonomous AI conversation trigger - AI participants interact with each other
+  useEffect(() => {
+    if (!sessionStarted || sessionEnded || !roomId2vs4 || messages.length === 0) return
+
+    const triggerAIConversation = () => {
+      // Only trigger if no recent activity and last message is not from AI
+      const lastMessage = messages[messages.length - 1]
+      const recentMessages = messages.slice(-3)
+      const recentAIMessages = recentMessages.filter(msg => msg.role === "assistant")
+      
+      // Don't trigger if:
+      // - Last message was from AI (to avoid AI spam)
+      // - There were AI messages in last 3 messages
+      // - Not enough conversation history
+      if (lastMessage?.role === "assistant" || recentAIMessages.length > 0 || messages.length < 3) {
+        return
+      }
+      
+      // Calculate time since last message
+      const lastMessageTime = new Date(lastMessage.created_at).getTime()
+      const timeSinceLastMessage = Date.now() - lastMessageTime
+      
+      // Only trigger if 15+ seconds of silence
+      if (timeSinceLastMessage < 15000) return
+      
+      console.log('2vs4 Triggering autonomous AI conversation due to silence')
+      
+      // Select 1 AI participant to continue the conversation
+      const aiParticipants = [
+        { id: "confederate", name: room?.confederateName },
+        { id: "llm_user_1", name: room?.llmUser1 },
+        { id: "llm_user_2", name: room?.llmUser2 },
+        { id: "llm_user_3", name: room?.llmUser3 }
+      ]
+      
+      const randomAI = aiParticipants[Math.floor(Math.random() * aiParticipants.length)]
+      
+      setTimeout(async () => {
+        try {
+          const storedName = sessionStorage.getItem("userName") || "User"
+          const storedAge = sessionStorage.getItem("userAge") || "Unknown"
+          const storedSex = sessionStorage.getItem("userSex") || "Unknown"
+          const storedEducation = sessionStorage.getItem("userEducation") || "Unknown"
+          const storedOccupation = sessionStorage.getItem("userOccupation") || "Unknown"
+          
+          const userTraits = {
+            gender: storedSex,
+            age: storedAge,
+            education: storedEducation,
+            employment: storedOccupation,
+          }
+          
+          const requestBody = {
+            messages: messages,
+            userTraits,
+            topic: debateTopic ? chatTopicDisplayNames[debateTopic] : "the current topic",
+            roomId: roomId2vs4,
+            debateTopic: debateTopic ? chatTopicDisplayNames[debateTopic] : null,
+            userPosition: "neutral",
+            confederateName: randomAI.name,
+            roomType: "2vs4",
+            responderId: randomAI.id,
+            isAutonomousResponse: true // Flag for AI to continue conversation naturally
+          }
+          
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          })
+          
+          if (!response.ok) {
+            throw new Error(`Autonomous AI response failed: ${response.status}`)
+          }
+          
+          const data = await response.json()
+          
+          // Insert autonomous AI response
+          const aiMessage = {
+            room_id: roomId2vs4,
+            sender_id: randomAI.id,
+            sender_role: "assistant",
+            content: data.content || "I'd like to add to this discussion...",
+          }
+          
+          const { data: insertedAIMessage, error: aiError } = await supabase
+            .from("messages")
+            .insert([aiMessage])
+            .select()
+            .single()
+            
+          if (!aiError) {
+            console.log(`2vs4 Autonomous response from ${randomAI.name}:`, insertedAIMessage)
+          }
+          
+        } catch (error) {
+          console.error("2vs4 Error in autonomous AI conversation:", error)
+        }
+      }, 2000) // 2 second delay before autonomous response
+    }
+    
+    // Check for conversation triggers every 10 seconds
+    const interval = setInterval(triggerAIConversation, 10000)
+    return () => clearInterval(interval)
+  }, [messages, sessionStarted, sessionEnded, roomId2vs4, room, debateTopic])
 
   // Loading states
   if (loadingRoom) {
