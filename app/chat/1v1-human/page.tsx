@@ -272,6 +272,13 @@ function Chat1v1HumanComponent() {
             })
             
             // Add moderator message when we have both users (only once)
+            console.log('1v1-human member check:', {
+              dataLength: data?.length,
+              roomStatus: room?.status,
+              moderatorSent: moderatorMessageSentRef.current,
+              shouldTrigger: data && data.length >= 2 && room?.status === 'active' && !moderatorMessageSentRef.current
+            })
+            
             if (data && data.length >= 2 && room?.status === 'active' && !moderatorMessageSentRef.current) {
               console.log('1v1-human triggering initial moderator message (2 users found)')
               moderatorMessageSentRef.current = true // Set immediately to prevent race conditions
@@ -318,8 +325,18 @@ function Chat1v1HumanComponent() {
         
         // Check if moderator message already exists
         const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
+        console.log('1v1-human checking for existing moderator message:', {
+          hasModeratorMessage,
+          messagesCount: fetchedMessages.length,
+          moderatorSent: moderatorMessageSentRef.current
+        })
+        
         if (hasModeratorMessage) {
           moderatorMessageSentRef.current = true
+        } else if (fetchedMessages.length > 0 && !moderatorMessageSentRef.current) {
+          // If we have messages but no moderator message, try to add one
+          console.log('1v1-human no moderator message found, attempting to add one...')
+          setTimeout(() => addInitialModeratorMessage(), 1000)
         }
       } else {
         console.error('1v1-human error fetching messages:', error)
@@ -562,11 +579,16 @@ function Chat1v1HumanComponent() {
       return
     }
     
-    // Only add moderator message when both users are present
-    if (members.length < 2) {
-      console.log('1v1-human not enough members yet:', members.length)
-      return
-    }
+    // Add moderator message (simplified check)
+    console.log('1v1-human addInitialModeratorMessage called:', {
+      membersLength: members.length,
+      roomId: !!roomId1v1Human,
+      debateTopic,
+      moderatorSent: moderatorMessageSentRef.current
+    })
+    
+    // Simplified check - if we have a room and topic, proceed
+    // The member count check was too restrictive
     
     console.log('1v1-human adding initial moderator message...')
     moderatorMessageSentRef.current = true
