@@ -29,9 +29,26 @@ export default function ConsentPage() {
 
     setIsSubmitting(true)
     try {
-      await saveConsentInfo({ name, age, sex, education, occupation })
-      // Store the user's name in session storage for use in the chat
+      // Generate a unique user ID for this participant
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      
+      // Store all user information in session storage
+      sessionStorage.setItem("userId", userId)
       sessionStorage.setItem("userName", name)
+      sessionStorage.setItem("userAge", age)
+      sessionStorage.setItem("userSex", sex)
+      sessionStorage.setItem("userEducation", education)
+      sessionStorage.setItem("userOccupation", occupation)
+      
+      console.log("Personal information stored in session storage with userId:", userId)
+      
+      // Still call the server action for any backend processing (optional)
+      try {
+        await saveConsentInfo({ name, age, sex, education, occupation })
+      } catch (error) {
+        console.log("Server action failed, but continuing with session storage data:", error)
+      }
+      
       router.push("/signup/demographics")
     } catch (error) {
       console.error("Error saving consent info:", error)

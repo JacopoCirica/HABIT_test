@@ -57,9 +57,25 @@ export default function DemographicsPage() {
         occupation: sessionStorage.getItem("userOccupation")
       }
 
+      console.log("Debug - Session storage data:", {
+        email,
+        userId,
+        personalInfo,
+        opinions
+      })
+
       // Validate we have all required data
       if (!email || !userId || !personalInfo.name || !personalInfo.age || 
           !personalInfo.sex || !personalInfo.education || !personalInfo.occupation) {
+        console.error("Missing data details:", {
+          email: !!email,
+          userId: !!userId,
+          name: !!personalInfo.name,
+          age: !!personalInfo.age,
+          sex: !!personalInfo.sex,
+          education: !!personalInfo.education,
+          occupation: !!personalInfo.occupation
+        })
         throw new Error("Missing required user information")
       }
 
