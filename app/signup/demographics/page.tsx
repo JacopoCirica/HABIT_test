@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MessageSquare } from "lucide-react"
-import { saveDemographics } from "@/lib/actions"
+// Removed saveDemographics import - using API endpoint instead
 import { PageTransition } from "@/components/page-transition"
 import { AnimatedButton } from "@/components/ui/animated-button"
 import { LikertScale } from "@/components/ui/likert-scale"
@@ -46,10 +46,44 @@ export default function DemographicsPage() {
       // Save to session storage for use in the chat
       sessionStorage.setItem("userOpinions", JSON.stringify(opinions))
 
-      // Save to backend
-      await saveDemographics({
-        opinions,
+      // Get all user data from session storage
+      const email = sessionStorage.getItem("signupEmail")
+      const userId = sessionStorage.getItem("userId")
+      const personalInfo = {
+        name: sessionStorage.getItem("userName"),
+        age: sessionStorage.getItem("userAge"),
+        sex: sessionStorage.getItem("userSex"),
+        education: sessionStorage.getItem("userEducation"),
+        occupation: sessionStorage.getItem("userOccupation")
+      }
+
+      // Validate we have all required data
+      if (!email || !userId || !personalInfo.name || !personalInfo.age || 
+          !personalInfo.sex || !personalInfo.education || !personalInfo.occupation) {
+        throw new Error("Missing required user information")
+      }
+
+      // Save to backend via API endpoint
+      const response = await fetch('/api/user-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          userId,
+          personalInfo,
+          opinions
+        })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save user data')
+      }
+
+      const result = await response.json()
+      console.log("User data saved successfully:", result)
 
       router.push("/rooms")
     } catch (error) {
