@@ -490,6 +490,10 @@ function Chat2vs4Component() {
           }
           return [localMessage, ...prev]
         })
+        
+        // After moderator message, trigger AI greetings
+        setTimeout(() => addInitialAIGreetings(), 3000) // 3 seconds after moderator
+        
       } else {
         console.error('Error inserting moderator message:', error)
         moderatorMessageSentRef.current = false // Reset on error
@@ -497,6 +501,61 @@ function Chat2vs4Component() {
     } catch (error) {
       console.error("Error adding moderator message:", error)
       moderatorMessageSentRef.current = false // Reset on error
+    }
+  }
+
+  // Add initial AI greetings after moderator message
+  const addInitialAIGreetings = async () => {
+    if (!roomId2vs4 || !room) return
+    
+    console.log('Adding initial AI greetings...')
+    
+    const aiParticipants = [
+      { id: "confederate", name: room.confederateName },
+      { id: "llm_user_1", name: room.llmUser1 },
+      { id: "llm_user_2", name: room.llmUser2 },
+      { id: "llm_user_3", name: room.llmUser3 }
+    ].filter(ai => ai.name) // Only include AIs that have names
+    
+    const greetings = [
+      "Hi everyone! Looking forward to discussing this topic with you all.",
+      "Hello! Excited to share perspectives on this important issue.",
+      "Hey there! Ready to dive into this debate together.",
+      "Hi! This should be an interesting discussion.",
+      "Hello everyone! Let's have a productive conversation about this."
+    ]
+    
+    // Stagger the greetings over 10 seconds
+    for (let i = 0; i < aiParticipants.length; i++) {
+      const ai = aiParticipants[i]
+      const greeting = greetings[i % greetings.length]
+      const delay = (i + 1) * 2500 // 2.5 seconds between each greeting
+      
+      setTimeout(async () => {
+        try {
+          const greetingMessage = {
+            room_id: roomId2vs4,
+            sender_id: ai.id,
+            sender_role: "assistant",
+            content: greeting,
+          }
+          
+          const { data: insertedGreeting, error: greetingError } = await supabase
+            .from("messages")
+            .insert([greetingMessage])
+            .select()
+            .single()
+            
+          if (!greetingError) {
+            console.log(`${ai.name} greeting inserted successfully`)
+          } else {
+            console.error(`Error inserting ${ai.name} greeting:`, greetingError)
+          }
+          
+        } catch (error) {
+          console.error(`Error adding greeting for ${ai.name}:`, error)
+        }
+      }, delay)
     }
   }
 
