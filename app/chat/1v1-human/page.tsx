@@ -468,11 +468,44 @@ function Chat1v1HumanComponent() {
 
   const handleSurveySubmit = async (responses: PostSurveyResponses) => {
     try {
+      // Get session data
+      const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+      const sessionData = {
+        roomId: roomId1v1Human || undefined,
+        userId: userId,
+        roomType: "1v1-human",
+        sessionDuration: sessionTime
+      }
+
+      // Save survey responses via API endpoint
       console.log("1v1-human survey responses:", responses)
+      
+      const response = await fetch('/api/survey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          responses,
+          sessionData
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save survey')
+      }
+
+      const result = await response.json()
+      console.log("1v1-human survey saved successfully:", result)
+      
       setShowExitSurvey(false)
       setShowSurveyThankYou(true)
     } catch (error) {
-      console.error("1v1-human error submitting survey:", error)
+      console.error("Error submitting 1v1-human survey:", error)
+      // Still proceed to thank you page even if save fails
+      setShowExitSurvey(false)
+      setShowSurveyThankYou(true)
     }
   }
 
