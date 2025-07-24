@@ -275,6 +275,44 @@ function Chat2v1Component() {
           console.log('2v1 received new message:', payload.new)
           console.log('2v1 current messages count before update:', messages.length)
           const newMessage = payload.new
+          
+          // Check if this is an exit notification from another participant
+          if (newMessage.sender_role === 'system' && 
+              newMessage.content?.startsWith('PARTICIPANT_EXITED:')) {
+            const exitingUserName = newMessage.content.replace('PARTICIPANT_EXITED:', '')
+            const currentUserName = sessionStorage.getItem("userName") || "User"
+            
+            // Only show notification if it's NOT the current user
+            if (exitingUserName !== currentUserName) {
+              console.log('Other participant exited from 2v1 room:', exitingUserName)
+              
+              // Add a visible red notification message
+              const exitNotificationMessage = {
+                id: newMessage.id,
+                role: 'system',
+                content: `${exitingUserName} has left the session.`,
+                sender_id: 'system',
+                created_at: newMessage.created_at,
+                isExitNotification: true, // Special flag for red styling
+              }
+              
+              setMessages((prev) => {
+                if (prev.some((msg) => msg.id === exitNotificationMessage.id)) {
+                  console.log('2v1 exit notification already exists, skipping')
+                  return prev
+                }
+                const updatedMessages = [...prev, exitNotificationMessage]
+                  .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                
+                console.log('2v1 exit notification added, new count:', updatedMessages.length)
+                return updatedMessages
+              })
+            }
+            
+            // Don't add the raw PARTICIPANT_EXITED message to visible messages
+            return
+          }
+          
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) {
               console.log('2v1 message already exists, skipping')
@@ -329,7 +367,28 @@ function Chat2v1Component() {
   const toggleOpinionTracker = () => setShowOpinionTracker(!showOpinionTracker)
 
   const handleExitClick = () => setExitDialogOpen(true)
-  const handleExitConfirm = () => {
+  const handleExitConfirm = async () => {
+    // Notify other participants before exiting
+    if (roomId) {
+      try {
+        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+        const userName = sessionStorage.getItem("userName") || "User"
+        
+        console.log('Sending exit notification to 2v1 room:', roomId)
+        await fetch(`/api/rooms/${roomId}/exit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            user_id: userId, 
+            user_name: userName 
+          })
+        })
+      } catch (error) {
+        console.error('Error sending exit notification:', error)
+        // Continue with exit even if notification fails
+      }
+    }
+    
     setShowExitSurvey(true)
     setExitDialogOpen(false)
   }
@@ -1200,9 +1259,11 @@ function Chat2v1Component() {
                               messageAlignment === "justify-end"
                                 ? "rounded-tr-sm bg-primary text-primary-foreground"
                                 : message.role === "system"
-                                  ? message.isUnsafeResponse
+                                  ? message.isExitNotification
                                     ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
-                                    : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
+                                    : message.isUnsafeResponse
+                                      ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
+                                      : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
                                   : isAssistant
                                     ? "rounded-tl-sm bg-gray-100 text-gray-700 border border-gray-200"
                                     : "rounded-tl-sm bg-white text-foreground",
