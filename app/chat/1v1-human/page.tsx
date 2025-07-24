@@ -219,6 +219,12 @@ function Chat1v1HumanComponent() {
         setRoom(room)
         setRoomId1v1Human(room.id)
         setWaitingForUser(room.status === 'waiting')
+        
+        // Trigger moderator message creation after room is set up
+        if (room.status === 'active') {
+          console.log('1v1-human room is already active, triggering moderator message')
+          setTimeout(() => addInitialModeratorMessage(), 2000)
+        }
       })
       .catch(() => setRoom(null))
       .finally(() => setLoadingRoom(false))
@@ -236,7 +242,8 @@ function Chat1v1HumanComponent() {
           setWaitingForUser(false)
           clearInterval(interval)
           
-          console.log('1v1-human room became active')
+          console.log('1v1-human room became active, triggering moderator message')
+          setTimeout(() => addInitialModeratorMessage(), 2000)
         }
       }, 2000)
       return () => clearInterval(interval)
@@ -333,8 +340,8 @@ function Chat1v1HumanComponent() {
         
         if (hasModeratorMessage) {
           moderatorMessageSentRef.current = true
-        } else if (fetchedMessages.length > 0 && !moderatorMessageSentRef.current) {
-          // If we have messages but no moderator message, try to add one
+        } else if (!moderatorMessageSentRef.current) {
+          // If no moderator message exists, create one
           console.log('1v1-human no moderator message found, attempting to add one...')
           setTimeout(() => addInitialModeratorMessage(), 1000)
         }
@@ -347,7 +354,7 @@ function Chat1v1HumanComponent() {
 
     // Subscribe to new messages
     const channel = supabase
-      .channel('1v1-human-room-messages')
+      .channel(`1v1-human-room-messages-${roomId1v1Human}`)
       .on(
         'postgres_changes',
         {
@@ -358,6 +365,7 @@ function Chat1v1HumanComponent() {
         },
         (payload) => {
           console.log('1v1-human received new message:', payload.new)
+          console.log('1v1-human current messages count before update:', messages.length)
           const newMessage = payload.new
           
           // Check if this is an exit notification from another participant
@@ -388,9 +396,10 @@ function Chat1v1HumanComponent() {
           
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) {
+              console.log('1v1-human message already exists, skipping')
               return prev
             }
-            return [
+            const updatedMessages = [
               ...prev,
               {
                 id: newMessage.id,
@@ -400,6 +409,9 @@ function Chat1v1HumanComponent() {
                 created_at: newMessage.created_at,
               },
             ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            
+            console.log('1v1-human messages updated, new count:', updatedMessages.length)
+            return updatedMessages
           })
         }
       )
@@ -542,12 +554,15 @@ function Chat1v1HumanComponent() {
 
   // Add initial moderator message when session starts
   const addInitialModeratorMessage = async () => {
-    if (!roomId1v1Human || !debateTopic || moderatorMessageSentRef.current) {
+    if (!roomId1v1Human || moderatorMessageSentRef.current) {
       console.log('1v1-human moderator message blocked:', { roomId: !!roomId1v1Human, debateTopic: !!debateTopic, alreadySent: moderatorMessageSentRef.current })
       return
     }
     
     console.log('1v1-human executing addInitialModeratorMessage...')
+    
+    // Ensure we have a topic, use fallback if needed
+    const currentTopic = debateTopic || "various social and political topics"
     
     // Double-check database for existing moderator messages
     try {
@@ -593,7 +608,7 @@ function Chat1v1HumanComponent() {
     console.log('1v1-human adding initial moderator message...')
     moderatorMessageSentRef.current = true
     
-    const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+    const topicDisplayName = chatTopicDisplayNames[currentTopic] || currentTopic
     const moderatorMessage = {
       room_id: roomId1v1Human,
       sender_id: "moderator",
