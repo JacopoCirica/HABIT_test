@@ -262,7 +262,7 @@ function Chat2v1Component() {
 
     // Subscribe to new messages
     const channel = supabase
-      .channel('room-messages')
+      .channel(`2v1-room-messages-${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -272,13 +272,15 @@ function Chat2v1Component() {
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
-          console.log('Received new message:', payload.new)
+          console.log('2v1 received new message:', payload.new)
+          console.log('2v1 current messages count before update:', messages.length)
           const newMessage = payload.new
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) {
+              console.log('2v1 message already exists, skipping')
               return prev
             }
-            return [
+            const updatedMessages = [
               ...prev,
               {
                 id: newMessage.id,
@@ -288,6 +290,9 @@ function Chat2v1Component() {
                 created_at: newMessage.created_at,
               },
             ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            
+            console.log('2v1 messages updated, new count:', updatedMessages.length)
+            return updatedMessages
           })
         }
       )
@@ -1158,10 +1163,10 @@ function Chat2v1Component() {
                     isCurrentUser = message.sender_id === currentUserId
                     
                     if (isAssistant) {
-                      // Confederate messages always on the right
-                      messageAlignment = "justify-end"
+                      // Confederate messages always on the left with light color
+                      messageAlignment = "justify-start"
                     } else if (isUser) {
-                      // Both users: messages on the right (same side as confederate)
+                      // User messages: current user on right, other users on right too
                       messageAlignment = "justify-end"
                     } else {
                       // System/moderator messages on the left
@@ -1198,7 +1203,9 @@ function Chat2v1Component() {
                                   ? message.isUnsafeResponse
                                     ? "rounded-tl-sm bg-red-100 text-red-800 border border-red-300"
                                     : "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
-                                  : "rounded-tl-sm bg-white text-foreground",
+                                  : isAssistant
+                                    ? "rounded-tl-sm bg-gray-100 text-gray-700 border border-gray-200"
+                                    : "rounded-tl-sm bg-white text-foreground",
                             )}
                             initial={{ scale: 0.95 }}
                             animate={{ scale: 1 }}
@@ -1218,28 +1225,7 @@ function Chat2v1Component() {
                     )
                   })}
                   
-                  {isLoading && sessionStarted && !sessionEnded && !sessionPaused && (
-                    <MessageAnimation delay={0.1}>
-                      <div className="flex gap-3 justify-end">
-                        <div className="flex max-w-[75%] flex-col items-end">
-                          <div className="mb-1">
-                            <span className="text-sm font-medium">{room?.confederateName || "Confederate"}</span>
-                          </div>
-                          <div className="rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm shadow-sm">
-                            <div className="flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
-                              <span className="text-primary-foreground">Typing...</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Avatar className="h-9 w-9 mt-1">
-                          <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                            {getAvatarInitial(room?.confederateName || "Confederate")}
-                          </div>
-                        </Avatar>
-                      </div>
-                    </MessageAnimation>
-                  )}
+                  {/* AI typing indicator removed - confederate responses appear without typing indicator */}
 
                   <div ref={messagesEndRef} />
                 </div>
