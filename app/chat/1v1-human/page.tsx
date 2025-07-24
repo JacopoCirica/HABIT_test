@@ -46,7 +46,7 @@ function Chat1v1HumanComponent() {
   // Ref for tracking moderator message
   const moderatorMessageSentRef = useRef(false)
 
-  const sessionTitle = "1v1 Human Debate Session"
+  const sessionTitle = "1v1 Confederate Debate Session"
   const sessionDescription = "Discuss and debate with a human confederate on various social and political topics"
 
   // State management
@@ -77,8 +77,8 @@ function Chat1v1HumanComponent() {
   const [showExitNotification, setShowExitNotification] = useState(false)
   const [exitNotificationMessage, setExitNotificationMessage] = useState("")
 
-  // Use shared topic selection logic
-  const debateTopic = topic || getChatTopicFromOpinions()
+  // Use topic from room data (stable) or fallback
+  const [debateTopic, setDebateTopic] = useState<string | null>(null)
 
   // Function to get user's position on the current topic
   const getUserPosition = (userId: string) => {
@@ -97,7 +97,7 @@ function Chat1v1HumanComponent() {
         "healthcare-system-reform": "universalHealthcare"
       }
       
-      const opinionKey = topicToOpinionMap[debateTopic]
+      const opinionKey = debateTopic ? topicToOpinionMap[debateTopic] : null
       if (!opinionKey || !opinions[opinionKey]) return null
       
       const value = parseInt(opinions[opinionKey])
@@ -168,7 +168,7 @@ function Chat1v1HumanComponent() {
           "healthcare-system-reform": "universalHealthcare"
         }
         
-        const opinionKey = topicToOpinionMap[debateTopic]
+        const opinionKey = debateTopic ? topicToOpinionMap[debateTopic] : null
         if (opinionKey && opinions[opinionKey]) {
           const value = parseInt(opinions[opinionKey])
           if (!isNaN(value)) {
@@ -219,6 +219,14 @@ function Chat1v1HumanComponent() {
         setRoom(room)
         setRoomId1v1Human(room.id)
         setWaitingForUser(room.status === 'waiting')
+        
+        // Set the debate topic from room data (stable)
+        if (room.topic) {
+          setDebateTopic(room.topic)
+        } else {
+          // Fallback to topic selection logic if room doesn't have topic
+          setDebateTopic(topic || getChatTopicFromOpinions())
+        }
         
         // Trigger moderator message creation after room is set up
         if (room.status === 'active') {
@@ -776,7 +784,7 @@ function Chat1v1HumanComponent() {
         
                  // Wait before showing moderator response
          setTimeout(async () => {
-          const topicDisplayName = chatTopicDisplayNames[debateTopic] || debateTopic
+          const topicDisplayName = debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "various social and political topics"
           const moderatorMessage = {
             room_id: roomId1v1Human,
             sender_id: "moderator",
@@ -930,9 +938,6 @@ function Chat1v1HumanComponent() {
                 <Badge variant="outline" className="px-3 py-1 text-xs font-medium">
                   {sessionTitle}
                 </Badge>
-                <Badge variant="outline" className="px-3 py-1 text-xs font-medium">
-                  1v1 Human Chat
-                </Badge>
               </div>
             </div>
 
@@ -1056,9 +1061,9 @@ function Chat1v1HumanComponent() {
                     <Card>
                       <CardContent className="p-4 text-sm">
                         <h3 className="mb-2 font-semibold">Current Topic</h3>
-                        <p className="mb-4 text-muted-foreground">{chatTopicDisplayNames[debateTopic] || debateTopic}</p>
+                        <p className="mb-4 text-muted-foreground">{debateTopic ? (chatTopicDisplayNames[debateTopic] || debateTopic) : "Loading topic..."}</p>
                         <h3 className="mb-2 font-semibold">Session Type</h3>
-                        <p className="mb-4 text-muted-foreground">Human vs Human Confederate</p>
+                        <p className="mb-4 text-muted-foreground">1 vs 1 Confederate Debate</p>
                         <h3 className="mb-2 font-semibold">Session Duration</h3>
                         <p className="text-muted-foreground">15 minutes</p>
                       </CardContent>
