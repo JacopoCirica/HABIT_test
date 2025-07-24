@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
       immigration: parseInt(opinions.immigration),
       gun_control: parseInt(opinions.gunControl),
       universal_healthcare: parseInt(opinions.universalHealthcare),
-      informed_consent_agreed: true,
-      consent_timestamp: new Date().toISOString()
+      informed_consent_agreed: true
+      // Remove explicit timestamp - let database handle defaults
     }
 
     console.log("API: Inserting user data:", userData)
@@ -55,8 +55,14 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("API: Supabase error saving user data:", error)
+      console.error("API: Full error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       return NextResponse.json(
-        { error: `Failed to save user data: ${error.message}` },
+        { error: `Failed to save user data: ${error.message}`, details: error.details },
         { status: 500 }
       )
     }
