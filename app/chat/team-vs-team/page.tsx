@@ -63,7 +63,7 @@ function ChatTeamVsTeamComponent() {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [sessionPaused, setSessionPaused] = useState(false)
   const [sessionTime, setSessionTime] = useState(0)
-  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(20 * 60) // 20 minutes for team battles
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(30 * 60) // 30 minutes for team battles
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
@@ -534,7 +534,7 @@ function ChatTeamVsTeamComponent() {
       room_id: roomIdTeamVsTeam,
       sender_id: "moderator",
       sender_role: "system",
-      content: `Welcome to the Team vs Team debate! This is a Red Team vs Blue Team battle on the topic: "${topicDisplayName}". Each team has 4 participants (mix of humans and AI). Work together with your team to present compelling arguments. This session will last 20 minutes. Let the debate begin!`,
+      content: `Welcome to the Team vs Team debate! This is a Red Team vs Blue Team battle on the topic: "${topicDisplayName}". Each team has 4 participants. Work together with your team to present compelling arguments. This session will last 30 minutes. Let the debate begin!`,
     }
 
     try {
@@ -547,6 +547,10 @@ function ChatTeamVsTeamComponent() {
       if (!error && insertedMessage) {
         console.log('Team-vs-team moderator message inserted successfully')
         // Don't add to local state - let the subscription handle it to avoid duplicates
+        
+        // After moderator message, trigger LLM greetings
+        setTimeout(() => addInitialLLMGreetings(), 3000) // 3 seconds after moderator
+        
       } else {
         console.error('Team-vs-team error inserting moderator message:', error)
         moderatorMessageSentRef.current = false
@@ -554,6 +558,80 @@ function ChatTeamVsTeamComponent() {
     } catch (error) {
       console.error("Team-vs-team error adding moderator message:", error)
       moderatorMessageSentRef.current = false
+    }
+  }
+
+  // Add initial LLM greetings after moderator message
+  const addInitialLLMGreetings = async () => {
+    if (!roomIdTeamVsTeam || !room || !teamAssignments) return
+    
+    console.log('Team-vs-team adding initial LLM greetings...')
+    
+    // Get all LLM participants from both teams
+    const allLLMs: any[] = []
+    
+    // Add Red Team LLMs
+    teamAssignments.red.forEach((member: any) => {
+      if (member.user_id?.includes('llm_') && member.user_name) {
+        allLLMs.push({
+          id: member.user_id,
+          name: member.user_name,
+          team: 'Red'
+        })
+      }
+    })
+    
+    // Add Blue Team LLMs  
+    teamAssignments.blue.forEach((member: any) => {
+      if (member.user_id?.includes('llm_') && member.user_name) {
+        allLLMs.push({
+          id: member.user_id,
+          name: member.user_name,
+          team: 'Blue'
+        })
+      }
+    })
+    
+    const greetings = [
+      "Hello everyone! Excited to work with my team on this debate.",
+      "Hi all! Looking forward to a great discussion between our teams.",
+      "Hey there! Ready to present strong arguments for my team.",
+      "Hello! This should be an interesting team battle.",
+      "Hi everyone! Let's have an engaging Red vs Blue debate.",
+      "Hey! Can't wait to collaborate with my teammates on this topic."
+    ]
+    
+    // Stagger the greetings over time
+    for (let i = 0; i < allLLMs.length; i++) {
+      const llm = allLLMs[i]
+      const greeting = greetings[i % greetings.length]
+      const delay = (i + 1) * 2500 // 2.5 seconds between each greeting
+      
+      setTimeout(async () => {
+        try {
+          const greetingMessage = {
+            room_id: roomIdTeamVsTeam,
+            sender_id: llm.id,
+            sender_role: "assistant",
+            content: greeting,
+          }
+          
+          const { data: insertedGreeting, error: greetingError } = await supabase
+            .from("messages")
+            .insert([greetingMessage])
+            .select()
+            .single()
+            
+          if (!greetingError) {
+            console.log(`Team-vs-team ${llm.name} (${llm.team} Team) greeting inserted successfully`)
+          } else {
+            console.error(`Team-vs-team error inserting ${llm.name} greeting:`, greetingError)
+          }
+          
+        } catch (error) {
+          console.error(`Team-vs-team error adding greeting for ${llm.name}:`, error)
+        }
+      }, delay)
     }
   }
 
@@ -1160,7 +1238,7 @@ function ChatTeamVsTeamComponent() {
                         <h3 className="mb-2 font-semibold">Format</h3>
                         <p className="mb-4 text-muted-foreground">Red Team vs Blue Team (4v4)</p>
                         <h3 className="mb-2 font-semibold">Duration</h3>
-                        <p className="text-muted-foreground">20 minutes</p>
+                        <p className="text-muted-foreground">30 minutes</p>
                       </CardContent>
                     </Card>
                   </TabsContent>
