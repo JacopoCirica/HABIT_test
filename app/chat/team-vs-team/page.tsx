@@ -348,6 +348,44 @@ function ChatTeamVsTeamComponent() {
         (payload) => {
           console.log('Team-vs-team received new message via subscription:', payload.new)
           const newMessage = payload.new
+          
+          // Check if this is an exit notification from another participant
+          if (newMessage.sender_role === 'system' && 
+              newMessage.content?.startsWith('PARTICIPANT_EXITED:')) {
+            const exitingUserName = newMessage.content.replace('PARTICIPANT_EXITED:', '')
+            const currentUserName = sessionStorage.getItem("userName") || "User"
+            
+            // Only show notification if it's NOT the current user
+            if (exitingUserName !== currentUserName) {
+              console.log('Other participant exited from Team vs Team room:', exitingUserName)
+              
+              // Add a visible red notification message
+              const exitNotificationMessage = {
+                id: newMessage.id,
+                role: 'system',
+                content: `${exitingUserName} has left the team battle.`,
+                sender_id: 'system',
+                created_at: newMessage.created_at,
+                isExitNotification: true, // Special flag for red styling
+              }
+              
+              setMessages((prev) => {
+                if (prev.some((msg) => msg.id === exitNotificationMessage.id)) {
+                  console.log('Team-vs-team exit notification already exists, skipping')
+                  return prev
+                }
+                const updatedMessages = [...prev, exitNotificationMessage]
+                  .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                
+                console.log('Team-vs-team exit notification added, new count:', updatedMessages.length)
+                return updatedMessages
+              })
+            }
+            
+            // Don't add the raw PARTICIPANT_EXITED message to visible messages
+            return
+          }
+          
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) {
               console.log('Team-vs-team: Message already exists, skipping')
@@ -402,7 +440,28 @@ function ChatTeamVsTeamComponent() {
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen)
 
   const handleExitClick = () => setExitDialogOpen(true)
-  const handleExitConfirm = () => {
+  const handleExitConfirm = async () => {
+    // Notify other participants before exiting
+    if (roomIdTeamVsTeam) {
+      try {
+        const userId = sessionStorage.getItem("userId") || `user_${Date.now()}`
+        const userName = sessionStorage.getItem("userName") || "User"
+        
+        console.log('Sending exit notification to Team vs Team room:', roomIdTeamVsTeam)
+        await fetch(`/api/rooms/${roomIdTeamVsTeam}/exit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            user_id: userId, 
+            user_name: userName 
+          })
+        })
+      } catch (error) {
+        console.error('Error sending exit notification:', error)
+        // Continue with exit even if notification fails
+      }
+    }
+    
     setShowExitSurvey(true)
     setExitDialogOpen(false)
   }
@@ -1352,9 +1411,11 @@ function ChatTeamVsTeamComponent() {
                             className={cn(
                               "rounded-2xl px-4 py-2.5 text-sm shadow-sm border",
                               message.role === "system"
-                                ? message.isUnsafeResponse
+                                ? message.isExitNotification
                                   ? "rounded-tl-sm bg-red-100 text-red-800 border-red-300"
-                                  : "rounded-tl-sm bg-purple-50 text-purple-700 border-purple-200"
+                                  : message.isUnsafeResponse
+                                    ? "rounded-tl-sm bg-red-100 text-red-800 border-red-300"
+                                    : "rounded-tl-sm bg-purple-50 text-purple-700 border-purple-200"
                                 : `rounded-tl-sm ${messageBgColor}`,
                             )}
                             initial={{ scale: 0.95 }}
