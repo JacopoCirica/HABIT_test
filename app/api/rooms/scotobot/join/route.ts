@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
       .from('rooms')
       .insert([{
         type: 'scotobot',
-        status: 'active' // Scotobot rooms are immediately active
+        status: 'active',
+        justice_robert_id: 'justice_robert'
       }])
       .select()
       .single()
