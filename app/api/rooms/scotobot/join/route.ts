@@ -7,41 +7,11 @@ export async function POST(req: NextRequest) {
     
     console.log('Scotobot join request:', { user_id, user_name })
 
-    // Check if user is already in an active Scotobot room
-    const { data: existingRoomUser, error: existingError } = await supabase
-      .from('room_users')
-      .select(`
-        room_id,
-        rooms!inner (
-          id,
-          type,
-          status,
-          created_at
-        )
-      `)
-      .eq('user_id', user_id)
-      .eq('rooms.type', 'scotobot')
-      .in('rooms.status', ['waiting', 'active'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (!existingError && existingRoomUser) {
-      console.log('User already in Scotobot room:', existingRoomUser)
-      
-      // Get full room data
-      const { data: roomData, error: roomError } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('id', existingRoomUser.room_id)
-        .single()
-
-      if (!roomError && roomData) {
-        return NextResponse.json({ room: roomData })
-      }
-    }
+    // Simplified: Always create a new Scotobot room for now (to avoid complex joins)
+    console.log('Creating new Scotobot room for user:', user_id)
 
     // Create new Scotobot room
+    console.log('Attempting to create Scotobot room...')
     const { data: newRoom, error: roomError } = await supabase
       .from('rooms')
       .insert([{
@@ -53,12 +23,23 @@ export async function POST(req: NextRequest) {
 
     if (roomError) {
       console.error('Error creating Scotobot room:', roomError)
-      return NextResponse.json({ error: 'Failed to create room' }, { status: 500 })
+      console.error('Full error details:', {
+        message: roomError.message,
+        details: roomError.details,
+        hint: roomError.hint,
+        code: roomError.code
+      })
+      return NextResponse.json({ 
+        error: 'Failed to create room', 
+        details: roomError.message,
+        dbError: roomError 
+      }, { status: 500 })
     }
 
     console.log('Created new Scotobot room:', newRoom)
 
     // Add user to the room
+    console.log('Adding user to Scotobot room...', { room_id: newRoom.id, user_id, user_name })
     const { error: userError } = await supabase
       .from('room_users')
       .insert([{
@@ -70,10 +51,21 @@ export async function POST(req: NextRequest) {
 
     if (userError) {
       console.error('Error adding user to Scotobot room:', userError)
-      return NextResponse.json({ error: 'Failed to join room' }, { status: 500 })
+      console.error('User error details:', {
+        message: userError.message,
+        details: userError.details,
+        hint: userError.hint,
+        code: userError.code
+      })
+      return NextResponse.json({ 
+        error: 'Failed to join room', 
+        details: userError.message,
+        dbError: userError 
+      }, { status: 500 })
     }
 
     // Also add Justice ROBert as a participant
+    console.log('Adding Justice ROBert to Scotobot room...')
     const { error: justiceError } = await supabase
       .from('room_users')
       .insert([{
@@ -85,6 +77,12 @@ export async function POST(req: NextRequest) {
 
     if (justiceError) {
       console.error('Error adding Justice ROBert to room:', justiceError)
+      console.error('Justice ROBert error details:', {
+        message: justiceError.message,
+        details: justiceError.details,
+        hint: justiceError.hint,
+        code: justiceError.code
+      })
       // Don't fail the request if Justice ROBert can't be added
     }
 
