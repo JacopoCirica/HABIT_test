@@ -62,6 +62,17 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle>Scotobot</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Have a conversation with Justice ROBert, an AI assistant ready to discuss various topics.</p>
+            <Link href="/chat/scotobot">
+              <Button className="w-full">Start Scotobot</Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
