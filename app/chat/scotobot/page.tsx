@@ -159,15 +159,8 @@ function ChatScotobotComponent() {
         setMessages(fetchedMessages)
         setFetchError(null)
         
-        // Check if moderator message already exists
-        const hasModeratorMessage = fetchedMessages.some(msg => msg.sender_id === "moderator")
-        if (hasModeratorMessage) {
-          moderatorMessageSentRef.current = true
-        } else if (!moderatorMessageSentRef.current) {
-          // If no moderator message exists, create one
-          console.log('Scotobot no moderator message found, attempting to add one...')
-          setTimeout(() => addInitialModeratorMessage(), 1000)
-        }
+        // No moderator message needed for Scotobot
+        console.log('Scotobot messages loaded successfully')
       } else {
         console.error('Error fetching Scotobot messages:', error)
         setFetchError(error)
@@ -269,7 +262,7 @@ function ChatScotobotComponent() {
 
   const handleExitClick = () => setExitDialogOpen(true)
   const handleExitConfirm = () => {
-    setShowExitSurvey(true)
+    router.push('/')
     setExitDialogOpen(false)
   }
   const handleExitCancel = () => setExitDialogOpen(false)
