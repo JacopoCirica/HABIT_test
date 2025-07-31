@@ -108,14 +108,27 @@ function ChatScotobotComponent() {
         user_name: userName
       }),
     })
-      .then(res => res.json())
+      .then(async res => {
+        const data = await res.json()
+        console.log('Scotobot API response:', data)
+        
+        if (!res.ok) {
+          console.error('Scotobot API error:', data)
+          throw new Error(data.error || 'Failed to join room')
+        }
+        
+        return data
+      })
       .then(({ room }) => {
         console.log('Joined Scotobot room:', room)
         setRoom(room)
         setRoomIdScotobot(room.id)
         setWaitingForConnection(room.status === 'waiting')
       })
-      .catch(() => setRoom(null))
+      .catch((error) => {
+        console.error('Error joining Scotobot room:', error)
+        setRoom(null)
+      })
       .finally(() => setLoadingRoom(false))
   }, [])
 
