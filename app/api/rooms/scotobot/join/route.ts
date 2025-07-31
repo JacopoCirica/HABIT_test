@@ -46,10 +46,7 @@ export async function POST(req: NextRequest) {
       .from('rooms')
       .insert([{
         type: 'scotobot',
-        status: 'active', // Scotobot rooms are immediately active
-        justice_robert_id: 'justice_robert',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'active' // Scotobot rooms are immediately active
       }])
       .select()
       .single()
@@ -68,8 +65,7 @@ export async function POST(req: NextRequest) {
         room_id: newRoom.id,
         user_id: user_id,
         user_name: user_name,
-        user_role: 'participant',
-        joined_at: new Date().toISOString()
+        user_role: 'participant'
       }])
 
     if (userError) {
@@ -84,8 +80,7 @@ export async function POST(req: NextRequest) {
         room_id: newRoom.id,
         user_id: 'justice_robert',
         user_name: 'Justice ROBert',
-        user_role: 'assistant',
-        joined_at: new Date().toISOString()
+        user_role: 'assistant'
       }])
 
     if (justiceError) {
