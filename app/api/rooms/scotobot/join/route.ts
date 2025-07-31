@@ -46,8 +46,7 @@ export async function POST(req: NextRequest) {
       .insert([{
         room_id: newRoom.id,
         user_id: user_id,
-        user_name: user_name,
-        user_role: 'participant'
+        user_name: user_name
       }])
 
     if (userError) {
@@ -72,8 +71,7 @@ export async function POST(req: NextRequest) {
       .insert([{
         room_id: newRoom.id,
         user_id: 'justice_robert',
-        user_name: 'Justice ROBert',
-        user_role: 'assistant'
+        user_name: 'Justice ROBert'
       }])
 
     if (justiceError) {
