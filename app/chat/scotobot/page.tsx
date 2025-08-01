@@ -272,7 +272,16 @@ function ChatScotobotComponent() {
 
   const handleExitClick = () => {
     console.log('Scotobot: Exit button clicked')
-    setExitDialogOpen(true)
+    console.log('Scotobot: Attempting direct redirect...')
+    
+    // Direct redirect without dialog for now
+    try {
+      router.push('/')
+      console.log('Scotobot: Router.push executed')
+    } catch (error) {
+      console.error('Scotobot: Router.push failed, using window.location:', error)
+      window.location.href = '/'
+    }
   }
   const handleExitConfirm = () => {
     console.log('Scotobot: Exit confirmed, attempting to redirect...')
