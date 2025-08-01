@@ -268,8 +268,16 @@ function ChatScotobotComponent() {
   const handleExitClick = () => setExitDialogOpen(true)
   const handleExitConfirm = () => {
     console.log('Scotobot: Redirecting to homepage...')
-    router.push('/')
     setExitDialogOpen(false)
+    
+    // Try router.push first, fallback to window.location
+    try {
+      router.push('/')
+      console.log('Router.push executed')
+    } catch (error) {
+      console.error('Router.push failed, using window.location:', error)
+      window.location.href = '/'
+    }
   }
   const handleExitCancel = () => setExitDialogOpen(false)
 
