@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       .insert([{
         type: 'enron',
         status: 'active',
-        enron_ai_id: 'enron_ai'
+        confederate_id: 'enron_ai'
       }])
       .select()
       .single()
