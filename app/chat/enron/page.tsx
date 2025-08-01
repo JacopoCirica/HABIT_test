@@ -361,8 +361,34 @@ function ChatEnronComponent() {
 
       if (!response.ok) {
         console.error("Enron AI response failed:", response.status, response.statusText)
+        return
+      }
+
+      const data = await response.json()
+      console.log("Enron AI response received:", data)
+      
+      // Add delay before Enron AI responds (1-3 seconds)
+      const responseDelay = Math.random() * 2000 + 1000
+      await new Promise(resolve => setTimeout(resolve, responseDelay))
+      
+      // Insert Enron AI's response into Supabase
+      const enronAiMessage = {
+        room_id: roomIdEnron,
+        sender_id: enronAiId,
+        sender_role: "assistant",
+        content: data.content || "I appreciate your question. Let me analyze that from a cybersecurity perspective...",
+      }
+      
+      const { data: insertedAIMessage, error: aiError } = await supabase
+        .from("messages")
+        .insert([enronAiMessage])
+        .select()
+        .single()
+        
+      if (!aiError) {
+        console.log("Enron AI response inserted successfully:", insertedAIMessage)
       } else {
-        console.log("Enron AI response sent successfully")
+        console.error("Error inserting Enron AI response:", aiError)
       }
       
     } catch (error) {
