@@ -6,8 +6,9 @@ export default function RoomSelectionPage() {
   return (
     <div className="container mx-auto py-16">
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-center">
-        <Card className="flex flex-col">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-center max-w-2xl mx-auto">
+        {/* Hidden rooms - keeping them in code but not visible to users */}
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
           </CardHeader>
@@ -18,7 +19,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col">
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>1v1 Confederate</CardTitle>
           </CardHeader>
@@ -29,7 +30,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col">
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>2-on-1 Room</CardTitle>
           </CardHeader>
@@ -40,7 +41,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col">
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>2vs4 Room</CardTitle>
           </CardHeader>
@@ -51,7 +52,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col">
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>Team vs Team</CardTitle>
           </CardHeader>
