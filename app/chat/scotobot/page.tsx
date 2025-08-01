@@ -162,9 +162,14 @@ function ChatScotobotComponent() {
         // No moderator message needed for Scotobot
         console.log('Scotobot messages loaded successfully')
         
-        // Start session immediately with Justice ROBert greeting
-        if (!sessionStarted) {
+        // Start session immediately with Justice ROBert greeting if no messages exist
+        const hasJusticeRobertMessage = fetchedMessages.some(msg => msg.sender_id === justiceRobertId)
+        if (!hasJusticeRobertMessage) {
+          console.log('No Justice ROBert message found, adding greeting...')
           setTimeout(() => addJusticeRobertGreeting(), 1000)
+        } else {
+          console.log('Justice ROBert message already exists, starting session...')
+          setSessionStarted(true)
         }
       } else {
         console.error('Error fetching Scotobot messages:', error)
@@ -265,19 +270,25 @@ function ChatScotobotComponent() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen)
 
-  const handleExitClick = () => setExitDialogOpen(true)
+  const handleExitClick = () => {
+    console.log('Scotobot: Exit button clicked')
+    setExitDialogOpen(true)
+  }
   const handleExitConfirm = () => {
-    console.log('Scotobot: Redirecting to homepage...')
+    console.log('Scotobot: Exit confirmed, attempting to redirect...')
     setExitDialogOpen(false)
     
-    // Try router.push first, fallback to window.location
-    try {
-      router.push('/')
-      console.log('Router.push executed')
-    } catch (error) {
-      console.error('Router.push failed, using window.location:', error)
-      window.location.href = '/'
-    }
+    // Add a small delay to ensure dialog closes first
+    setTimeout(() => {
+      console.log('Scotobot: Executing redirect after delay...')
+      try {
+        router.push('/')
+        console.log('Router.push executed successfully')
+      } catch (error) {
+        console.error('Router.push failed, using window.location:', error)
+        window.location.href = '/'
+      }
+    }, 100)
   }
   const handleExitCancel = () => setExitDialogOpen(false)
 
