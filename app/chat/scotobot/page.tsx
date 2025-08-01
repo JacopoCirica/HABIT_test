@@ -161,6 +161,11 @@ function ChatScotobotComponent() {
         
         // No moderator message needed for Scotobot
         console.log('Scotobot messages loaded successfully')
+        
+        // Start session immediately with Justice ROBert greeting
+        if (!sessionStarted) {
+          setTimeout(() => addJusticeRobertGreeting(), 1000)
+        }
       } else {
         console.error('Error fetching Scotobot messages:', error)
         setFetchError(error)
@@ -884,7 +889,7 @@ function ChatScotobotComponent() {
           onConfirm={handleExitConfirm}
           onCancel={handleExitCancel}
           title="Exit Session"
-          description="Are you sure you want to leave this Scotobot session? You'll be redirected to a brief survey."
+          description="Are you sure you want to leave this Scotobot session? You'll be redirected to the homepage."
           confirmText="Exit Session"
           cancelText="Stay"
         />
