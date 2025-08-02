@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { MessageSquare } from "lucide-react"
 import { saveConsentInfo } from "@/lib/actions"
@@ -18,33 +18,30 @@ export default function ConsentPage() {
   const router = useRouter()
   const [name, setName] = useState("")
   const [age, setAge] = useState("")
-  const [sex, setSex] = useState("")
-  const [education, setEducation] = useState("")
-  const [occupation, setOccupation] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !age || !sex || !education || !occupation) return
+    if (!name || !age) return
 
     setIsSubmitting(true)
     try {
       // Generate a unique user ID for this participant
       const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
       
-      // Store all user information in session storage
+      // Get email from session storage (from signup)
+      const email = sessionStorage.getItem("signupEmail")
+      
+      // Store user information in session storage
       sessionStorage.setItem("userId", userId)
       sessionStorage.setItem("userName", name)
       sessionStorage.setItem("userAge", age)
-      sessionStorage.setItem("userSex", sex)
-      sessionStorage.setItem("userEducation", education)
-      sessionStorage.setItem("userOccupation", occupation)
       
       console.log("Personal information stored in session storage with userId:", userId)
       
       // Still call the server action for any backend processing (optional)
       try {
-        await saveConsentInfo({ name, age, sex, education, occupation })
+        await saveConsentInfo({ name, age, sex: "not-specified", education: "not-specified", occupation: "not-specified" })
       } catch (error) {
         console.log("Server action failed, but continuing with session storage data:", error)
       }
@@ -76,7 +73,7 @@ export default function ConsentPage() {
                 <div className="mb-8 text-center">
                   <h1 className="mb-2 text-3xl font-bold">Pre-survey</h1>
                   <p className="text-muted-foreground">
-                    Please provide the following information to participate in the study
+                    Please provide your name and age to participate in the study
                   </p>
                 </div>
 
@@ -117,52 +114,10 @@ export default function ConsentPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="sex">Sex</Label>
-                    <Select value={sex} onValueChange={setSex} required>
-                      <SelectTrigger id="sex" className="transition-all duration-200 focus:shadow-sm">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="occupation">Job/Occupation</Label>
-                    <Input
-                      id="occupation"
-                      type="text"
-                      placeholder="Enter your job or occupation"
-                      value={occupation}
-                      onChange={(e) => setOccupation(e.target.value)}
-                      required
-                      className="transition-all duration-200 focus:shadow-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="education">Education Level</Label>
-                    <Select value={education} onValueChange={setEducation} required>
-                      <SelectTrigger id="education" className="transition-all duration-200 focus:shadow-sm">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high-school">High School</SelectItem>
-                        <SelectItem value="bachelors">Bachelor's Degree</SelectItem>
-                        <SelectItem value="masters">Master's Degree</SelectItem>
-                        <SelectItem value="doctorate">Doctorate</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <AnimatedButton
                     type="submit"
                     className="w-full"
-                    disabled={!name || !age || !sex || !education || !occupation || isSubmitting}
+                    disabled={!name || !age || isSubmitting}
                   >
                     {isSubmitting ? "Submitting..." : "I'm ready to begin"}
                   </AnimatedButton>
