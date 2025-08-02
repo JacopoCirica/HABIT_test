@@ -34,6 +34,7 @@ import {
 
 // Import Supabase and utilities
 import { supabase } from "@/lib/supabaseClient"
+import { ExitSurvey, ExitSurveyResponses } from "@/components/ui/exit-survey"
 
 function ChatEnronComponent() {
   const router = useRouter()
@@ -60,6 +61,7 @@ function ChatEnronComponent() {
   // UI states
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [fetchError, setFetchError] = useState<any>(null)
+  const [showExitSurvey, setShowExitSurvey] = useState(false)
 
   // Message states
   const [messages, setMessages] = useState<any[]>([])
@@ -73,17 +75,45 @@ function ChatEnronComponent() {
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen)
 
   const handleExitClick = () => {
-    console.log('Enron: Exit button clicked')
-    console.log('Enron: Attempting direct redirect...')
-    
-    // Direct redirect to homepage
+    console.log('Enron: Exit button clicked - showing exit survey')
+    setShowExitSurvey(true)
+  }
+
+  // Exit survey handlers
+  const handleExitSurveySubmit = async (responses: ExitSurveyResponses) => {
     try {
-      router.push('/')
-      console.log('Enron: Router.push executed')
+      const userId = sessionStorage.getItem("userId")
+      const sessionData = {
+        satisfaction: responses.satisfaction,
+        feedback: responses.feedback,
+        sessionType: "Enron Whaling Project",
+        userId: userId,
+        roomId: roomIdEnron,
+        sessionDuration: sessionTime
+      }
+
+      const response = await fetch('/api/exit-survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData)
+      })
+
+      if (response.ok) {
+        console.log('Exit survey submitted successfully')
+      } else {
+        console.error('Failed to submit exit survey')
+      }
     } catch (error) {
-      console.error('Enron: Router.push failed, using window.location:', error)
-      window.location.href = '/'
+      console.error('Error submitting exit survey:', error)
     }
+    
+    // Redirect to homepage after submission
+    router.push('/')
+  }
+
+  const handleExitSurveySkip = () => {
+    console.log('Exit survey skipped')
+    router.push('/')
   }
 
   // Initialize room connection
@@ -462,6 +492,19 @@ function ChatEnronComponent() {
             <p className="mt-2 text-muted-foreground">Preparing your Enron Whaling Project session...</p>
           </div>
         </div>
+      </PageTransition>
+    )
+  }
+
+  // Exit survey
+  if (showExitSurvey) {
+    return (
+      <PageTransition>
+        <ExitSurvey
+          onSubmit={handleExitSurveySubmit}
+          onSkip={handleExitSurveySkip}
+          sessionType="Enron Whaling Project"
+        />
       </PageTransition>
     )
   }
