@@ -19,6 +19,7 @@ import { MessageAnimation } from "@/components/ui/message-animation"
 import { OnboardingTraining } from "@/components/ui/onboarding-training"
 import { PostSurvey } from "@/components/ui/post-survey"
 import { SurveyThankYou } from "@/components/ui/survey-thank-you"
+import { ExitSurvey, ExitSurveyResponses } from "@/components/ui/exit-survey"
 import {
   MessageSquare,
   Send,
@@ -271,17 +272,8 @@ function ChatScotobotComponent() {
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen)
 
   const handleExitClick = () => {
-    console.log('Scotobot: Exit button clicked')
-    console.log('Scotobot: Attempting direct redirect...')
-    
-    // Direct redirect without dialog for now
-    try {
-      router.push('/')
-      console.log('Scotobot: Router.push executed')
-    } catch (error) {
-      console.error('Scotobot: Router.push failed, using window.location:', error)
-      window.location.href = '/'
-    }
+    console.log('Scotobot: Exit button clicked - showing exit survey')
+    setShowExitSurvey(true)
   }
   const handleExitConfirm = () => {
     console.log('Scotobot: Exit confirmed, attempting to redirect...')
@@ -622,17 +614,50 @@ function ChatScotobotComponent() {
     )
   }
 
+  // Exit survey handlers
+  const handleExitSurveySubmit = async (responses: ExitSurveyResponses) => {
+    try {
+      const userId = sessionStorage.getItem("userId")
+      const sessionData = {
+        satisfaction: responses.satisfaction,
+        feedback: responses.feedback,
+        sessionType: "Scotobot",
+        userId: userId,
+        roomId: roomIdScotobot,
+        sessionDuration: sessionTime
+      }
+
+      const response = await fetch('/api/exit-survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData)
+      })
+
+      if (response.ok) {
+        console.log('Exit survey submitted successfully')
+      } else {
+        console.error('Failed to submit exit survey')
+      }
+    } catch (error) {
+      console.error('Error submitting exit survey:', error)
+    }
+    
+    // Redirect to homepage after submission
+    router.push('/')
+  }
+
+  const handleExitSurveySkip = () => {
+    console.log('Exit survey skipped')
+    router.push('/')
+  }
+
   if (showExitSurvey) {
     return (
       <PageTransition>
-        <PostSurvey
-          onSubmit={handleSurveySubmit}
-          onSkip={() => {
-            setShowExitSurvey(false)
-            setShowSurveyThankYou(true)
-          }}
-          sessionType="scotobot"
-          participantType="Justice ROBert"
+        <ExitSurvey
+          onSubmit={handleExitSurveySubmit}
+          onSkip={handleExitSurveySkip}
+          sessionType="Scotobot"
         />
       </PageTransition>
     )
