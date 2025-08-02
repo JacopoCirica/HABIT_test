@@ -39,11 +39,45 @@ export default function ConsentPage() {
       
       console.log("Personal information stored in session storage with userId:", userId)
       
-      // Still call the server action for any backend processing (optional)
+      // Save to backend via API endpoint to store email and basic info
+      const personalInfo = {
+        name: name,
+        age: age,
+        sex: "not-specified",
+        education: "not-specified", 
+        occupation: "not-specified"
+      }
+
       try {
-        await saveConsentInfo({ name, age, sex: "not-specified", education: "not-specified", occupation: "not-specified" })
-      } catch (error) {
-        console.log("Server action failed, but continuing with session storage data:", error)
+        const response = await fetch('/api/user-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            userId,
+            personalInfo,
+            opinions: {} // Empty opinions since we're not collecting them
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to save user data')
+        }
+
+        const result = await response.json()
+        console.log("User data (including email) saved successfully:", result)
+      } catch (apiError) {
+        console.error("API call failed:", apiError)
+        
+        // Fallback to server action
+        try {
+          await saveConsentInfo({ name, age, sex: "not-specified", education: "not-specified", occupation: "not-specified" })
+        } catch (error) {
+          console.log("Server action also failed:", error)
+        }
       }
       
       router.push("/rooms")
