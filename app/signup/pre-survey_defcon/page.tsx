@@ -49,7 +49,7 @@ export default function ConsentPage() {
         console.log("Server action failed, but continuing with session storage data:", error)
       }
       
-      router.push("/signup/demographics")
+      router.push("/rooms")
     } catch (error) {
       console.error("Error saving consent info:", error)
     } finally {

@@ -53,7 +53,7 @@ export default function InformedConsentPage() {
     // In a real app, you might want to record this consent action.
     // For now, we just navigate.
     sessionStorage.setItem("informedConsentAgreed", "true")
-    router.push("/signup/pre-survey") // Navigate to the pre-survey page (old consent page)
+          router.push("/signup/pre-survey_defcon") // Navigate to the DEFCON pre-survey page
     setIsSubmitting(false)
   }
 
