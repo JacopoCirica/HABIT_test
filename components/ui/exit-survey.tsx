@@ -84,10 +84,10 @@ export function ExitSurvey({ onSubmit, onSkip, sessionType }: ExitSurveyProps) {
                     />
                     <Label
                       htmlFor={`satisfaction-${option.value}`}
-                      className="flex cursor-pointer flex-col items-center space-y-1 rounded-lg border-2 border-muted p-2 transition-all hover:border-primary peer-checked:border-primary peer-checked:bg-primary/5"
+                      className="flex cursor-pointer flex-col items-center space-y-1 rounded-lg border-2 border-muted p-2 transition-all hover:border-primary hover:bg-primary/10 peer-checked:border-primary peer-checked:bg-primary/20 peer-checked:shadow-md peer-checked:brightness-110"
                     >
-                      <span className="text-2xl">{option.emoji}</span>
-                      <span className="text-xs font-medium">{option.value}</span>
+                      <span className={`text-2xl transition-all ${satisfaction === option.value ? 'brightness-125 scale-110' : ''}`}>{option.emoji}</span>
+                      <span className={`text-xs font-medium transition-all ${satisfaction === option.value ? 'text-primary font-semibold' : ''}`}>{option.value}</span>
                     </Label>
                   </div>
                 ))}
