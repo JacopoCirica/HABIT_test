@@ -920,7 +920,7 @@ function ChatScotobotComponent() {
             </div>
 
             {/* Chat input */}
-            {sessionStarted && !sessionEnded && !sessionPaused && (
+            {sessionStarted && !sessionEnded && !sessionPaused && !showInitialInterface && (
               <div className="border-t bg-white p-4">
                 <div className="mx-auto max-w-3xl">
                   <form onSubmit={handleChatSubmit} className="flex gap-3">
