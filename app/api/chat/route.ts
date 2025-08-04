@@ -424,8 +424,10 @@ Remember: You are ${confederateName || "your character"} having a real conversat
     const lastUserMessage = messages.filter((msg) => msg.role === "user").pop()
     let currentMaxTokens = 200
 
-    // Realistic token allocation based on conversation stage and user engagement
-    if (isEarlyConversation) {
+    // ScotoBOT (Chief Justice Roberts) gets unlimited tokens for comprehensive constitutional explanations
+    if (roomType === "scotobot" || confederateName === "Justice ROBert") {
+      currentMaxTokens = 1000 // Much higher limit for detailed constitutional discussions
+    } else if (isEarlyConversation) {
       // Early conversation: very conservative, mirror user's length
       if (lastUserMessage && typeof lastUserMessage.content === "string") {
         const userWordCount = lastUserMessage.content.split(/\s+/).length
@@ -484,14 +486,18 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       // Enhanced timing calculation based on character and content
       let delayMs = 0
       
-      // 1. Reading time (slower, more realistic)
-      let readingTime = 0
-      if (lastUserMessage && typeof lastUserMessage.content === "string") {
-        readingTime = lastUserMessage.content.length * 20 // Increased from 12ms to 20ms per character
-      }
-      
-      // 2. Base thinking time (varies by response complexity)
-      let thinkingTime = 1200 // Base thinking time (increased from 800ms)
+      // ScotoBOT (Chief Justice Roberts) responds immediately for educational efficiency
+      if (roomType === "scotobot" || confederateName === "Justice ROBert") {
+        delayMs = 0 // Immediate response for constitutional education
+      } else {
+        // 1. Reading time (slower, more realistic)
+        let readingTime = 0
+        if (lastUserMessage && typeof lastUserMessage.content === "string") {
+          readingTime = lastUserMessage.content.length * 20 // Increased from 12ms to 20ms per character
+        }
+        
+        // 2. Base thinking time (varies by response complexity)
+        let thinkingTime = 1200 // Base thinking time (increased from 800ms)
       const responseWordCount = generatedText.split(/\s+/).length
       
       if (responseWordCount <= 5) {
@@ -530,6 +536,7 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       if (delayMs > 1200) {
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
+      } // Close the else block for non-ScotoBOT delay calculation
 
       // Evaluate and update AI's position confidence after generating response
       let positionEvaluationResult = null
