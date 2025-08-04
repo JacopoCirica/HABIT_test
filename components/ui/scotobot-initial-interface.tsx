@@ -67,13 +67,13 @@ export function ScotobotInitialInterface({
             <Button
               key={index}
               variant="outline"
-              className="h-auto p-4 text-left justify-start text-sm border-gray-200 hover:border-primary hover:bg-primary/5"
+              className="h-auto p-4 text-left justify-start text-sm border-gray-200 hover:border-primary hover:bg-primary/5 whitespace-normal"
               onClick={() => onInputChange(question)}
               disabled={!sessionStarted || sessionEnded || sessionPaused || isLoading}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 w-full">
                 <MessageSquare className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                <span className="text-gray-700">{question}</span>
+                <span className="text-gray-700 text-left break-words flex-1 leading-relaxed">{question}</span>
               </div>
             </Button>
           ))}
