@@ -20,6 +20,7 @@ import { OnboardingTraining } from "@/components/ui/onboarding-training"
 import { PostSurvey } from "@/components/ui/post-survey"
 import { SurveyThankYou } from "@/components/ui/survey-thank-you"
 import { ExitSurvey, ExitSurveyResponses } from "@/components/ui/exit-survey"
+import { ScotobotInitialInterface } from "@/components/ui/scotobot-initial-interface"
 import {
   MessageSquare,
   Send,
@@ -73,6 +74,7 @@ function ChatScotobotComponent() {
   const [showTraining, setShowTraining] = useState(true)
   const [fetchError, setFetchError] = useState<any>(null)
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
+  const [showInitialInterface, setShowInitialInterface] = useState(true)
   const [cacheVersion, setCacheVersion] = useState(0)
 
   // Justice ROBert configuration
@@ -383,6 +385,11 @@ function ChatScotobotComponent() {
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionStarted || sessionEnded || sessionPaused || !input.trim() || !roomIdScotobot) return
+
+    // Switch from initial interface to regular chat interface after first message
+    if (showInitialInterface) {
+      setShowInitialInterface(false)
+    }
 
     const trimmedInput = input.trim()
     setInput("")
@@ -832,74 +839,84 @@ function ChatScotobotComponent() {
             )}
             
             <div className="flex-1 overflow-y-auto p-4">
-              <div className="mx-auto max-w-3xl space-y-6">
-                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-                  <CardContent className="p-4 text-center">
-                    <h2 className="text-lg font-semibold">{sessionTitle}</h2>
-                    <p className="text-sm text-muted-foreground">{sessionDescription}</p>
-                    {sessionStarted && !sessionEnded && (
-                      <div className="mt-2 flex items-center justify-center gap-2">
-                        <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
-                        <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
-                          {formatTime(sessionTimeRemaining)} remaining
-                        </span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <div className="space-y-4">
-                  {messages.map((message, index) => {
-                    const messageAlignment = message.role === "user" ? "justify-end" : "justify-start"
-                    const senderName = getSenderName(message)
-                    const isJusticeRobert = message.sender_id === justiceRobertId
-                    
-                    return (
-                      <MessageAnimation key={message.id} delay={index * 0.1}>
-                        <div className={cn("flex gap-3", messageAlignment)}>
-                          {messageAlignment === "justify-start" && (
-                            <Avatar className="h-9 w-9 mt-1">
-                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                {getAvatarInitial(senderName)}
-                              </div>
-                            </Avatar>
-                          )}
-                          <div className={cn("flex max-w-[75%] flex-col", 
-                            messageAlignment === "justify-end" ? "items-end" : "items-start"
-                          )}>
-                            <div className="mb-1">
-                              <span className="text-sm font-medium">{senderName}</span>
-                            </div>
-                            <div
-                              className={cn(
-                                "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
-                                messageAlignment === "justify-end"
-                                  ? "rounded-tr-sm bg-primary text-primary-foreground"
-                                  : message.role === "system"
-                                    ? "rounded-tl-sm bg-blue-50 text-blue-700 border border-blue-200"
-                                    : isJusticeRobert
-                                      ? "rounded-tl-sm bg-green-50 text-green-800 border border-green-200"
-                                      : "rounded-tl-sm bg-white text-foreground",
-                              )}
-                            >
-                              <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                            </div>
-                          </div>
-                          {messageAlignment === "justify-end" && (
-                            <Avatar className="h-9 w-9 mt-1">
-                              <div className="flex h-full w-full items-center justify-center text-xs font-medium">
-                                {getAvatarInitial(senderName)}
-                              </div>
-                            </Avatar>
-                          )}
+              {showInitialInterface ? (
+                <ScotobotInitialInterface
+                  input={input}
+                  onInputChange={setInput}
+                  onSubmit={handleChatSubmit}
+                  sessionStarted={sessionStarted}
+                  sessionEnded={sessionEnded}
+                  sessionPaused={sessionPaused}
+                  isLoading={isLoading}
+                />
+              ) : (
+                <div className="mx-auto max-w-3xl space-y-6">
+                  <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+                    <CardContent className="p-4 text-center">
+                      <h2 className="text-lg font-semibold">{sessionTitle}</h2>
+                      <p className="text-sm text-muted-foreground">{sessionDescription}</p>
+                      {sessionStarted && !sessionEnded && (
+                        <div className="mt-2 flex items-center justify-center gap-2">
+                          <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
+                          <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
+                            {formatTime(sessionTimeRemaining)} remaining
+                          </span>
                         </div>
-                      </MessageAnimation>
-                    )
-                  })}
+                      )}
+                    </CardContent>
+                  </Card>
 
-                  <div ref={messagesEndRef} />
+                  <div className="space-y-4">
+                    {messages.map((message, index) => {
+                      const messageAlignment = message.role === "user" ? "justify-end" : "justify-start"
+                      const senderName = getSenderName(message)
+                      const isJusticeRobert = message.sender_id === justiceRobertId
+                      
+                      return (
+                        <MessageAnimation key={message.id} delay={index * 0.1}>
+                          <div className={cn("flex gap-3", messageAlignment)}>
+                            {messageAlignment === "justify-start" && (
+                              <Avatar className="h-9 w-9 mt-1">
+                                <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                  {getAvatarInitial(senderName)}
+                                </div>
+                              </Avatar>
+                            )}
+                            <div className={cn("flex max-w-[75%] flex-col", 
+                              messageAlignment === "justify-end" ? "items-end" : "items-start"
+                            )}>
+                              <div className="mb-1">
+                                <span className="text-sm font-medium">{senderName}</span>
+                              </div>
+                              <div
+                                className={cn(
+                                  "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                                  messageAlignment === "justify-end"
+                                    ? "rounded-tr-sm bg-primary text-primary-foreground"
+                                    : message.sender_id === "justice_robert"
+                                    ? "rounded-tl-sm bg-green-50 text-green-800"
+                                    : "rounded-tl-sm bg-gray-100 text-gray-800"
+                                )}
+                              >
+                                {message.content}
+                              </div>
+                            </div>
+                            {messageAlignment === "justify-end" && (
+                              <Avatar className="h-9 w-9 mt-1">
+                                <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                                  {getAvatarInitial(senderName)}
+                                </div>
+                              </Avatar>
+                            )}
+                          </div>
+                        </MessageAnimation>
+                      )
+                    })}
+
+                    <div ref={messagesEndRef} />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Chat input */}
