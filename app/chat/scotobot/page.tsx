@@ -165,15 +165,9 @@ function ChatScotobotComponent() {
         // No moderator message needed for Scotobot
         console.log('Scotobot messages loaded successfully')
         
-        // Start session immediately with Justice ROBert greeting if no messages exist
-        const hasJusticeRobertMessage = fetchedMessages.some(msg => msg.sender_id === justiceRobertId)
-        if (!hasJusticeRobertMessage) {
-          console.log('No Justice ROBert message found, adding greeting...')
-          setTimeout(() => addJusticeRobertGreeting(), 1000)
-        } else {
-          console.log('Justice ROBert message already exists, starting session...')
-          setSessionStarted(true)
-        }
+        // Start session immediately without any initial messages
+        console.log('Starting Scotobot session without initial messages')
+        setSessionStarted(true)
       } else {
         console.error('Error fetching Scotobot messages:', error)
         setFetchError(error)
@@ -336,8 +330,7 @@ function ChatScotobotComponent() {
           return [localMessage, ...prev]
         })
         
-        // After moderator message, Justice ROBert introduces himself
-        setTimeout(() => addJusticeRobertGreeting(), 2000)
+        // No additional messages needed after moderator message
         
       } else {
         console.error('Scotobot error inserting moderator message:', error)
@@ -349,37 +342,7 @@ function ChatScotobotComponent() {
     }
   }
 
-  // Add Justice ROBert's initial greeting
-  const addJusticeRobertGreeting = async () => {
-    if (!roomIdScotobot) return
-    
-    console.log('Adding Justice ROBert greeting...')
-    
-    const greetingMessage = {
-      room_id: roomIdScotobot,
-      sender_id: justiceRobertId,
-      sender_role: "assistant",
-      content: "Hello! I'm Justice ROBert, and I'm delighted to meet you. I'm here to engage in thoughtful discussion on any topic you'd like to explore. Whether you're interested in legal matters, philosophy, current events, or anything else that sparks your curiosity, I'm ready to dive in. What would you like to discuss today?",
-    }
-    
-    try {
-      const { data: insertedGreeting, error: greetingError } = await supabase
-        .from("messages")
-        .insert([greetingMessage])
-        .select()
-        .single()
-        
-      if (!greetingError) {
-        console.log('Justice ROBert greeting inserted successfully')
-        setSessionStarted(true) // Start the session after greeting
-      } else {
-        console.error('Error inserting Justice ROBert greeting:', greetingError)
-      }
-      
-    } catch (error) {
-      console.error('Error adding Justice ROBert greeting:', error)
-    }
-  }
+
 
   // Chat submit handler
   const handleChatSubmit = async (e: React.FormEvent) => {
