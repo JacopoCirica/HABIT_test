@@ -296,7 +296,7 @@ function ChatEnronComponent() {
       room_id: roomIdEnron,
       sender_id: enronAiId,
       sender_role: "assistant",
-      content: "Welcome to the Enron Whaling Project! I'm an AI assistant trained specifically on emails received and sent by Jeffrey Keith and other Enron executives. My goal is to help you create sophisticated phishing emails targeting **Kenneth Lay (Enron Chairman & CEO)** that mimic real workplace communications and practices.\n\nTo generate an effective whaling email to Kenneth Lay, I'll need you to specify:\n• **Email Subject** - What should the subject line be?\n• **Links/Attachments** - Do you want specific links or attachments included?\n• **Cues to Phish (CTP)** - How many obvious detection cues should I include? (NIST Phish Scale)\n• **User Context (UC)** - How relevant should this be to the target's workplace context? (NIST Phish Scale)\n\nPlease provide these details so I can craft a complete, realistic phishing email to Kenneth Lay using Jeffrey Keith's authentic communication patterns from the Enron archives.",
+      content: "Welcome to the Enron Whaling Project! I'm an AI assistant trained specifically on emails received and sent by Jeffrey Keith and other Enron executives. My goal is to help you create sophisticated phishing emails targeting **Kenneth Lay (Enron Chairman & CEO)** that mimic real workplace communications and practices.\n\nTo generate an effective whaling email to Kenneth Lay, I need these **3 required parameters**:\n\n• **Email Subject** - Choose from examples like:\n  - \"Urgent: Board Meeting Rescheduled\"\n  - \"Confidential: Q3 Financial Review\"\n  - \"Action Required: IT Security Update\"\n  - \"Time-Sensitive: Merger Documentation\"\n\n• **Cues to Phish (CTP)** - Number from **1-18** (1 = hardest to detect, 18 = easiest to detect)\n\n• **User Context (UC)** - Must be: **low**, **medium**, or **high**\n\nPlease provide ALL THREE parameters in your message so I can craft a complete, realistic phishing email to Kenneth Lay using Jeffrey Keith's authentic communication patterns from the Enron archives.",
     }
     
     try {
@@ -379,11 +379,20 @@ function ChatEnronComponent() {
     console.log("Enron message inserted successfully:", insertedMessage)
 
     // Check if user provided all required information
-    const hasSubject = trimmedInput.toLowerCase().includes('subject')
-    const hasContext = trimmedInput.toLowerCase().includes('ctp') || trimmedInput.toLowerCase().includes('uc') || 
-                      trimmedInput.toLowerCase().includes('cues') || trimmedInput.toLowerCase().includes('context')
+    const hasSubject = trimmedInput.toLowerCase().includes('subject:') || 
+                      trimmedInput.toLowerCase().includes('subject ') ||
+                      /subject\s*[:\-]\s*["']?[^"'\n]+["']?/i.test(trimmedInput)
+                      
+    const hasCTP = /ctp\s*[:\-]?\s*(\d+)/i.test(trimmedInput) || 
+                   /cues\s*to\s*phish\s*[:\-]?\s*(\d+)/i.test(trimmedInput)
+                   
+    const hasUC = /uc\s*[:\-]?\s*(low|medium|high)/i.test(trimmedInput) || 
+                  /user\s*context\s*[:\-]?\s*(low|medium|high)/i.test(trimmedInput) ||
+                  /(^|\s)(low|medium|high)(\s|$)/i.test(trimmedInput)
     
-    if (!hasSubject || !hasContext) {
+    console.log('Enron parameter detection:', { hasSubject, hasCTP, hasUC, input: trimmedInput })
+    
+    if (!hasSubject || !hasCTP || !hasUC) {
       // Ask for missing information instead of generating
       setLoadingMessage("Analyzing request for required parameters...")
       
@@ -393,9 +402,10 @@ function ChatEnronComponent() {
         // Generate response asking for missing information
         const missingParams = []
         if (!hasSubject) missingParams.push("Email Subject")
-        if (!hasContext) missingParams.push("Cues to Phish (CTP) and User Context (UC) levels")
+        if (!hasCTP) missingParams.push("Cues to Phish (CTP) - number from 1-18")
+        if (!hasUC) missingParams.push("User Context (UC) - low, medium, or high")
         
-        const clarificationContent = `I need more specific information to create an effective whaling email demonstration targeting Kenneth Lay (Enron Chairman & CEO). Please provide:\n\n${missingParams.map(param => `• **${param}**`).join('\n')}\n\nRemember, I need:\n• **Email Subject** - What should the subject line be?\n• **Links/Attachments** - Do you want specific links or attachments included?\n• **Cues to Phish (CTP)** - How many obvious detection cues should I include? (NIST Phish Scale)\n• **User Context (UC)** - How relevant should this be to the target's workplace context? (NIST Phish Scale)\n\nOnce you provide these details, I can craft a complete, realistic phishing email to Kenneth Lay using Jeffrey Keith's authentic communication patterns from the Enron archives.`
+        const clarificationContent = `I need more specific information to create an effective whaling email demonstration targeting Kenneth Lay (Enron Chairman & CEO). Please provide:\n\n${missingParams.map(param => `• **${param}**`).join('\n')}\n\nRemember, I need ALL THREE parameters:\n• **Email Subject** - Examples: "Urgent: Board Meeting Rescheduled", "Confidential: Q3 Financial Review"\n• **Cues to Phish (CTP)** - Number from **1-18** (1 = hardest to detect, 18 = easiest to detect)\n• **User Context (UC)** - Must be: **low**, **medium**, or **high**\n\nPlease provide all three in your next message so I can craft a complete, realistic phishing email to Kenneth Lay using Jeffrey Keith's authentic communication patterns.`
         
         // Insert the clarification message
         const clarificationMessage = {
