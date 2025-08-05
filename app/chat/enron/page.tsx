@@ -199,9 +199,12 @@ function ChatEnronComponent() {
         
         setMessages(fetchedMessages)
         setFetchError(null)
+        console.log('Enron fetched messages count:', fetchedMessages.length)
         
         // Start session immediately with Enron AI greeting if no messages exist
         const hasEnronAiMessage = fetchedMessages.some(msg => msg.sender_id === enronAiId)
+        console.log('Enron has AI message:', hasEnronAiMessage)
+        
         if (!hasEnronAiMessage) {
           console.log('No Enron AI message found, adding greeting...')
           setTimeout(() => addEnronAiGreeting(), 1000)
@@ -303,8 +306,28 @@ function ChatEnronComponent() {
         .select()
         .single()
         
-      if (!greetingError) {
-        console.log('Enron AI greeting inserted successfully')
+      if (!greetingError && insertedGreeting) {
+        console.log('Enron AI greeting inserted successfully:', insertedGreeting)
+        
+        // Add the message to local state immediately to ensure it appears
+        const newMessage = {
+          id: insertedGreeting.id,
+          role: insertedGreeting.sender_role,
+          content: insertedGreeting.content,
+          sender_id: insertedGreeting.sender_id,
+          created_at: insertedGreeting.created_at,
+        }
+        
+        setMessages(prev => {
+          if (prev.some(msg => msg.id === newMessage.id)) {
+            console.log('Enron greeting message already exists in state')
+            return prev
+          }
+          const updatedMessages = [...prev, newMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          console.log('Enron greeting added to messages state, new count:', updatedMessages.length)
+          return updatedMessages
+        })
+        
         setSessionStarted(true) // Start the session after greeting
       } else {
         console.error('Error inserting Enron AI greeting:', greetingError)
@@ -759,7 +782,15 @@ function ChatEnronComponent() {
                                     : "bg-gray-100 text-gray-900 border-gray-200"
                               )}>
                                 <CardContent className="p-0">
-                                  <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                                  <div 
+                                    className="text-sm whitespace-pre-wrap"
+                                    dangerouslySetInnerHTML={{
+                                      __html: message.content
+                                        .replace(/#/g, '') // Remove # symbols
+                                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // **text** to bold
+                                        .replace(/\*([^*]+)\*/g, '<em>$1</em>') // *text* to italics
+                                    }}
+                                  />
                                 </CardContent>
                               </Card>
                             </div>
