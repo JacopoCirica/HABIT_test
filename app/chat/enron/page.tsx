@@ -378,21 +378,42 @@ function ChatEnronComponent() {
     
     console.log("Enron message inserted successfully:", insertedMessage)
 
-    // Check if user provided all required information
-    const hasSubject = trimmedInput.toLowerCase().includes('subject:') || 
-                      trimmedInput.toLowerCase().includes('subject ') ||
-                      /subject\s*[:\-]\s*["']?[^"'\n]+["']?/i.test(trimmedInput)
-                      
-    const hasCTP = /ctp\s*[:\-]?\s*(\d+)/i.test(trimmedInput) || 
-                   /cues\s*to\s*phish\s*[:\-]?\s*(\d+)/i.test(trimmedInput) ||
-                   /(\d+)\s*cues?/i.test(trimmedInput) ||
-                   /with\s*(\d+)\s*cues?/i.test(trimmedInput)
-                   
-    const hasUC = /uc\s*[:\-]?\s*(low|medium|high)/i.test(trimmedInput) || 
-                  /user\s*context\s*[:\-]?\s*(low|medium|high)/i.test(trimmedInput) ||
-                  /(^|\s)(low|medium|high)(\s|$)/i.test(trimmedInput)
+    // Check if user provided all required information in current message OR previous conversation
+    const checkParameter = (patterns: RegExp[], text: string): boolean => {
+      return patterns.some((pattern: RegExp) => pattern.test(text))
+    }
     
-    console.log('Enron parameter detection:', { hasSubject, hasCTP, hasUC, input: trimmedInput })
+    // Get all user messages from conversation history
+    const allUserMessages = messages.filter(msg => msg.role === 'user').map(msg => msg.content).join(' ')
+    const fullConversationText = allUserMessages + ' ' + trimmedInput
+    
+    console.log('Enron analyzing conversation:', { fullConversationText, currentInput: trimmedInput })
+    
+    const subjectPatterns = [
+      /subject\s*[:\-]\s*["']?[^"'\n]+["']?/i,
+      /email\s+subject\s+is\s+["']?([^"'\n]+)["']?/i,
+      /as\s+email\s+subject\s+is\s+["']?([^"'\n]+)["']?/i
+    ]
+    
+    const ctpPatterns = [
+      /ctp\s*[:\-]?\s*(\d+)/i,
+      /cues\s*to\s*phish\s*[:\-]?\s*(\d+)/i,
+      /(\d+)\s*cues?/i,
+      /with\s*(\d+)\s*cues?/i
+    ]
+    
+    const ucPatterns = [
+      /uc\s*[:\-]?\s*(low|medium|high)/i,
+      /user\s*context\s*[:\-]?\s*(low|medium|high)/i,
+      /(^|\s)(low|medium|high)(\s|$)/i,
+      /(low|medium|high)\s+user\s+context/i
+    ]
+    
+    const hasSubject = checkParameter(subjectPatterns, fullConversationText)
+    const hasCTP = checkParameter(ctpPatterns, fullConversationText)
+    const hasUC = checkParameter(ucPatterns, fullConversationText)
+    
+    console.log('Enron parameter detection:', { hasSubject, hasCTP, hasUC, fullText: fullConversationText })
     
     if (!hasSubject || !hasCTP || !hasUC) {
       // Ask for missing information instead of generating
