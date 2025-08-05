@@ -61,6 +61,7 @@ function ChatScotobotComponent() {
   const [members, setMembers] = useState<any[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState("")
   const [sessionStarted, setSessionStarted] = useState(false)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [sessionPaused, setSessionPaused] = useState(false)
@@ -406,8 +407,17 @@ function ChatScotobotComponent() {
         employment: storedOccupation,
       }
       
+      // Include the user's message in the context for accurate response
+      const updatedMessages = [...messages, {
+        id: insertedMessage.id,
+        role: "user",
+        content: trimmedInput,
+        sender_id: userId,
+        sender_role: "user"
+      }]
+      
       const requestBody = {
-        messages: messages,
+        messages: updatedMessages,
         userTraits,
         topic: "General Discussion",
         roomId: roomIdScotobot,
@@ -428,18 +438,27 @@ function ChatScotobotComponent() {
         throw new Error(`Justice ROBert response failed: ${response.status}`)
       }
 
+      // Show reasoning phase
+      setLoadingMessage("Chief Justice Roberts is analyzing your question...")
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // Show typing phase
+      setLoadingMessage("Formulating constitutional response...")
+      
       const data = await response.json()
       
-      // Add delay before Justice ROBert responds (1-3 seconds)
-      const responseDelay = Math.random() * 2000 + 1000
-      await new Promise(resolve => setTimeout(resolve, responseDelay))
+      // Add short typing delay
+      await new Promise(resolve => setTimeout(resolve, 800))
       
-      // Insert Justice ROBert's response
+      // Clear loading message
+      setLoadingMessage("")
+      
+      // Insert Justice ROBert's response with better fallback
       const justiceRobertMessage = {
         room_id: roomIdScotobot,
         sender_id: justiceRobertId,
         sender_role: "assistant",
-        content: data.content || "I appreciate your message. Could you tell me more about that?",
+        content: data.content || "That's an excellent constitutional question. Let me provide you with a thoughtful analysis of the legal principles involved.",
       }
       
       const { data: insertedJRMessage, error: jrError } = await supabase
@@ -456,6 +475,7 @@ function ChatScotobotComponent() {
       
     } catch (error) {
       console.error("Scotobot error generating Justice ROBert response:", error)
+      setLoadingMessage("")
     } finally {
       setIsLoading(false)
     }
@@ -875,6 +895,30 @@ function ChatScotobotComponent() {
                         </MessageAnimation>
                       )
                     })}
+
+                    {/* Loading indicator for Chief Justice Roberts */}
+                    {loadingMessage && (
+                      <div className="flex justify-start">
+                        <div className="flex gap-3">
+                          <Avatar className="h-9 w-9 mt-1">
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium">
+                              J
+                            </div>
+                          </Avatar>
+                          <div className="flex flex-col items-start">
+                            <div className="mb-1">
+                              <span className="text-sm font-medium">Justice ROBert</span>
+                            </div>
+                            <div className="rounded-2xl rounded-tl-sm bg-green-50 text-green-800 px-4 py-2.5 text-sm shadow-sm">
+                              <div className="flex items-center gap-2">
+                                <div className="animate-spin h-4 w-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
+                                <span className="italic">{loadingMessage}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div ref={messagesEndRef} />
                   </div>
