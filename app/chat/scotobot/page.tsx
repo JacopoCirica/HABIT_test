@@ -889,7 +889,10 @@ function ChatScotobotComponent() {
                               >
                                 <div 
                                   dangerouslySetInnerHTML={{
-                                    __html: message.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                    __html: message.content
+                                      .replace(/#/g, '') // Remove # symbols
+                                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // **text** to bold
+                                      .replace(/\*([^*]+)\*/g, '<em>$1</em>') // *text* to italics
                                   }}
                                 />
                               </div>
