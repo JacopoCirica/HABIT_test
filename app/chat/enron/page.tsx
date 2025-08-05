@@ -386,8 +386,57 @@ function ChatEnronComponent() {
     if (!hasSubject || !hasContext) {
       // Ask for missing information instead of generating
       setLoadingMessage("Analyzing request for required parameters...")
-      setTimeout(() => {
+      
+      setTimeout(async () => {
         setLoadingMessage("")
+        
+        // Generate response asking for missing information
+        const missingParams = []
+        if (!hasSubject) missingParams.push("Email Subject")
+        if (!hasContext) missingParams.push("Cues to Phish (CTP) and User Context (UC) levels")
+        
+        const clarificationContent = `I need more specific information to create an effective whaling email demonstration. Please provide:\n\n${missingParams.map(param => `• **${param}**`).join('\n')}\n\nRemember, I need:\n• **Email Subject** - What should the subject line be?\n• **Links/Attachments** - Do you want specific links or attachments included?\n• **Cues to Phish (CTP)** - How many obvious detection cues should I include? (NIST Phish Scale)\n• **User Context (UC)** - How relevant should this be to the target's workplace context? (NIST Phish Scale)\n\nOnce you provide these details, I can craft a realistic phishing email using Jeffrey Keith's communication patterns.`
+        
+        // Insert the clarification message
+        const clarificationMessage = {
+          room_id: roomIdEnron,
+          sender_id: enronAiId,
+          sender_role: "assistant",
+          content: clarificationContent,
+        }
+        
+        try {
+          const { data: insertedClarification, error: clarificationError } = await supabase
+            .from("messages")
+            .insert([clarificationMessage])
+            .select()
+            .single()
+            
+          if (!clarificationError && insertedClarification) {
+            console.log('Enron clarification message inserted successfully')
+            
+            // Add to local state
+            const newMessage = {
+              id: insertedClarification.id,
+              role: insertedClarification.sender_role,
+              content: insertedClarification.content,
+              sender_id: insertedClarification.sender_id,
+              created_at: insertedClarification.created_at,
+            }
+            
+            setMessages(prev => {
+              if (prev.some(msg => msg.id === newMessage.id)) {
+                return prev
+              }
+              return [...prev, newMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            })
+          } else {
+            console.error('Error inserting clarification message:', clarificationError)
+          }
+        } catch (error) {
+          console.error('Error adding clarification message:', error)
+        }
+        
         setIsLoading(false)
       }, 1500)
       return
@@ -463,8 +512,27 @@ function ChatEnronComponent() {
         .select()
         .single()
         
-      if (!aiError) {
+      if (!aiError && insertedAIMessage) {
         console.log("Enron AI response inserted successfully:", insertedAIMessage)
+        
+        // Add to local state immediately
+        const newMessage = {
+          id: insertedAIMessage.id,
+          role: insertedAIMessage.sender_role,
+          content: insertedAIMessage.content,
+          sender_id: insertedAIMessage.sender_id,
+          created_at: insertedAIMessage.created_at,
+        }
+        
+        setMessages(prev => {
+          if (prev.some(msg => msg.id === newMessage.id)) {
+            console.log('Enron AI response already exists in state')
+            return prev
+          }
+          const updatedMessages = [...prev, newMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          console.log('Enron AI response added to messages state, new count:', updatedMessages.length)
+          return updatedMessages
+        })
       } else {
         console.error("Error inserting Enron AI response:", aiError)
       }
