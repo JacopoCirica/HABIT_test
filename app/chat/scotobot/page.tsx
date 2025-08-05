@@ -72,7 +72,7 @@ function ChatScotobotComponent() {
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
   const [showExitSurvey, setShowExitSurvey] = useState(false)
   const [showSurveyThankYou, setShowSurveyThankYou] = useState(false)
-  const [showTraining, setShowTraining] = useState(true)
+  const [showTraining, setShowTraining] = useState(false)
   const [fetchError, setFetchError] = useState<any>(null)
   const [userNameCache, setUserNameCache] = useState<Record<string, string>>({})
   const [showInitialInterface, setShowInitialInterface] = useState(true)
@@ -440,15 +440,21 @@ function ChatScotobotComponent() {
 
       // Show reasoning phase
       setLoadingMessage("Chief Justice Roberts is analyzing your question...")
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      await new Promise(resolve => setTimeout(resolve, 2500))
       
       // Show typing phase
       setLoadingMessage("Formulating constitutional response...")
       
       const data = await response.json()
       
-      // Add short typing delay
-      await new Promise(resolve => setTimeout(resolve, 800))
+      // Calculate typing delay based on response length
+      const responseLength = data.content?.length || 100
+      const baseDelay = 1200
+      const typingDelay = baseDelay + (responseLength * 8) // 8ms per character
+      const maxDelay = 6000 // Maximum 6 seconds
+      const finalDelay = Math.min(typingDelay, maxDelay)
+      
+      await new Promise(resolve => setTimeout(resolve, finalDelay))
       
       // Clear loading message
       setLoadingMessage("")
@@ -881,7 +887,11 @@ function ChatScotobotComponent() {
                                     : "rounded-tl-sm bg-gray-100 text-gray-800"
                                 )}
                               >
-                                {message.content}
+                                <div 
+                                  dangerouslySetInnerHTML={{
+                                    __html: message.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                  }}
+                                />
                               </div>
                             </div>
                             {messageAlignment === "justify-end" && (
