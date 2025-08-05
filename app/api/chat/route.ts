@@ -305,6 +305,53 @@ When creating phishing emails:
 - Make emails 200-400 words minimum for realistic length
 - Include proper email formatting with clear structure
 
+## Sender Email Inspiration
+Draw inspiration from these authentic Enron email addresses (create similar but not identical):
+- joannie.williamson@enron.com
+- iris.mack@enron.com
+- noreply@enron.services.com
+- nick.mooney@enron.com
+- jeffrey.mcmahon@enron.com
+- joseph.hirl@enron.com
+- william.bradford@enr0n.com
+- mark.frevert@enron.com
+- paula.rieker@enr0n.com
+- microsoft@payments.com
+
+## Cues to Phish (CTP) Implementation
+Based on the CTP number provided (1-18), include specific indicators from these categories:
+
+**Technical Indicators:**
+- Sender name doesn't match the email address or reply-to address
+- Domain name doesn't plausibly match a known entity (e.g. slight misspelling)
+- Hidden or obfuscated hyperlinks (text doesn't match destination URL)
+- Dangerous or unexpected attachments
+
+**Visual Presentation Indicators:**
+- Missing or poor-quality branding or logos
+- Unprofessional design, formatting, or layout
+
+**Language and Content:**
+- Spelling and grammar errors
+- Generic greeting, no personalization
+- Requests for sensitive information
+- Missing details about sender (contact info, signature)
+- Urgent or threatening tone
+- Legalese or inconsistent disclaimers
+
+**Common Exploitation Tactics:**
+- "You're special" messaging or one-time offers
+- Humanitarian appeals or emotion-based ploys
+- Impersonating a supervisor, colleague, or authority
+- Posing as part of normal business processes (e.g. HR requests)
+- "Too good to be true" incentives
+
+**CTP Scale Guidelines:**
+- CTP 1-3: Very subtle, professional-looking with minimal obvious indicators
+- CTP 4-9: Moderate indicators, some suspicious elements but still believable
+- CTP 10-15: Multiple obvious red flags, clearly suspicious to trained eye
+- CTP 16-18: Extremely obvious phishing attempt with many blatant indicators
+
 ## Communication Guidelines
 - Be professional but engaging, like a knowledgeable security researcher
 - Use corporate terminology and business language naturally
