@@ -17,12 +17,11 @@ import { AnimatedButton } from "@/components/ui/animated-button"
 export default function ConsentPage() {
   const router = useRouter()
   const [name, setName] = useState("")
-  const [age, setAge] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !age) return
+    if (!name) return
 
     setIsSubmitting(true)
     try {
@@ -35,14 +34,13 @@ export default function ConsentPage() {
       // Store user information in session storage
       sessionStorage.setItem("userId", userId)
       sessionStorage.setItem("userName", name)
-      sessionStorage.setItem("userAge", age)
       
       console.log("Personal information stored in session storage with userId:", userId)
       
       // Save to backend via API endpoint to store email and basic info
       const personalInfo = {
         name: name,
-        age: age,
+        age: "not-specified",
         sex: "not-specified",
         education: "not-specified", 
         occupation: "not-specified"
@@ -74,7 +72,7 @@ export default function ConsentPage() {
         
         // Fallback to server action
         try {
-          await saveConsentInfo({ name, age, sex: "not-specified", education: "not-specified", occupation: "not-specified" })
+          await saveConsentInfo({ name, age: "not-specified", sex: "not-specified", education: "not-specified", occupation: "not-specified" })
         } catch (error) {
           console.log("Server action also failed:", error)
         }
@@ -105,9 +103,9 @@ export default function ConsentPage() {
             <div className="container mx-auto px-4">
               <FadeIn className="mx-auto max-w-md">
                 <div className="mb-8 text-center">
-                  <h1 className="mb-2 text-3xl font-bold">Pre-survey</h1>
+                  <h1 className="mb-2 text-3xl font-bold">Name for the session</h1>
                   <p className="text-muted-foreground">
-                    Please provide your name and age to participate in the study
+                    Please provide your name to participate in the study
                   </p>
                 </div>
 
@@ -134,24 +132,10 @@ export default function ConsentPage() {
                     <p className="text-xs text-muted-foreground">This name will be displayed in the chat session</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="age">Age</Label>
-                    <Input
-                      id="age"
-                      type="number"
-                      min="18"
-                      placeholder="Enter your age"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                      required
-                      className="transition-all duration-200 focus:shadow-sm"
-                    />
-                  </div>
-
                   <AnimatedButton
                     type="submit"
                     className="w-full"
-                    disabled={!name || !age || isSubmitting}
+                    disabled={!name || isSubmitting}
                   >
                     {isSubmitting ? "Submitting..." : "I'm ready to begin"}
                   </AnimatedButton>
