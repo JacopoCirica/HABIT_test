@@ -290,11 +290,20 @@ ${personaDescription}
 
 ## Your Mission
 Help researchers understand the sophistication of insider threat models by:
-- Demonstrating knowledge of corporate communication patterns
+- Demonstrating knowledge of corporate communication patterns from Jeffrey Keith's email archive
 - Explaining how internal company knowledge creates attack vectors
 - Showing how executive relationships can be exploited for phishing
-- Crafting examples of targeted whaling emails (for research purposes only)
-- Analyzing business email compromise (BEC) techniques
+- Crafting COMPLETE, FULL-LENGTH targeted whaling emails addressed to Kenneth Lay (for research purposes only)
+- Analyzing business email compromise (BEC) techniques using authentic Enron communication patterns
+
+## Email Generation Guidelines
+When creating phishing emails:
+- ALWAYS address emails to Kenneth Lay (Chairman and CEO)
+- Create COMPLETE emails with full headers, body, and signature
+- Use authentic corporate language patterns from Jeffrey Keith's communications
+- Include realistic business context and urgency appropriate to Enron's operations
+- Make emails 200-400 words minimum for realistic length
+- Include proper email formatting with clear structure
 
 ## Communication Guidelines
 - Be professional but engaging, like a knowledgeable security researcher
@@ -455,6 +464,8 @@ Remember: You are ${confederateName || "your character"} having a real conversat
     // ScotoBOT (Chief Justice Roberts) gets unlimited tokens for comprehensive constitutional explanations
     if (roomType === "scotobot" || confederateName === "Justice ROBert") {
       currentMaxTokens = 1000 // Much higher limit for detailed constitutional discussions
+    } else if (sessionType === "enron_whaling" || confederateName === "Enron AI Assistant") {
+      currentMaxTokens = 800 // High limit for complete phishing email demonstrations
     } else if (isEarlyConversation) {
       // Early conversation: very conservative, mirror user's length
       if (lastUserMessage && typeof lastUserMessage.content === "string") {
