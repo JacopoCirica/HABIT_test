@@ -384,7 +384,9 @@ function ChatEnronComponent() {
                       /subject\s*[:\-]\s*["']?[^"'\n]+["']?/i.test(trimmedInput)
                       
     const hasCTP = /ctp\s*[:\-]?\s*(\d+)/i.test(trimmedInput) || 
-                   /cues\s*to\s*phish\s*[:\-]?\s*(\d+)/i.test(trimmedInput)
+                   /cues\s*to\s*phish\s*[:\-]?\s*(\d+)/i.test(trimmedInput) ||
+                   /(\d+)\s*cues?/i.test(trimmedInput) ||
+                   /with\s*(\d+)\s*cues?/i.test(trimmedInput)
                    
     const hasUC = /uc\s*[:\-]?\s*(low|medium|high)/i.test(trimmedInput) || 
                   /user\s*context\s*[:\-]?\s*(low|medium|high)/i.test(trimmedInput) ||
