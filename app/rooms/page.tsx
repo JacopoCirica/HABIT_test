@@ -81,7 +81,7 @@ export default function RoomSelectionPage() {
           <CardContent className="flex flex-col flex-1">
             <p className="flex-1 mb-4">Explore insider threat models and whaling attack scenarios with an AI trained on Enron executive emails.</p>
             <Link href="/chat/enron">
-              <Button className="w-full bg-red-600 hover:bg-red-700">Start Project</Button>
+              <Button className="w-full bg-red-600 hover:bg-red-700">Start Enron AI</Button>
             </Link>
           </CardContent>
         </Card>

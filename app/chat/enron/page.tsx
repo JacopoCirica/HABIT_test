@@ -67,6 +67,7 @@ function ChatEnronComponent() {
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState("")
 
   // User name cache
   const [userNameCache, setUserNameCache] = useState<{[key: string]: string}>({})
@@ -292,7 +293,7 @@ function ChatEnronComponent() {
       room_id: roomIdEnron,
       sender_id: enronAiId,
       sender_role: "assistant",
-      content: "Greetings! I'm the Enron AI Assistant, built from analyzing thousands of Enron executive emails. I can help demonstrate how insider knowledge could be weaponized to create highly targeted whaling attacks. I understand corporate communication patterns, executive relationships, and can craft convincing phishing emails that leverage internal company dynamics. What type of whaling attack scenario would you like to explore today?",
+      content: "Welcome to the Enron Whaling Project! I'm an AI assistant trained specifically on emails received and sent by Jeffrey Keith and other Enron executives. My goal is to help you create sophisticated phishing emails that mimic real workplace communications and practices.\n\nTo generate an effective whaling email, I'll need you to specify:\n• **Email Subject** - What should the subject line be?\n• **Links/Attachments** - Do you want specific links or attachments included?\n• **Cues to Phish (CTP)** - How many obvious detection cues should I include? (NIST Phish Scale)\n• **User Context (UC)** - How relevant should this be to the target's workplace context? (NIST Phish Scale)\n\nPlease provide these details so I can craft a realistic and educational phishing email demonstration.",
     }
     
     try {
@@ -354,9 +355,31 @@ function ChatEnronComponent() {
     
     console.log("Enron message inserted successfully:", insertedMessage)
 
-    // Generate Enron AI's response
+    // Check if user provided all required information
+    const hasSubject = trimmedInput.toLowerCase().includes('subject')
+    const hasContext = trimmedInput.toLowerCase().includes('ctp') || trimmedInput.toLowerCase().includes('uc') || 
+                      trimmedInput.toLowerCase().includes('cues') || trimmedInput.toLowerCase().includes('context')
+    
+    if (!hasSubject || !hasContext) {
+      // Ask for missing information instead of generating
+      setLoadingMessage("Analyzing request for required parameters...")
+      setTimeout(() => {
+        setLoadingMessage("")
+        setIsLoading(false)
+      }, 1500)
+      return
+    }
+
+    // Generate Enron AI's response with proper loading indicators
     try {
       console.log("Enron generating AI response")
+      
+      // Show searching phase
+      setLoadingMessage("Searching for material in Jeffrey Keith's email archives...")
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Show formatting phase
+      setLoadingMessage("Formatting email with corporate communication patterns...")
       
       const storedName = sessionStorage.getItem("userName") || "User"
       const storedAge = sessionStorage.getItem("userAge") || "Unknown"
@@ -397,9 +420,11 @@ function ChatEnronComponent() {
       const data = await response.json()
       console.log("Enron AI response received:", data)
       
-      // Add delay before Enron AI responds (1-3 seconds)
-      const responseDelay = Math.random() * 2000 + 1000
-      await new Promise(resolve => setTimeout(resolve, responseDelay))
+      // Add final formatting delay
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // Clear loading message
+      setLoadingMessage("")
       
       // Insert Enron AI's response into Supabase
       const enronAiMessage = {
@@ -423,6 +448,7 @@ function ChatEnronComponent() {
       
     } catch (error) {
       console.error("Enron error generating AI response:", error)
+      setLoadingMessage("")
     } finally {
       setIsLoading(false)
     }
@@ -749,6 +775,35 @@ function ChatEnronComponent() {
                         )
                       })}
                     </AnimatePresence>
+                  )}
+
+                  {/* Loading indicator for Enron AI */}
+                  {loadingMessage && (
+                    <div className="flex justify-start">
+                      <div className="flex gap-3">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                          <div className="flex h-full w-full items-center justify-center text-xs font-medium bg-red-100 text-red-800">
+                            E
+                          </div>
+                        </Avatar>
+                        <div className="max-w-[70%] space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-gray-600">Enron AI Assistant</span>
+                            <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200">
+                              Enron AI
+                            </Badge>
+                          </div>
+                          <Card className="p-3 bg-red-50 text-red-900 border-red-200">
+                            <CardContent className="p-0">
+                              <div className="flex items-center gap-2">
+                                <div className="animate-spin h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full"></div>
+                                <span className="text-sm italic">{loadingMessage}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   <div ref={messagesEndRef} />
