@@ -23,32 +23,22 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     })
 
-    // Prepare data for database insertion (using existing survey_responses table structure)
-    const surveyData = {
+    // Prepare data for dedicated exit_surveys table
+    const exitSurveyData = {
       user_id: userId,
       room_id: roomId || null,
       session_type: sessionType,
-      session_duration: sessionDuration || null,
-      
-      // Map exit survey data to existing table structure
-      overall_experience: parseInt(satisfaction), // Use satisfaction as overall experience
-      additional_comments: feedback || null,
-      
-      // Set default values for required fields (since this is an exit survey)
-      clarity: 5,
-      naturalness: 5,
-      difficulty: 3,
-      engagement: parseInt(satisfaction), // Use satisfaction for engagement too
-      suspected_ai: false,
-      would_participate_again: parseInt(satisfaction) >= 4 // Assume they'd participate if rating is 4+
+      satisfaction_rating: parseInt(satisfaction),
+      feedback: feedback || null,
+      session_duration: sessionDuration || null
     }
 
-    console.log("API: Inserting exit survey data:", surveyData)
+    console.log("API: Inserting exit survey data:", exitSurveyData)
 
-    // Insert into Supabase - using the existing survey_responses table
+    // Insert into dedicated exit_surveys table
     const { data, error } = await supabase
-      .from('survey_responses')
-      .insert([surveyData])
+      .from('exit_surveys')
+      .insert([exitSurveyData])
       .select()
       .single()
 
