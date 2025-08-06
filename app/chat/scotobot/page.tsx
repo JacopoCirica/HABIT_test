@@ -50,7 +50,7 @@ function ChatScotobotComponent() {
   const moderatorMessageSentRef = useRef(false)
 
   const sessionTitle = "Scotobot Session"
-  const sessionDescription = "Discuss and explore various topics with Justice ROBert"
+  const sessionDescription = "Discuss and explore various topics with Scotobot Bob"
 
   // State management
   const [room, setRoom] = useState<any>(null)
@@ -78,8 +78,8 @@ function ChatScotobotComponent() {
   const [showInitialInterface, setShowInitialInterface] = useState(true)
   const [cacheVersion, setCacheVersion] = useState(0)
 
-  // Justice ROBert configuration
-  const justiceRobertName = "Justice ROBert"
+  // Scotobot Bob configuration
+  const scotobotBobName = "Scotobot Bob"
   const justiceRobertId = "justice_robert"
 
   // Join or create Scotobot room
@@ -96,7 +96,7 @@ function ChatScotobotComponent() {
       const updated = {
         ...prev,
         [userId!]: userName,
-        [justiceRobertId]: justiceRobertName
+        [justiceRobertId]: scotobotBobName
       }
       setCacheVersion(v => v + 1)
       return updated
@@ -304,7 +304,7 @@ function ChatScotobotComponent() {
       room_id: roomIdScotobot,
       sender_id: "moderator",
       sender_role: "system",
-      content: `Welcome to Scotobot! You're now connected with Justice ROBert, an AI assistant ready to discuss various topics with you. Feel free to ask questions, share thoughts, or explore ideas together. This session will last 30 minutes. How can Justice ROBert assist you today?`,
+      content: `Welcome to Scotobot! You're now connected with Scotobot Bob, an AI assistant ready to discuss various topics with you. Feel free to ask questions, share thoughts, or explore ideas together. This session will last 30 minutes. How can Scotobot Bob assist you today?`,
     }
 
     try {
@@ -411,9 +411,9 @@ function ChatScotobotComponent() {
       })
     }
 
-    // Generate Justice ROBert's response
+    // Generate Scotobot Bob's response
     try {
-      console.log("Scotobot generating Justice ROBert response")
+      console.log("Scotobot generating Scotobot Bob response")
       
       const storedName = sessionStorage.getItem("userName") || "User"
       const storedAge = sessionStorage.getItem("userAge") || "Unknown"
@@ -444,7 +444,7 @@ function ChatScotobotComponent() {
         roomId: roomIdScotobot,
         debateTopic: null,
         userPosition: "neutral",
-        confederateName: justiceRobertName,
+        confederateName: scotobotBobName,
         roomType: "scotobot",
         responderId: justiceRobertId,
       }
@@ -456,7 +456,7 @@ function ChatScotobotComponent() {
       })
 
       if (!response.ok) {
-        throw new Error(`Justice ROBert response failed: ${response.status}`)
+        throw new Error(`Scotobot Bob response failed: ${response.status}`)
       }
 
       // Show reasoning phase
@@ -480,7 +480,7 @@ function ChatScotobotComponent() {
       // Clear loading message
       setLoadingMessage("")
       
-      // Insert Justice ROBert's response with better fallback
+      // Insert Scotobot Bob's response with better fallback
       const justiceRobertMessage = {
         room_id: roomIdScotobot,
         sender_id: justiceRobertId,
@@ -495,7 +495,7 @@ function ChatScotobotComponent() {
         .single()
         
       if (!jrError && insertedJRMessage) {
-        console.log("Scotobot Justice ROBert response inserted successfully:", insertedJRMessage)
+        console.log("Scotobot Bob response inserted successfully:", insertedJRMessage)
         
         // Add AI response to local state immediately
         const newAIMessage = {
@@ -516,11 +516,11 @@ function ChatScotobotComponent() {
           return updatedMessages
         })
       } else {
-        console.error("Scotobot error inserting Justice ROBert response:", jrError)
+        console.error("Scotobot error inserting Scotobot Bob response:", jrError)
       }
       
     } catch (error) {
-      console.error("Scotobot error generating Justice ROBert response:", error)
+      console.error("Scotobot error generating Scotobot Bob response:", error)
       setLoadingMessage("")
     } finally {
       setIsLoading(false)
@@ -569,7 +569,7 @@ function ChatScotobotComponent() {
     if (message.role === "system") {
       return "Moderator"
     } else if (message.sender_id === justiceRobertId) {
-      return justiceRobertName
+      return scotobotBobName
     } else if (message.role === "user") {
       if (userNameCache[message.sender_id]) {
         return userNameCache[message.sender_id]
@@ -621,7 +621,7 @@ function ChatScotobotComponent() {
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-2 text-muted-foreground">Preparing your session with Justice ROBert...</p>
+            <p className="mt-2 text-muted-foreground">Preparing your session with Scotobot Bob...</p>
           </div>
         </div>
       </PageTransition>
@@ -818,15 +818,15 @@ function ChatScotobotComponent() {
                               </div>
                             </div>
                             
-                            {/* Justice ROBert */}
+                            {/* Scotobot Bob */}
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">
                                 <div className="flex h-full w-full items-center justify-center text-sm font-medium">
-                                  {getAvatarInitial(justiceRobertName)}
+                                  {getAvatarInitial(scotobotBobName)}
                                 </div>
                               </Avatar>
                               <div className="flex-1">
-                                <p className="font-medium">{justiceRobertName}</p>
+                                <p className="font-medium">{scotobotBobName}</p>
                                 <p className="text-xs text-muted-foreground">AI Assistant</p>
                               </div>
                             </div>
@@ -839,7 +839,7 @@ function ChatScotobotComponent() {
                       <Card>
                         <CardContent className="p-4 text-sm">
                           <h3 className="mb-2 font-semibold">Session Type</h3>
-                          <p className="mb-4 text-muted-foreground">1-on-1 with Justice ROBert</p>
+                          <p className="mb-4 text-muted-foreground">1-on-1 with Scotobot Bob</p>
                           <h3 className="mb-2 font-semibold">Session Duration</h3>
                           <p className="text-muted-foreground">30 minutes</p>
                         </CardContent>
@@ -949,7 +949,7 @@ function ChatScotobotComponent() {
                       )
                     })}
 
-                    {/* Loading indicator for Chief Justice Roberts */}
+                    {/* Loading indicator for Scotobot Bob */}
                     {loadingMessage && (
                       <div className="flex justify-start">
                         <div className="flex gap-3">
@@ -960,7 +960,7 @@ function ChatScotobotComponent() {
                           </Avatar>
                           <div className="flex flex-col items-start">
                             <div className="mb-1">
-                              <span className="text-sm font-medium">Justice ROBert</span>
+                              <span className="text-sm font-medium">Scotobot Bob</span>
                             </div>
                             <div className="rounded-2xl rounded-tl-sm bg-green-50 text-green-800 px-4 py-2.5 text-sm shadow-sm">
                               <div className="flex items-center gap-2">

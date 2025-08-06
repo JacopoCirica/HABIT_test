@@ -37,7 +37,7 @@ export function ScotobotInitialInterface({
         {/* ScotoBOT Title */}
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">ScotoBOT</h1>
-          <p className="text-gray-600">Ask Justice ROBert constitutional questions</p>
+          <p className="text-gray-600">Ask Scotobot Bob constitutional questions</p>
         </div>
 
         {/* Main Input */}
@@ -46,7 +46,7 @@ export function ScotobotInitialInterface({
             <Input
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
-              placeholder="Ask Justice ROBerts something..."
+              placeholder="Ask Scotobot Bob something..."
               className="w-full h-14 pl-4 pr-12 text-base border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20"
               disabled={!sessionStarted || sessionEnded || sessionPaused || isLoading}
             />
