@@ -390,6 +390,27 @@ function ChatScotobotComponent() {
     
     console.log("Scotobot message inserted successfully:", insertedMessage)
 
+    // Add user message to local state immediately
+    if (insertedMessage) {
+      const newUserMessage = {
+        id: insertedMessage.id,
+        role: insertedMessage.sender_role,
+        content: insertedMessage.content,
+        sender_id: insertedMessage.sender_id,
+        created_at: insertedMessage.created_at,
+      }
+      
+      setMessages(prev => {
+        if (prev.some(msg => msg.id === newUserMessage.id)) {
+          console.log('Scotobot user message already exists in state')
+          return prev
+        }
+        const updatedMessages = [...prev, newUserMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        console.log('Scotobot user message added to local state, new count:', updatedMessages.length)
+        return updatedMessages
+      })
+    }
+
     // Generate Justice ROBert's response
     try {
       console.log("Scotobot generating Justice ROBert response")
@@ -473,8 +494,27 @@ function ChatScotobotComponent() {
         .select()
         .single()
         
-      if (!jrError) {
-        console.log("Scotobot Justice ROBert response inserted successfully")
+      if (!jrError && insertedJRMessage) {
+        console.log("Scotobot Justice ROBert response inserted successfully:", insertedJRMessage)
+        
+        // Add AI response to local state immediately
+        const newAIMessage = {
+          id: insertedJRMessage.id,
+          role: insertedJRMessage.sender_role,
+          content: insertedJRMessage.content,
+          sender_id: insertedJRMessage.sender_id,
+          created_at: insertedJRMessage.created_at,
+        }
+        
+        setMessages(prev => {
+          if (prev.some(msg => msg.id === newAIMessage.id)) {
+            console.log('Scotobot AI message already exists in state')
+            return prev
+          }
+          const updatedMessages = [...prev, newAIMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          console.log('Scotobot AI message added to local state, new count:', updatedMessages.length)
+          return updatedMessages
+        })
       } else {
         console.error("Scotobot error inserting Justice ROBert response:", jrError)
       }
