@@ -99,3 +99,17 @@
     border-color: rgba(59, 130, 246, 0.7);
   }
 }
+
+/* Ensure text selection is enabled for chat messages */
+.select-text,
+.select-text * {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Prevent text selection conflicts with touch devices */
+.select-text {
+  -webkit-touch-callout: default !important;
+}

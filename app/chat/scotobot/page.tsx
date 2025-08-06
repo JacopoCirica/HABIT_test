@@ -903,7 +903,7 @@ function ChatScotobotComponent() {
                       
                       return (
                         <MessageAnimation key={message.id} delay={index * 0.1}>
-                          <div className={cn("flex gap-3", messageAlignment)}>
+                          <div className={cn("flex gap-3 select-text", messageAlignment)}>
                             {messageAlignment === "justify-start" && (
                               <Avatar className="h-9 w-9 mt-1">
                                 <div className="flex h-full w-full items-center justify-center text-xs font-medium">
@@ -919,7 +919,7 @@ function ChatScotobotComponent() {
                               </div>
                               <div
                                 className={cn(
-                                  "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                                  "rounded-2xl px-4 py-2.5 text-sm shadow-sm select-text",
                                   messageAlignment === "justify-end"
                                     ? "rounded-tr-sm bg-primary text-primary-foreground"
                                     : message.sender_id === "justice_robert"

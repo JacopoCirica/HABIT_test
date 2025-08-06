@@ -842,7 +842,7 @@ function ChatEnronComponent() {
                             exit={{ opacity: 0, y: -20 }}
                             transition={{ duration: 0.3 }}
                             className={cn(
-                              "flex gap-3",
+                              "flex gap-3 select-text",
                               isUser ? "justify-end" : "justify-start"
                             )}
                           >
@@ -875,7 +875,7 @@ function ChatEnronComponent() {
                               </div>
                               
                               <Card className={cn(
-                                "p-3",
+                                "p-3 select-text",
                                 isUser 
                                   ? "bg-blue-600 text-white border-blue-600" 
                                   : isEnronAi
