@@ -23,16 +23,24 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     })
 
-    // Prepare data for database insertion
+    // Prepare data for database insertion (using existing survey_responses table structure)
     const surveyData = {
       user_id: userId,
       room_id: roomId || null,
       session_type: sessionType,
       session_duration: sessionDuration || null,
-      satisfaction_rating: parseInt(satisfaction),
-      feedback: feedback || null,
-      survey_type: 'exit_survey',
-      created_at: new Date().toISOString()
+      
+      // Map exit survey data to existing table structure
+      overall_experience: parseInt(satisfaction), // Use satisfaction as overall experience
+      additional_comments: feedback || null,
+      
+      // Set default values for required fields (since this is an exit survey)
+      clarity: 5,
+      naturalness: 5,
+      difficulty: 3,
+      engagement: parseInt(satisfaction), // Use satisfaction for engagement too
+      suspected_ai: false,
+      would_participate_again: parseInt(satisfaction) >= 4 // Assume they'd participate if rating is 4+
     }
 
     console.log("API: Inserting exit survey data:", surveyData)

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Validate required data
-    if (!email || !userId || !personalInfo || !opinions) {
+    if (!email || !userId || !personalInfo) {
       return NextResponse.json(
         { error: "Missing required user data" },
         { status: 400 }
@@ -31,15 +31,15 @@ export async function POST(req: NextRequest) {
       email,
       user_id: userId,
       name: personalInfo.name,
-      age: parseInt(personalInfo.age),
+      age: personalInfo.age === "not-specified" ? null : parseInt(personalInfo.age),
       sex: personalInfo.sex,
       education: personalInfo.education,
       occupation: personalInfo.occupation,
-      vaccination: parseInt(opinions.vaccination),
-      climate_change: parseInt(opinions.climateChange),
-      immigration: parseInt(opinions.immigration),
-      gun_control: parseInt(opinions.gunControl),
-      universal_healthcare: parseInt(opinions.universalHealthcare),
+      vaccination: opinions?.vaccination ? parseInt(opinions.vaccination) : null,
+      climate_change: opinions?.climateChange ? parseInt(opinions.climateChange) : null,
+      immigration: opinions?.immigration ? parseInt(opinions.immigration) : null,
+      gun_control: opinions?.gunControl ? parseInt(opinions.gunControl) : null,
+      universal_healthcare: opinions?.universalHealthcare ? parseInt(opinions.universalHealthcare) : null,
       informed_consent_agreed: true
       // Remove explicit timestamp - let database handle defaults
     }
