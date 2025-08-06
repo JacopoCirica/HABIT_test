@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
       sex: personalInfo.sex,
       education: personalInfo.education,
       occupation: personalInfo.occupation,
-      vaccination: opinions?.vaccination ? parseInt(opinions.vaccination) : null,
-      climate_change: opinions?.climateChange ? parseInt(opinions.climateChange) : null,
-      immigration: opinions?.immigration ? parseInt(opinions.immigration) : null,
-      gun_control: opinions?.gunControl ? parseInt(opinions.gunControl) : null,
-      universal_healthcare: opinions?.universalHealthcare ? parseInt(opinions.universalHealthcare) : null,
+      vaccination: opinions?.vaccination ? parseInt(opinions.vaccination) : 0,
+      climate_change: opinions?.climateChange ? parseInt(opinions.climateChange) : 0,
+      immigration: opinions?.immigration ? parseInt(opinions.immigration) : 0,
+      gun_control: opinions?.gunControl ? parseInt(opinions.gunControl) : 0,
+      universal_healthcare: opinions?.universalHealthcare ? parseInt(opinions.universalHealthcare) : 0,
       informed_consent_agreed: true
       // Remove explicit timestamp - let database handle defaults
     }
