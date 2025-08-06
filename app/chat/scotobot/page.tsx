@@ -928,6 +928,7 @@ function ChatScotobotComponent() {
                                 )}
                               >
                                 <div 
+                                  className="select-text"
                                   dangerouslySetInnerHTML={{
                                     __html: message.content
                                       .replace(/#/g, '') // Remove # symbols

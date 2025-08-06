@@ -884,7 +884,7 @@ function ChatEnronComponent() {
                               )}>
                                 <CardContent className="p-0">
                                   <div 
-                                    className="text-sm whitespace-pre-wrap"
+                                    className="text-sm whitespace-pre-wrap select-text"
                                     dangerouslySetInnerHTML={{
                                       __html: message.content
                                         .replace(/#/g, '') // Remove # symbols
