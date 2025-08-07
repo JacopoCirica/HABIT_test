@@ -88,21 +88,21 @@ function ChatScotobotComponent() {
     const now = new Date()
     const pacificTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}))
     
-    // Target start time: 7:40 PT (today)
+    // Target start time: 10:20 PT (today)
     const targetStart = new Date(pacificTime)
-    targetStart.setHours(7, 40, 0, 0)
+    targetStart.setHours(10, 20, 0, 0)
     
-    // If we're past 7:40 today, it might be for tomorrow's session
+          // If we're past 10:20 today, it might be for tomorrow's session
     // But for now, let's assume it's always for today's session
     const timeUntilStart = targetStart.getTime() - pacificTime.getTime()
     const sessionDuration = 55 * 60 * 1000 // 55 minutes in milliseconds
     
     if (timeUntilStart > 0) {
-      // Before 7:40 PT - show negative countdown
+      // Before 10:20 PT - show negative countdown
       setIsBeforeStartTime(true)
       return -Math.floor(timeUntilStart / 1000) // Negative seconds until start
-    } else {
-      // After 7:40 PT - check if still within 55-minute session
+          } else {
+        // After 10:20 PT - check if still within 55-minute session
       const timeIntoSession = -timeUntilStart
       if (timeIntoSession <= sessionDuration) {
         setIsBeforeStartTime(false)
@@ -781,7 +781,7 @@ function ChatScotobotComponent() {
                 >
                   <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
                   <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
-                    {isBeforeStartTime ? `${formatTime(sessionTimeRemaining)} until 7:40 PT` : `${formatTime(sessionTimeRemaining)} remaining`}
+                    {isBeforeStartTime ? `${formatTime(sessionTimeRemaining)} until 10:20 PT` : `${formatTime(sessionTimeRemaining)} remaining`}
                   </span>
                 </motion.div>
               )}
@@ -932,7 +932,7 @@ function ChatScotobotComponent() {
                         <div className="mt-2 flex items-center justify-center gap-2">
                           <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
                           <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
-                            {isBeforeStartTime ? `${formatTime(sessionTimeRemaining)} until 7:40 PT` : `${formatTime(sessionTimeRemaining)} remaining`}
+                            {isBeforeStartTime ? `${formatTime(sessionTimeRemaining)} until 10:20 PT` : `${formatTime(sessionTimeRemaining)} remaining`}
                           </span>
                         </div>
                       )}
