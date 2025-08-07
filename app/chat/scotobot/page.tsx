@@ -66,7 +66,8 @@ function ChatScotobotComponent() {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [sessionPaused, setSessionPaused] = useState(false)
   const [sessionTime, setSessionTime] = useState(0)
-  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(30 * 60) // 30 minutes
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0) // Will be calculated based on PT
+  const [isBeforeStartTime, setIsBeforeStartTime] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [exitDialogOpen, setExitDialogOpen] = useState(false)
@@ -81,6 +82,54 @@ function ChatScotobotComponent() {
   // Scotobot Bob configuration
   const scotobotBobName = "Scotobot Bob"
   const justiceRobertId = "justice_robert"
+
+  // Pacific Time session configuration
+  const calculatePacificTimeRemaining = () => {
+    const now = new Date()
+    const pacificTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}))
+    
+    // Target start time: 7:40 PT (today)
+    const targetStart = new Date(pacificTime)
+    targetStart.setHours(7, 40, 0, 0)
+    
+    // If we're past 7:40 today, it might be for tomorrow's session
+    // But for now, let's assume it's always for today's session
+    const timeUntilStart = targetStart.getTime() - pacificTime.getTime()
+    const sessionDuration = 55 * 60 * 1000 // 55 minutes in milliseconds
+    
+    if (timeUntilStart > 0) {
+      // Before 7:40 PT - show negative countdown
+      setIsBeforeStartTime(true)
+      return -Math.floor(timeUntilStart / 1000) // Negative seconds until start
+    } else {
+      // After 7:40 PT - check if still within 55-minute session
+      const timeIntoSession = -timeUntilStart
+      if (timeIntoSession <= sessionDuration) {
+        setIsBeforeStartTime(false)
+        return Math.floor((sessionDuration - timeIntoSession) / 1000) // Remaining seconds in session
+      } else {
+        // Session has ended
+        setIsBeforeStartTime(false)
+        return 0
+      }
+    }
+  }
+
+  // Initialize Pacific Time-based timer
+  useEffect(() => {
+    const updateTimer = () => {
+      const remaining = calculatePacificTimeRemaining()
+      setSessionTimeRemaining(remaining)
+    }
+    
+    // Update immediately
+    updateTimer()
+    
+    // Update every second
+    const interval = setInterval(updateTimer, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   // Join or create Scotobot room
   useEffect(() => {
@@ -226,41 +275,36 @@ function ChatScotobotComponent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Session timer
+  // Session timer - now handled by Pacific Time updater
   useEffect(() => {
-    if (sessionStarted && !sessionEnded && !sessionPaused && sessionTimeRemaining > 0) {
-      const timer = setInterval(() => {
-        setSessionTime(prev => prev + 1)
-        setSessionTimeRemaining(prev => {
-          if (prev <= 1) {
-            setSessionEnded(true)
-            setShowExitSurvey(true)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-      return () => clearInterval(timer)
+    if (!isBeforeStartTime && sessionTimeRemaining <= 0 && sessionStarted && !sessionEnded) {
+      setSessionEnded(true)
+      setShowExitSurvey(true)
     }
-  }, [sessionStarted, sessionEnded, sessionPaused, sessionTimeRemaining])
+  }, [sessionTimeRemaining, isBeforeStartTime, sessionStarted, sessionEnded])
 
   // Helper functions
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
+    const isNegative = seconds < 0
+    const absSeconds = Math.abs(seconds)
+    const mins = Math.floor(absSeconds / 60)
+    const secs = absSeconds % 60
+    const timeString = `${mins}:${secs.toString().padStart(2, "0")}`
+    return isNegative ? `-${timeString}` : timeString
   }
 
   const getTimerColor = (timeRemaining: number) => {
+    if (isBeforeStartTime || timeRemaining < 0) return "text-red-600" // Before start time - red
     if (timeRemaining <= 60) return "text-red-600"
     if (timeRemaining <= 300) return "text-amber-600"
-    return "text-green-600"
+    return "text-green-600" // During session - green
   }
 
   const getTimerBgColor = (timeRemaining: number) => {
+    if (isBeforeStartTime || timeRemaining < 0) return "bg-red-50" // Before start time - red background
     if (timeRemaining <= 60) return "bg-red-50"
     if (timeRemaining <= 300) return "bg-amber-50"
-    return "bg-green-50"
+    return "bg-green-50" // During session - green background
   }
 
   const getAvatarInitial = (name: string) => name.charAt(0).toUpperCase()
@@ -737,7 +781,7 @@ function ChatScotobotComponent() {
                 >
                   <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
                   <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
-                    {formatTime(sessionTimeRemaining)} remaining
+                    {isBeforeStartTime ? `${formatTime(sessionTimeRemaining)} until 7:40 PT` : `${formatTime(sessionTimeRemaining)} remaining`}
                   </span>
                 </motion.div>
               )}
@@ -888,7 +932,7 @@ function ChatScotobotComponent() {
                         <div className="mt-2 flex items-center justify-center gap-2">
                           <Timer className={cn("h-4 w-4", getTimerColor(sessionTimeRemaining))} />
                           <span className={cn("text-sm font-medium", getTimerColor(sessionTimeRemaining))}>
-                            {formatTime(sessionTimeRemaining)} remaining
+                            {isBeforeStartTime ? `${formatTime(sessionTimeRemaining)} until 7:40 PT` : `${formatTime(sessionTimeRemaining)} remaining`}
                           </span>
                         </div>
                       )}
