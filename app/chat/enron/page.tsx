@@ -881,10 +881,13 @@ function ChatEnronComponent() {
                                   : isEnronAi
                                     ? "bg-red-50 text-red-900 border-red-200"
                                     : "bg-gray-100 text-gray-900 border-gray-200"
-                              )}>
+                              )}
+                              style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                              >
                                 <CardContent className="p-0">
                                   <div 
                                     className="text-sm whitespace-pre-wrap select-text"
+                                    style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                                     dangerouslySetInnerHTML={{
                                       __html: message.content
                                         .replace(/#/g, '') // Remove # symbols

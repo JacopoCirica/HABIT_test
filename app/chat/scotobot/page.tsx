@@ -926,9 +926,11 @@ function ChatScotobotComponent() {
                                     ? "rounded-tl-sm bg-green-50 text-green-800"
                                     : "rounded-tl-sm bg-gray-100 text-gray-800"
                                 )}
+                                style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                               >
                                 <div 
                                   className="select-text"
+                                  style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                                   dangerouslySetInnerHTML={{
                                     __html: message.content
                                       .replace(/#/g, '') // Remove # symbols
