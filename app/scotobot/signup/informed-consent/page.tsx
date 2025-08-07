@@ -4,8 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MessageSquare, FileText } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
@@ -24,12 +23,10 @@ Your participation is voluntary, and you may discontinue at any time by disconne
 
 export default function ScotobotInformedConsentPage() {
   const router = useRouter()
-  const [agreed, setAgreed] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!agreed) return
 
     setIsSubmitting(true)
     // In a real app, you might want to record this consent action.
@@ -67,7 +64,7 @@ export default function ScotobotInformedConsentPage() {
 
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Research Study Information</CardTitle>
+                    <CardTitle>Demo Data Use Information</CardTitle>
                     <CardDescription>Your participation in this study is voluntary.</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -101,32 +98,8 @@ export default function ScotobotInformedConsentPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.4 }}
                 >
-                  <motion.div
-                    className="flex items-start space-x-3 rounded-md border p-4 shadow-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 0.4 }}
-                  >
-                    <Checkbox
-                      id="consent-agreed"
-                      checked={agreed}
-                      onCheckedChange={(checked) => setAgreed(checked as boolean)}
-                      className="mt-1 transition-all duration-200"
-                      aria-labelledby="consent-label"
-                    />
-                    <div className="grid gap-1.5 leading-none">
-                      <Label htmlFor="consent-agreed" id="consent-label" className="font-medium cursor-pointer">
-                        Statement of Consent
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        I have read and understood the information above, and I voluntarily agree to participate in this
-                        research study.
-                      </p>
-                    </div>
-                  </motion.div>
-
-                  <AnimatedButton type="submit" className="w-full" disabled={!agreed || isSubmitting}>
-                    {isSubmitting ? "Processing..." : "Agree & Continue"}
+                  <AnimatedButton type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? "Processing..." : "Continue"}
                   </AnimatedButton>
                 </motion.form>
               </FadeIn>

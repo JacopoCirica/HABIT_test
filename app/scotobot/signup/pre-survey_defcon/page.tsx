@@ -17,6 +17,7 @@ import { AnimatedButton } from "@/components/ui/animated-button"
 export default function ScotobotConsentPage() {
   const router = useRouter()
   const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,12 +29,12 @@ export default function ScotobotConsentPage() {
       // Generate a unique user ID for this participant
       const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
       
-      // Get email from session storage (from signup)
-      const email = sessionStorage.getItem("signupEmail")
-      
       // Store user information in session storage
       sessionStorage.setItem("userId", userId)
       sessionStorage.setItem("userName", name)
+      if (email) {
+        sessionStorage.setItem("signupEmail", email)
+      }
       
       console.log("Personal information stored in session storage with userId:", userId)
       
@@ -105,17 +106,11 @@ export default function ScotobotConsentPage() {
                 <div className="mb-8 text-center">
                   <h1 className="mb-2 text-3xl font-bold">Name for the session</h1>
                   <p className="text-muted-foreground">
-                    Please provide your name to participate in the study
+                    Please provide a name to participate.
                   </p>
                 </div>
 
-                <Card className="mb-6">
-                  <CardContent className="p-6">
-                    <p className="text-sm text-muted-foreground">
-                      Your data will be used for research purposes only and will be kept confidential.
-                    </p>
-                  </CardContent>
-                </Card>
+
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
@@ -130,6 +125,19 @@ export default function ScotobotConsentPage() {
                       className="transition-all duration-200 focus:shadow-sm"
                     />
                     <p className="text-xs text-muted-foreground">This name will be displayed in the chat session</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address (Optional)</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="transition-all duration-200 focus:shadow-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Optional - for future communication about the demo</p>
                   </div>
 
                   <AnimatedButton
