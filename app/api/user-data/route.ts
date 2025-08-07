@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Validate required data
-    if (!email || !userId || !personalInfo) {
+    if (!userId || !personalInfo) {
       return NextResponse.json(
         { error: "Missing required user data" },
         { status: 400 }
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Prepare the complete user data for database insertion
     const userData = {
-      email,
+      email: email || null,
       user_id: userId,
       name: personalInfo.name,
       age: personalInfo.age === "not-specified" ? null : parseInt(personalInfo.age),
