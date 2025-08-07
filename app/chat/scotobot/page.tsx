@@ -218,6 +218,8 @@ function ChatScotobotComponent() {
         // Start session immediately without any initial messages
         console.log('Starting Scotobot session without initial messages')
         setSessionStarted(true)
+        // Store session start time for duration calculation
+        sessionStorage.setItem("sessionStartTime", Date.now().toString())
       } else {
         console.error('Error fetching Scotobot messages:', error)
         setFetchError(error)
@@ -722,13 +724,13 @@ function ChatScotobotComponent() {
       console.error('Error submitting exit survey:', error)
     }
     
-    // Redirect to homepage after submission
-    router.push('/')
+    // Redirect to session concluded page after submission
+    router.push('/scotobot/session-concluded')
   }
 
   const handleExitSurveySkip = () => {
     console.log('Exit survey skipped')
-    router.push('/')
+    router.push('/scotobot/session-concluded')
   }
 
   if (showExitSurvey) {
