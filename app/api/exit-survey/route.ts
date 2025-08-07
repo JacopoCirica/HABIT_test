@@ -7,6 +7,9 @@ export async function POST(req: NextRequest) {
     const { 
       satisfaction, 
       feedback, 
+      email,
+      sendCSIInfo,
+      sendCSIClass,
       sessionType, 
       userId, 
       roomId,
@@ -16,6 +19,9 @@ export async function POST(req: NextRequest) {
     console.log("API: Saving exit survey responses:", {
       satisfaction,
       feedback,
+      email,
+      sendCSIInfo,
+      sendCSIClass,
       sessionType,
       userId,
       roomId,
@@ -30,6 +36,9 @@ export async function POST(req: NextRequest) {
       session_type: sessionType,
       satisfaction_rating: parseInt(satisfaction),
       feedback: feedback || null,
+      email: email || null,
+      send_csi_info: sendCSIInfo || false,
+      send_csi_class: sendCSIClass || false,
       session_duration: sessionDuration || null
     }
 

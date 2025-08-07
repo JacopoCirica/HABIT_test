@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { motion } from "framer-motion"
 import { Star, ThumbsUp, MessageSquare } from "lucide-react"
 
@@ -18,11 +20,17 @@ interface ExitSurveyProps {
 export interface ExitSurveyResponses {
   satisfaction: string
   feedback: string
+  email: string
+  sendCSIInfo: boolean
+  sendCSIClass: boolean
 }
 
 export function ExitSurvey({ onSubmit, onSkip, sessionType }: ExitSurveyProps) {
   const [satisfaction, setSatisfaction] = useState("")
   const [feedback, setFeedback] = useState("")
+  const [email, setEmail] = useState("")
+  const [sendCSIInfo, setSendCSIInfo] = useState(false)
+  const [sendCSIClass, setSendCSIClass] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,7 +40,10 @@ export function ExitSurvey({ onSubmit, onSkip, sessionType }: ExitSurveyProps) {
     setIsSubmitting(true)
     onSubmit({
       satisfaction,
-      feedback: feedback.trim()
+      feedback: feedback.trim(),
+      email: email.trim(),
+      sendCSIInfo,
+      sendCSIClass
     })
   }
 
@@ -110,6 +121,46 @@ export function ExitSurvey({ onSubmit, onSkip, sessionType }: ExitSurveyProps) {
               <p className="text-xs text-muted-foreground">
                 {feedback.length}/500 characters
               </p>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-3">
+              <Label htmlFor="email" className="text-sm font-medium">
+                My real email is:
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* CSI Information Checkboxes */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="csi-info"
+                  checked={sendCSIInfo}
+                  onCheckedChange={(checked) => setSendCSIInfo(checked as boolean)}
+                />
+                <Label htmlFor="csi-info" className="text-sm font-medium cursor-pointer">
+                  Send me information about Cognitive Security Institute (CSI)
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="csi-class"
+                  checked={sendCSIClass}
+                  onCheckedChange={(checked) => setSendCSIClass(checked as boolean)}
+                />
+                <Label htmlFor="csi-class" className="text-sm font-medium cursor-pointer">
+                  Send me information about CSI's upcoming "Fundamentals of Cognitive Security" class
+                </Label>
+              </div>
             </div>
 
             {/* Buttons */}

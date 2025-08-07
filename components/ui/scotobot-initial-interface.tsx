@@ -25,7 +25,7 @@ export function ScotobotInitialInterface({
   isLoading
 }: ScotobotInitialInterfaceProps) {
   const exampleQuestions = [
-    "What is your opinion about abortion?",
+    "It is August 2026 and Donald Trump is President.",
     "Current Opinions 2024/25: Lackey v. Stinnie (2025)",
     "Upcoming Opinion; People v. Dain (Yacob)",
     "Which of your colleagues are you most ideologically aligned with?"
@@ -66,8 +66,8 @@ export function ScotobotInitialInterface({
           {exampleQuestions.map((question, index) => {
             const getMessageForQuestion = (questionIndex: number) => {
               switch (questionIndex) {
-                case 0: // Abortion question
-                  return "What is your opinion about abortion?"
+                case 0: // Trump presidency scenario
+                  return "It is August 2026 and Donald Trump is President."
                 case 1: // Lackey v. Stinnie
                   return "What will be your opinion on the Lackey v. Stinnie case? Here the background: In 2018, a group of Virginia drivers represented by lead plaintiff Damian Stinnie challenged a Virginia state law that automatically suspended the driver's license of anyone yet to pay fines, forfeitures, or restitution assessed by state or federal courts. Stinnie challenged the law's constitutionality, alleging that it violated the Due Process Clause by failing to provide notice of the suspension and the Equal Protection Clause as applied to those unable to pay their legal obligations. After securing a preliminary injunction from the US District Court for the Western District of Virginia, Stinnie's case became moot after the April 2020 repeal of this state law. Stinnie sought to recoup his attorney's fees under the Civil Rights Attorney's Fees Award Act of 1976 as a \"prevailing party,\" given that his lawsuit prompted the law's repeal. However, relying on the Fourth Circuit's decision in Smyth v. Rivero (2002), this district court denied that its preliminary injunction entitled Stinnie to this award, simply because the external circumstances had changed. In 2023, the Fourth Circuit issued an en banc overturning of its decision in Smyth to award attorney's fees to Stinnie. Gerald Lackey, the Commissioner of the Virginia Department of Motor Vehicles, appealed this decision to the Supreme Court."
                 case 2: // People v. Dain
