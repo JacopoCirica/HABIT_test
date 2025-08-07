@@ -14,30 +14,12 @@ import { AnimatedButton } from "@/components/ui/animated-button"
 import { motion } from "framer-motion"
 
 const consentText = `
-**1. Purpose of the Study:**
-This research aims to understand how humans interact with AI agents in conversational settings, specifically focusing on opinion formation and debate dynamics.
+Thank you for participating in this AI demonstration during the talk. By engaging with the AI system, you acknowledge and consent to the following:
 
-**2. Procedures:**
-If you agree to participate, you will be asked to:
-   a. Provide some demographic information and your opinions on selected topics.
-   b. Engage in a text-based conversation with another participant (who may be an AI) for approximately 15 minutes.
-   c. Complete a short post-session survey about your experience.
+All interactions, including your inputs and the AI's responses, will be recorded.
+These recordings will be used exclusively to analyze and improve the AI system's performance, functionality, and user experience.
 
-**3. Risks and Benefits:**
-Risks: There are no anticipated physical risks. Some participants might experience mild discomfort discussing certain topics or interacting with an AI. You can withdraw at any time.
-Benefits: You will contribute to scientific knowledge about human-AI interaction. There are no direct benefits to you.
-
-**4. Confidentiality:**
-All data collected will be anonymized. Your email address will only be used for verification and will not be linked to your responses in published research. Conversation logs and survey responses will be stored securely. Anonymized data may be shared with other researchers or made publicly available.
-
-**5. Voluntary Participation:**
-Your participation is entirely voluntary. You can choose to stop participating at any time without any penalty. If you withdraw, any data collected from you up to that point may still be used in an anonymized form.
-
-**6. Contact Information:**
-If you have any questions about this research, you can contact the HABIT research team at habit-research@example.com. (Note: This is a placeholder email for this demo).
-
-**7. Duration:**
-The entire session, including surveys and the chat, is expected to take approximately 25-30 minutes.
+Your participation is voluntary, and you may discontinue at any time by disconnecting.
 `
 
 export default function InformedConsentPage() {
