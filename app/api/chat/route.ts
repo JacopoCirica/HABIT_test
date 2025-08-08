@@ -575,7 +575,11 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       if ((isEnronAssistant || confederateName === "Enron AI Assistant") && lastUserMessage) {
         const userQuestion = typeof lastUserMessage.content === "string" ? lastUserMessage.content : ""
         
-        if (shouldUseEnronRAG(userQuestion)) {
+        // Always use RAG for Enron assistant, regardless of keywords  
+        console.log("[api/chat] Enron assistant detected - ALWAYS using RAG API for question:", userQuestion)
+        
+        // Modified: Always trigger RAG for every user message in Enron chatroom
+        if (true) {  // Always trigger RAG for Enron assistant
           console.log("[api/chat] Using Enron RAG API for question:", userQuestion)
           
           try {
@@ -631,20 +635,6 @@ Based on this authentic email data, provide a comprehensive response that:
             
             generatedText = result.text
           }
-        } else {
-          // Standard Enron AI response for non-email questions
-          const result = await generateText({
-            model: openai("gpt-4o"),
-            messages: messages.filter(
-              (msg): msg is CoreMessage =>
-                typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
-            ),
-            system: systemPrompt,
-            temperature: 0.85,
-            maxTokens: currentMaxTokens,
-          })
-          
-          generatedText = result.text
         }
       } else {
         // Standard AI generation for non-Enron assistants
