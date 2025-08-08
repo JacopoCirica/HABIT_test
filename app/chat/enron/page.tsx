@@ -414,11 +414,23 @@ function ChatEnronComponent() {
         isEnronAssistant: true,
       }
       
+      // DEBUG: Log what we're sending to the API
+      console.log("🔍 [FRONTEND DEBUG] About to call /api/chat with:")
+      console.log("🔍 [FRONTEND DEBUG] isEnronAssistant:", requestBody.isEnronAssistant)
+      console.log("🔍 [FRONTEND DEBUG] confederateName:", requestBody.confederateName)
+      console.log("🔍 [FRONTEND DEBUG] sessionType:", requestBody.sessionType)
+      console.log("🔍 [FRONTEND DEBUG] User question:", trimmedInput)
+      console.log("🔍 [FRONTEND DEBUG] Full request body:", requestBody)
+      
+      console.log("🚀 [FRONTEND DEBUG] Making API call to /api/chat...")
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       })
+      
+      console.log("📡 [FRONTEND DEBUG] API response status:", response.status)
+      console.log("📡 [FRONTEND DEBUG] API response ok:", response.ok)
 
       if (!response.ok) {
         console.error("Enron AI response failed:", response.status, response.statusText)
@@ -426,7 +438,8 @@ function ChatEnronComponent() {
       }
 
       const data = await response.json()
-      console.log("Enron AI response received:", data)
+      console.log("✅ [FRONTEND DEBUG] Enron AI response received:", data)
+      console.log("✅ [FRONTEND DEBUG] Response content:", data.content)
       
       // Add final formatting delay
       await new Promise(resolve => setTimeout(resolve, 1500))
