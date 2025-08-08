@@ -296,7 +296,7 @@ function ChatEnronComponent() {
       room_id: roomIdEnron,
       sender_id: enronAiId,
       sender_role: "assistant",
-      content: "Welcome to the Enron Whaling Project! I'm an AI assistant trained specifically on emails received and sent by Jeffrey Keith and other Enron executives. My goal is to help you create sophisticated phishing emails targeting **Kenneth Lay (Enron Chairman & CEO)** that mimic real workplace communications and practices.\n\nTo generate an effective whaling email to Kenneth Lay, I need these **3 required parameters**:\n\n• **Email Subject** - Choose from examples like:\n  - \"Urgent: Board Meeting Rescheduled\"\n  - \"Confidential: Q3 Financial Review\"\n  - \"Action Required: IT Security Update\"\n  - \"Time-Sensitive: Merger Documentation\"\n\n• **Cues to Phish (CTP)** - Number from **1-18** (1 = hardest to detect, 18 = easiest to detect)\n\n• **User Context (UC)** - Must be: **low**, **medium**, or **high**\n\nPlease provide ALL THREE parameters in your message so I can craft a complete, realistic phishing email to Kenneth Lay using Jeffrey Keith's authentic communication patterns from the Enron archives.",
+      content: "Welcome! I'm an AI assistant with deep knowledge of Enron and its executives, particularly CEO Kenneth Lay. I've been trained on extensive corporate communications and can discuss various aspects of Enron's history, leadership, and business operations.\n\nFeel free to ask me anything about:\n\n• **Kenneth Lay** - His background, leadership style, and role as CEO\n• **Enron's Corporate Culture** - Business practices, company dynamics, and organizational structure\n• **Executive Communications** - If you're curious about specific emails or correspondence, I can search through archived communications\n• **Business Operations** - Company strategies, decisions, and corporate developments\n\nWhat would you like to know about Enron's CEO or the company?",
     }
     
     try {
@@ -378,104 +378,7 @@ function ChatEnronComponent() {
     
     console.log("Enron message inserted successfully:", insertedMessage)
 
-    // Check if user provided all required information in current message OR previous conversation
-    const checkParameter = (patterns: RegExp[], text: string): boolean => {
-      return patterns.some((pattern: RegExp) => pattern.test(text))
-    }
-    
-    // Get all user messages from conversation history
-    const allUserMessages = messages.filter(msg => msg.role === 'user').map(msg => msg.content).join(' ')
-    const fullConversationText = allUserMessages + ' ' + trimmedInput
-    
-    console.log('Enron analyzing conversation:', { fullConversationText, currentInput: trimmedInput })
-    
-    const subjectPatterns = [
-      /subject\s*[:\-]\s*["']?[^"'\n]+["']?/i,
-      /email\s+subject\s+is\s+["']?([^"'\n]+)["']?/i,
-      /as\s+email\s+subject\s+is\s+["']?([^"'\n]+)["']?/i
-    ]
-    
-    const ctpPatterns = [
-      /ctp\s*[:\-]?\s*(\d+)/i,
-      /cues\s*to\s*phish\s*[:\-]?\s*(\d+)/i,
-      /(\d+)\s*cues?/i,
-      /with\s*(\d+)\s*cues?/i
-    ]
-    
-    const ucPatterns = [
-      /uc\s*[:\-]?\s*(low|medium|high)/i,
-      /user\s*context\s*[:\-]?\s*(low|medium|high)/i,
-      /(^|\s)(low|medium|high)(\s|$)/i,
-      /(low|medium|high)\s+user\s+context/i
-    ]
-    
-    const hasSubject = checkParameter(subjectPatterns, fullConversationText)
-    const hasCTP = checkParameter(ctpPatterns, fullConversationText)
-    const hasUC = checkParameter(ucPatterns, fullConversationText)
-    
-    console.log('Enron parameter detection:', { hasSubject, hasCTP, hasUC, fullText: fullConversationText })
-    
-    if (!hasSubject || !hasCTP || !hasUC) {
-      // Ask for missing information instead of generating
-      setLoadingMessage("Analyzing request for required parameters...")
-      
-      setTimeout(async () => {
-        setLoadingMessage("")
-        
-        // Generate response asking for missing information
-        const missingParams = []
-        if (!hasSubject) missingParams.push("Email Subject")
-        if (!hasCTP) missingParams.push("Cues to Phish (CTP) - number from 1-18")
-        if (!hasUC) missingParams.push("User Context (UC) - low, medium, or high")
-        
-        const clarificationContent = `I need more specific information to create an effective whaling email demonstration targeting Kenneth Lay (Enron Chairman & CEO). Please provide:\n\n${missingParams.map(param => `• **${param}**`).join('\n')}\n\nRemember, I need ALL THREE parameters:\n• **Email Subject** - Examples: "Urgent: Board Meeting Rescheduled", "Confidential: Q3 Financial Review"\n• **Cues to Phish (CTP)** - Number from **1-18** (1 = hardest to detect, 18 = easiest to detect)\n• **User Context (UC)** - Must be: **low**, **medium**, or **high**\n\nPlease provide all three in your next message so I can craft a complete, realistic phishing email to Kenneth Lay using Jeffrey Keith's authentic communication patterns.`
-        
-        // Insert the clarification message
-        const clarificationMessage = {
-          room_id: roomIdEnron,
-          sender_id: enronAiId,
-          sender_role: "assistant",
-          content: clarificationContent,
-        }
-        
-        try {
-          const { data: insertedClarification, error: clarificationError } = await supabase
-            .from("messages")
-            .insert([clarificationMessage])
-            .select()
-            .single()
-            
-          if (!clarificationError && insertedClarification) {
-            console.log('Enron clarification message inserted successfully')
-            
-            // Add to local state
-            const newMessage = {
-              id: insertedClarification.id,
-              role: insertedClarification.sender_role,
-              content: insertedClarification.content,
-              sender_id: insertedClarification.sender_id,
-              created_at: insertedClarification.created_at,
-            }
-            
-            setMessages(prev => {
-              if (prev.some(msg => msg.id === newMessage.id)) {
-                return prev
-              }
-              return [...prev, newMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            })
-          } else {
-            console.error('Error inserting clarification message:', clarificationError)
-          }
-        } catch (error) {
-          console.error('Error adding clarification message:', error)
-        }
-        
-        setIsLoading(false)
-      }, 1500)
-      return
-    }
-
-    // Generate Enron AI's response with proper loading indicators
+    // Generate Enron AI's response directly - let the backend handle RAG vs normal conversation
     try {
       console.log("Enron generating AI response")
       
