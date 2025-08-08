@@ -9,6 +9,8 @@ export const maxDuration = 60
 // Helper function to call Enron RAG API
 async function callEnronRAG(question: string, topK: number = 5, use: string = "hybrid") {
   try {
+    console.log(`[callEnronRAG] Making request with: question="${question}", top_k=${topK}, use="${use}"`)
+    
     const response = await fetch('https://flask-enron-rag-05c9c1612f55.herokuapp.com/ask', {
       method: 'POST',
       headers: {
@@ -21,14 +23,24 @@ async function callEnronRAG(question: string, topK: number = 5, use: string = "h
       })
     })
 
+    console.log(`[callEnronRAG] Response status: ${response.status}`)
+    console.log(`[callEnronRAG] Response headers:`, response.headers)
+
     if (!response.ok) {
-      throw new Error(`Enron RAG API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error(`[callEnronRAG] API error response body:`, errorText)
+      throw new Error(`Enron RAG API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
+    console.log(`[callEnronRAG] Successful response:`, data)
     return data
   } catch (error) {
-    console.error('Error calling Enron RAG API:', error)
+    console.error('[callEnronRAG] Error calling Enron RAG API:', error)
+    console.error('[callEnronRAG] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     throw error
   }
 }
@@ -599,6 +611,11 @@ Based on this authentic email data, provide a comprehensive response that:
             
           } catch (ragError) {
             console.error("[api/chat] Enron RAG API failed, falling back to standard response:", ragError)
+            console.error("[api/chat] RAG error details:", {
+              message: ragError instanceof Error ? ragError.message : String(ragError),
+              question: userQuestion,
+              timestamp: new Date().toISOString()
+            })
             
             // Fallback to standard generation if RAG fails
             const result = await generateText({
