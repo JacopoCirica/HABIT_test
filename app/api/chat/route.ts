@@ -571,8 +571,13 @@ Remember: You are ${confederateName || "your character"} having a real conversat
     try {
       let generatedText = ""
       
-      // Check if this is an Enron AI Assistant request about CEO emails
-      if ((isEnronAssistant || confederateName === "Enron AI Assistant") && lastUserMessage) {
+      // Debug: Log the values to see what's being received
+      console.log("[api/chat] DEBUG - isEnronAssistant:", isEnronAssistant)
+      console.log("[api/chat] DEBUG - confederateName:", confederateName)
+      console.log("[api/chat] DEBUG - sessionType:", sessionType)
+      
+      // Check if this is an Enron AI Assistant request - multiple detection methods
+      if ((isEnronAssistant || confederateName === "Enron AI Assistant" || sessionType === "enron_whaling") && lastUserMessage) {
         const userQuestion = typeof lastUserMessage.content === "string" ? lastUserMessage.content : ""
         
         // Always use RAG for Enron assistant, regardless of keywords  
