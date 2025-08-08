@@ -195,6 +195,7 @@ function ChatEnronComponent() {
           content: msg.content,
           sender_id: msg.sender_id,
           created_at: msg.created_at,
+          ragSources: null,  // Existing messages won't have RAG sources
         }))
         
         setMessages(fetchedMessages)
@@ -248,6 +249,7 @@ function ChatEnronComponent() {
                 content: newMessage.content,
                 sender_id: newMessage.sender_id,
                 created_at: newMessage.created_at,
+                ragSources: null,  // Messages from subscription won't have RAG sources
               },
             ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             
@@ -316,6 +318,7 @@ function ChatEnronComponent() {
           content: insertedGreeting.content,
           sender_id: insertedGreeting.sender_id,
           created_at: insertedGreeting.created_at,
+          ragSources: null,  // Greeting message won't have RAG sources
         }
         
         setMessages(prev => {
@@ -504,6 +507,7 @@ function ChatEnronComponent() {
           content: insertedAIMessage.content,
           sender_id: insertedAIMessage.sender_id,
           created_at: insertedAIMessage.created_at,
+          ragSources: data.ragResponse?.sources || null,  // Include RAG sources if available
         }
         
         setMessages(prev => {
@@ -851,6 +855,34 @@ function ChatEnronComponent() {
                                   />
                                 </CardContent>
                               </Card>
+                              
+                              {/* RAG Sources - Show collapsible documents for Enron AI messages */}
+                              {isEnronAi && message.ragSources && message.ragSources.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  <div className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                                    <span>📧 Source Documents ({message.ragSources.length})</span>
+                                  </div>
+                                  {message.ragSources.map((source: any, index: number) => (
+                                    <details key={index} className="bg-gray-50 border border-gray-200 rounded-lg">
+                                      <summary className="p-3 cursor-pointer text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+                                        📄 Document {index + 1} (Relevance: {source.score?.toFixed(1) || 'N/A'})
+                                      </summary>
+                                      <div className="p-3 pt-0 border-t border-gray-200">
+                                        <div className="bg-white p-3 rounded border">
+                                          <pre className="text-xs whitespace-pre-wrap font-mono text-gray-800 max-h-64 overflow-y-auto">
+                                            {source.chunk_text}
+                                          </pre>
+                                        </div>
+                                        {source.id && (
+                                          <div className="mt-2 text-xs text-gray-500">
+                                            Document ID: {source.id}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </details>
+                                  ))}
+                                </div>
+                              )}
                             </div>
 
                             {isUser && (
