@@ -431,15 +431,37 @@ function ChatEnronComponent() {
       
       console.log("📡 [FRONTEND DEBUG] API response status:", response.status)
       console.log("📡 [FRONTEND DEBUG] API response ok:", response.ok)
+      console.log("📡 [FRONTEND DEBUG] API response statusText:", response.statusText)
+      console.log("📡 [FRONTEND DEBUG] API response headers:", Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
-        console.error("Enron AI response failed:", response.status, response.statusText)
+        console.error("❌ [FRONTEND DEBUG] Enron AI response failed:", response.status, response.statusText)
+        const errorText = await response.text()
+        console.error("❌ [FRONTEND DEBUG] Error response body:", errorText)
         return
       }
 
       const data = await response.json()
-      console.log("✅ [FRONTEND DEBUG] Enron AI response received:", data)
-      console.log("✅ [FRONTEND DEBUG] Response content:", data.content)
+      console.log("✅ [FRONTEND DEBUG] === FULL API RESPONSE ===")
+      console.log("✅ [FRONTEND DEBUG] Complete response object:", JSON.stringify(data, null, 2))
+      console.log("✅ [FRONTEND DEBUG] Response properties:")
+      console.log("   - id:", data.id)
+      console.log("   - role:", data.role)
+      console.log("   - content:", data.content)
+      console.log("   - error:", data.error)
+      console.log("   - positionEvaluation:", data.positionEvaluation)
+      console.log("✅ [FRONTEND DEBUG] === END FULL RESPONSE ===")
+      
+      // Also log if there are any other unexpected properties
+      const knownProperties = ['id', 'role', 'content', 'error', 'positionEvaluation']
+      const allProperties = Object.keys(data)
+      const unknownProperties = allProperties.filter(prop => !knownProperties.includes(prop))
+      if (unknownProperties.length > 0) {
+        console.log("🔍 [FRONTEND DEBUG] Unknown response properties:", unknownProperties)
+        unknownProperties.forEach(prop => {
+          console.log(`   - ${prop}:`, data[prop])
+        })
+      }
       
       // Add final formatting delay
       await new Promise(resolve => setTimeout(resolve, 1500))
@@ -487,7 +509,12 @@ function ChatEnronComponent() {
       }
       
     } catch (error) {
-      console.error("Enron error generating AI response:", error)
+      console.error("❌ [FRONTEND DEBUG] === ERROR DURING API CALL ===")
+      console.error("❌ [FRONTEND DEBUG] Error generating AI response:", error)
+      console.error("❌ [FRONTEND DEBUG] Error type:", typeof error)
+      console.error("❌ [FRONTEND DEBUG] Error message:", error instanceof Error ? error.message : String(error))
+      console.error("❌ [FRONTEND DEBUG] Error stack:", error instanceof Error ? error.stack : "No stack trace")
+      console.error("❌ [FRONTEND DEBUG] === END ERROR INFO ===")
       setLoadingMessage("")
     } finally {
       setIsLoading(false)
