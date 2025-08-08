@@ -71,6 +71,9 @@ function shouldUseEnronRAG(message: string): boolean {
 }
 
 export async function POST(request: Request) {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  console.log(`[api/chat] 🚀 START REQUEST ${requestId}`)
+  
   try {
     // const apiKey = process.env.GROQ_API_KEY // Check for OpenAI API key instead
     const apiKey = process.env.OPENAI_API_KEY
@@ -594,12 +597,12 @@ Remember: You are ${confederateName || "your character"} having a real conversat
         const userQuestion = typeof lastUserMessage.content === "string" ? lastUserMessage.content : ""
         
         // Always use RAG for Enron assistant, regardless of keywords  
-        console.log("[api/chat] Enron assistant detected - ALWAYS using RAG API for question:", userQuestion)
-        console.log("[api/chat] Question length:", userQuestion.length, "characters")
+        console.log(`[api/chat] ${requestId} - Enron assistant detected - ALWAYS using RAG API for question:`, userQuestion)
+        console.log(`[api/chat] ${requestId} - Question length:`, userQuestion.length, "characters")
         
         // Modified: Always trigger RAG for every user message in Enron chatroom
         if (true) {  // Always trigger RAG for Enron assistant
-          console.log("[api/chat] ✅ TRIGGERING RAG API CALL for question:", userQuestion)
+          console.log(`[api/chat] ${requestId} - ✅ TRIGGERING RAG API CALL for question:`, userQuestion)
           
           try {
             const ragResponse = await callEnronRAG(userQuestion, 5, "hybrid")
@@ -621,6 +624,13 @@ Based on this authentic email data, provide a comprehensive response that:
 3. Uses this real data to inform your response
 4. If asked to create a phishing email, incorporate patterns from these real communications`
 
+            console.log("[api/chat] 🤖 About to call OpenAI generateText with RAG context")
+            console.log("[api/chat] 🤖 Enhanced system prompt length:", enhancedSystemPrompt.length)
+            console.log("[api/chat] 🤖 Number of messages being sent to AI:", messages.filter(
+              (msg): msg is CoreMessage =>
+                typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
+            ).length)
+            
             const result = await generateText({
               model: openai("gpt-4o"),
               messages: messages.filter(
@@ -631,6 +641,10 @@ Based on this authentic email data, provide a comprehensive response that:
               temperature: 0.85,
               maxTokens: currentMaxTokens,
             })
+            
+            console.log("[api/chat] 🤖 OpenAI generateText completed successfully")
+            console.log("[api/chat] 🤖 Generated text length:", result.text?.length || 0)
+            console.log("[api/chat] 🤖 Generated text preview:", result.text?.substring(0, 100) + "...")
             
             generatedText = result.text
             console.log("[api/chat] Generated response using Enron RAG data")
@@ -785,16 +799,31 @@ Based on this authentic email data, provide a comprehensive response that:
         }
       }
 
-      return NextResponse.json({
+      console.log("[api/chat] 📤 Preparing final response to frontend")
+      console.log("[api/chat] 📤 Generated text length:", generatedText?.length || 0)
+      console.log("[api/chat] 📤 RAG response included:", !!ragResponseData)
+      console.log("[api/chat] 📤 RAG sources count:", ragResponseData?.sources?.length || 0)
+      
+      const finalResponse = {
         id: `msg_success_${Date.now()}`,
         role: "assistant",
         content: generatedText,
         positionEvaluation: positionEvaluationResult,
         ragResponse: ragResponseData  // Include RAG response for frontend debugging
+      }
+      
+      console.log("[api/chat] 📤 SENDING RESPONSE TO FRONTEND:", {
+        id: finalResponse.id,
+        contentLength: finalResponse.content?.length || 0,
+        hasRagResponse: !!finalResponse.ragResponse
       })
+      
+      console.log(`[api/chat] ✅ COMPLETED REQUEST ${requestId} - Response sent successfully`)
+      return NextResponse.json(finalResponse)
     } catch (aiError) {
       const errorMessage = aiError instanceof Error ? aiError.message : String(aiError)
-      console.error(`[api/chat] Error generating AI response (generateText): ${errorMessage}`)
+      console.error(`[api/chat] ❌ ERROR in REQUEST ${requestId}: ${errorMessage}`)
+      console.error(`[api/chat] ❌ Full error details for ${requestId}:`, aiError)
       return NextResponse.json(
         {
           id: `msg_err_ai_${Date.now()}`,
