@@ -479,9 +479,12 @@ function ChatEnronComponent() {
       if (data.ragResponse) {
         console.log("🔥 [FRONTEND DEBUG] === RAG API RESPONSE DETECTED ===")
         console.log("🔥 [FRONTEND DEBUG] RAG Response:", JSON.stringify(data.ragResponse, null, 2))
+        console.log("🔥 [FRONTEND DEBUG] Number of sources:", data.ragResponse.sources?.length || 0)
         console.log("🔥 [FRONTEND DEBUG] === END RAG RESPONSE ===")
       } else {
         console.log("⚠️ [FRONTEND DEBUG] No RAG response in API response")
+        console.log("⚠️ [FRONTEND DEBUG] This means RAG API was not called or failed")
+        console.log("⚠️ [FRONTEND DEBUG] Check server logs for RAG debugging info")
       }
       
       console.log("✅ [FRONTEND DEBUG] === END FULL RESPONSE ===")
@@ -883,10 +886,10 @@ function ChatEnronComponent() {
                                     <span>📧 Source Documents ({message.ragSources.length})</span>
                                   </div>
                                   {message.ragSources.map((source: any, index: number) => (
-                                    <details key={index} className="bg-gray-50 border border-gray-200 rounded-lg">
-                                      <summary className="p-3 cursor-pointer text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
-                                        📄 Document {index + 1} (Relevance: {source.score?.toFixed(1) || 'N/A'})
-                                      </summary>
+                                                                         <details key={index} className="bg-gray-50 border border-gray-200 rounded-lg">
+                                       <summary className="p-3 cursor-pointer text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+                                         📄 Document {index + 1}
+                                       </summary>
                                       <div className="p-3 pt-0 border-t border-gray-200">
                                         <div className="bg-white p-3 rounded border">
                                           <pre className="text-xs whitespace-pre-wrap font-mono text-gray-800 max-h-64 overflow-y-auto">

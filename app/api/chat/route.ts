@@ -519,6 +519,18 @@ Remember: You are ${confederateName || "your character"} having a real conversat
     }
 
     const lastUserMessage = messages.filter((msg) => msg.role === "user").pop()
+    
+    // Debug: Log all user messages to see what we're working with
+    const userMessages = messages.filter((msg) => msg.role === "user")
+    console.log("[api/chat] DEBUG - All user messages:", userMessages.map(msg => ({
+      content: typeof msg.content === "string" ? msg.content.substring(0, 50) + "..." : "non-string",
+      role: msg.role
+    })))
+    console.log("[api/chat] DEBUG - Last user message:", lastUserMessage ? {
+      content: typeof lastUserMessage.content === "string" ? lastUserMessage.content : "non-string",
+      role: lastUserMessage.role
+    } : "null")
+    
     let currentMaxTokens = 200
 
     // ScotoBOT (Chief Justice Roberts) gets unlimited tokens for comprehensive constitutional explanations
@@ -583,14 +595,17 @@ Remember: You are ${confederateName || "your character"} having a real conversat
         
         // Always use RAG for Enron assistant, regardless of keywords  
         console.log("[api/chat] Enron assistant detected - ALWAYS using RAG API for question:", userQuestion)
+        console.log("[api/chat] Question length:", userQuestion.length, "characters")
         
         // Modified: Always trigger RAG for every user message in Enron chatroom
         if (true) {  // Always trigger RAG for Enron assistant
-          console.log("[api/chat] Using Enron RAG API for question:", userQuestion)
+          console.log("[api/chat] ✅ TRIGGERING RAG API CALL for question:", userQuestion)
           
           try {
             const ragResponse = await callEnronRAG(userQuestion, 5, "hybrid")
             ragResponseData = ragResponse  // Store for frontend debugging
+            console.log("[api/chat] ✅ RAG API call successful, storing response for frontend")
+            console.log("[api/chat] RAG response has", ragResponse?.sources?.length || 0, "sources")
             
             // Use the RAG response to generate a more informed answer
             const enhancedSystemPrompt = `${systemPrompt}
