@@ -570,6 +570,7 @@ Remember: You are ${confederateName || "your character"} having a real conversat
 
     try {
       let generatedText = ""
+      let ragResponseData = null  // Store RAG response to include in final response
       
       // Debug: Log the values to see what's being received
       console.log("[api/chat] DEBUG - isEnronAssistant:", isEnronAssistant)
@@ -589,6 +590,7 @@ Remember: You are ${confederateName || "your character"} having a real conversat
           
           try {
             const ragResponse = await callEnronRAG(userQuestion, 5, "hybrid")
+            ragResponseData = ragResponse  // Store for frontend debugging
             
             // Use the RAG response to generate a more informed answer
             const enhancedSystemPrompt = `${systemPrompt}
@@ -772,7 +774,8 @@ Based on this authentic email data, provide a comprehensive response that:
         id: `msg_success_${Date.now()}`,
         role: "assistant",
         content: generatedText,
-        positionEvaluation: positionEvaluationResult
+        positionEvaluation: positionEvaluationResult,
+        ragResponse: ragResponseData  // Include RAG response for frontend debugging
       })
     } catch (aiError) {
       const errorMessage = aiError instanceof Error ? aiError.message : String(aiError)

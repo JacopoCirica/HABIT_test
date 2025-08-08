@@ -450,10 +450,21 @@ function ChatEnronComponent() {
       console.log("   - content:", data.content)
       console.log("   - error:", data.error)
       console.log("   - positionEvaluation:", data.positionEvaluation)
+      console.log("   - ragResponse:", data.ragResponse)
+      
+      // Special highlighting for RAG response
+      if (data.ragResponse) {
+        console.log("🔥 [FRONTEND DEBUG] === RAG API RESPONSE DETECTED ===")
+        console.log("🔥 [FRONTEND DEBUG] RAG Response:", JSON.stringify(data.ragResponse, null, 2))
+        console.log("🔥 [FRONTEND DEBUG] === END RAG RESPONSE ===")
+      } else {
+        console.log("⚠️ [FRONTEND DEBUG] No RAG response in API response")
+      }
+      
       console.log("✅ [FRONTEND DEBUG] === END FULL RESPONSE ===")
       
       // Also log if there are any other unexpected properties
-      const knownProperties = ['id', 'role', 'content', 'error', 'positionEvaluation']
+      const knownProperties = ['id', 'role', 'content', 'error', 'positionEvaluation', 'ragResponse']
       const allProperties = Object.keys(data)
       const unknownProperties = allProperties.filter(prop => !knownProperties.includes(prop))
       if (unknownProperties.length > 0) {
