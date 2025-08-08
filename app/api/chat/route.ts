@@ -35,9 +35,9 @@ async function callEnronRAG(question: string, topK: number = 5, use: string = "h
 
 // Helper function to detect if question is about CEO emails
 function shouldUseEnronRAG(message: string): boolean {
-  const emailKeywords = ['email', 'emails', 'correspondence', 'message', 'messages', 'communication', 'wrote', 'sent', 'received']
-  const ceoKeywords = ['ceo', 'chief executive', 'executive', 'kenneth lay', 'lay', 'jeff skilling', 'skilling', 'andy fastow', 'fastow', 'rebecca mark', 'mark']
-  const enronKeywords = ['enron', 'jeffrey keith', 'keith']
+  const emailKeywords = ['email', 'emails', 'correspondence', 'message', 'messages', 'communication', 'wrote', 'sent', 'received', 'show me', 'find', 'search']
+  const ceoKeywords = ['ceo', 'chief executive', 'executive', 'executives', 'kenneth lay', 'lay', 'jeff skilling', 'skilling', 'andy fastow', 'fastow', 'rebecca mark', 'mark', 'management', 'leadership']
+  const enronKeywords = ['enron', 'jeffrey keith', 'keith', 'company']
   
   const lowerMessage = message.toLowerCase()
   
@@ -45,7 +45,17 @@ function shouldUseEnronRAG(message: string): boolean {
   const hasCeoKeyword = ceoKeywords.some(keyword => lowerMessage.includes(keyword))
   const hasEnronKeyword = enronKeywords.some(keyword => lowerMessage.includes(keyword))
   
-  return hasEmailKeyword && (hasCeoKeyword || hasEnronKeyword)
+  // Trigger RAG if:
+  // 1. Has email/communication keywords AND (CEO keywords OR Enron keywords)
+  // 2. OR asking about Enron executives specifically
+  const shouldTrigger = (hasEmailKeyword && (hasCeoKeyword || hasEnronKeyword)) || 
+                       (hasEnronKeyword && hasCeoKeyword)
+                       
+  console.log(`[shouldUseEnronRAG] Message: "${message}"`)
+  console.log(`[shouldUseEnronRAG] Email keywords: ${hasEmailKeyword}, CEO keywords: ${hasCeoKeyword}, Enron keywords: ${hasEnronKeyword}`)
+  console.log(`[shouldUseEnronRAG] Should trigger RAG: ${shouldTrigger}`)
+  
+  return shouldTrigger
 }
 
 export async function POST(request: Request) {
