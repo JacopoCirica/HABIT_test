@@ -381,6 +381,26 @@ function ChatEnronComponent() {
     
     console.log("Enron message inserted successfully:", insertedMessage)
 
+    // Add user message to local state immediately for better UX
+    const newUserMessage = {
+      id: insertedMessage.id,
+      role: insertedMessage.sender_role,
+      content: insertedMessage.content,
+      sender_id: insertedMessage.sender_id,
+      created_at: insertedMessage.created_at,
+      ragSources: null,  // User messages don't have RAG sources
+    }
+    
+    setMessages(prev => {
+      if (prev.some(msg => msg.id === newUserMessage.id)) {
+        console.log('User message already exists in state')
+        return prev
+      }
+      const updatedMessages = [...prev, newUserMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      console.log('User message added to messages state, new count:', updatedMessages.length)
+      return updatedMessages
+    })
+
     // Generate Enron AI's response directly - let the backend handle RAG vs normal conversation
     try {
       console.log("Enron generating AI response")
