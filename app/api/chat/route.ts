@@ -109,6 +109,8 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log(`[api/chat] ${requestId} - 📥 Extracting parameters from request body`)
+    
     const {
       messages,
       userTraits,
@@ -141,6 +143,14 @@ export async function POST(request: Request) {
       isEnronAssistant?: boolean
       responderId?: string
     } = body
+    
+    console.log(`[api/chat] ${requestId} - 📥 Extracted parameters:`, {
+      isEnronAssistant,
+      confederateName,
+      sessionType,
+      roomType,
+      messagesCount: messages?.length || 0
+    })
 
     if (!messages || !Array.isArray(messages)) {
       console.warn("[api/chat] Warning: Invalid or missing messages in request body.")
@@ -588,9 +598,24 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       let ragResponseData = null  // Store RAG response to include in final response
       
       // Debug: Log the values to see what's being received
-      console.log("[api/chat] DEBUG - isEnronAssistant:", isEnronAssistant)
-      console.log("[api/chat] DEBUG - confederateName:", confederateName)
-      console.log("[api/chat] DEBUG - sessionType:", sessionType)
+      console.log(`[api/chat] ${requestId} - DEBUG - isEnronAssistant:`, isEnronAssistant)
+      console.log(`[api/chat] ${requestId} - DEBUG - confederateName:`, confederateName)
+      console.log(`[api/chat] ${requestId} - DEBUG - sessionType:`, sessionType)
+      console.log(`[api/chat] ${requestId} - DEBUG - lastUserMessage exists:`, !!lastUserMessage)
+      
+      // Debug the Enron detection conditions
+      const condition1 = isEnronAssistant
+      const condition2 = confederateName === "Enron AI Assistant"
+      const condition3 = sessionType === "enron_whaling"
+      const hasUserMessage = !!lastUserMessage
+      
+      console.log(`[api/chat] ${requestId} - Enron detection conditions:`, {
+        condition1_isEnronAssistant: condition1,
+        condition2_confederateName: condition2,
+        condition3_sessionType: condition3,
+        hasUserMessage,
+        shouldTrigger: (condition1 || condition2 || condition3) && hasUserMessage
+      })
       
       // Check if this is an Enron AI Assistant request - multiple detection methods
       if ((isEnronAssistant || confederateName === "Enron AI Assistant" || sessionType === "enron_whaling") && lastUserMessage) {
@@ -673,6 +698,14 @@ Based on this authentic email data, provide a comprehensive response that:
           }
         }
       } else {
+        console.log(`[api/chat] ${requestId} - ❌ ENRON DETECTION FAILED - Using standard AI generation`)
+        console.log(`[api/chat] ${requestId} - Failed conditions:`, {
+          isEnronAssistant,
+          confederateName,
+          sessionType,
+          lastUserMessage: !!lastUserMessage
+        })
+        
         // Standard AI generation for non-Enron assistants
         const result = await generateText({
           model: openai("gpt-4o"),
