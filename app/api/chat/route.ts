@@ -6,6 +6,48 @@ import { generateText, type CoreMessage } from "ai"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
+// Helper function to call Enron RAG API
+async function callEnronRAG(question: string, topK: number = 5, use: string = "hybrid") {
+  try {
+    const response = await fetch('https://flask-enron-rag-05c9c1612f55.herokuapp.com/ask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        question,
+        top_k: topK,
+        use
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Enron RAG API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('Error calling Enron RAG API:', error)
+    throw error
+  }
+}
+
+// Helper function to detect if question is about CEO emails
+function shouldUseEnronRAG(message: string): boolean {
+  const emailKeywords = ['email', 'emails', 'correspondence', 'message', 'messages', 'communication', 'wrote', 'sent', 'received']
+  const ceoKeywords = ['ceo', 'chief executive', 'executive', 'kenneth lay', 'lay', 'jeff skilling', 'skilling', 'andy fastow', 'fastow', 'rebecca mark', 'mark']
+  const enronKeywords = ['enron', 'jeffrey keith', 'keith']
+  
+  const lowerMessage = message.toLowerCase()
+  
+  const hasEmailKeyword = emailKeywords.some(keyword => lowerMessage.includes(keyword))
+  const hasCeoKeyword = ceoKeywords.some(keyword => lowerMessage.includes(keyword))
+  const hasEnronKeyword = enronKeywords.some(keyword => lowerMessage.includes(keyword))
+  
+  return hasEmailKeyword && (hasCeoKeyword || hasEnronKeyword)
+}
+
 export async function POST(request: Request) {
   try {
     // const apiKey = process.env.GROQ_API_KEY // Check for OpenAI API key instead
@@ -556,18 +598,93 @@ Remember: You are ${confederateName || "your character"} having a real conversat
     currentMaxTokens = Math.max(25, currentMaxTokens) // Minimum for very brief responses
 
     try {
-      const result = await generateText({
-        model: openai("gpt-4o"),
-        messages: messages.filter(
-          (msg): msg is CoreMessage =>
-            typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
-        ),
-        system: systemPrompt,
-        temperature: 0.85, // Slightly higher for more personality variation
-        maxTokens: currentMaxTokens,
-      })
+      let generatedText = ""
+      
+      // Check if this is an Enron AI Assistant request about CEO emails
+      if ((isEnronAssistant || confederateName === "Enron AI Assistant") && lastUserMessage) {
+        const userQuestion = typeof lastUserMessage.content === "string" ? lastUserMessage.content : ""
+        
+        if (shouldUseEnronRAG(userQuestion)) {
+          console.log("[api/chat] Using Enron RAG API for question:", userQuestion)
+          
+          try {
+            const ragResponse = await callEnronRAG(userQuestion, 5, "hybrid")
+            
+            // Use the RAG response to generate a more informed answer
+            const enhancedSystemPrompt = `${systemPrompt}
 
-      const generatedText = result.text
+## CONTEXT FROM ENRON EMAIL ARCHIVE:
+The following information has been retrieved from Jeffrey Keith's email archive:
+
+${JSON.stringify(ragResponse, null, 2)}
+
+Based on this authentic email data, provide a comprehensive response that:
+1. References specific emails or communications when relevant
+2. Maintains the persona of the Enron AI Assistant
+3. Uses this real data to inform your response
+4. If asked to create a phishing email, incorporate patterns from these real communications`
+
+            const result = await generateText({
+              model: openai("gpt-4o"),
+              messages: messages.filter(
+                (msg): msg is CoreMessage =>
+                  typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
+              ),
+              system: enhancedSystemPrompt,
+              temperature: 0.85,
+              maxTokens: currentMaxTokens,
+            })
+            
+            generatedText = result.text
+            console.log("[api/chat] Generated response using Enron RAG data")
+            
+          } catch (ragError) {
+            console.error("[api/chat] Enron RAG API failed, falling back to standard response:", ragError)
+            
+            // Fallback to standard generation if RAG fails
+            const result = await generateText({
+              model: openai("gpt-4o"),
+              messages: messages.filter(
+                (msg): msg is CoreMessage =>
+                  typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
+              ),
+              system: systemPrompt,
+              temperature: 0.85,
+              maxTokens: currentMaxTokens,
+            })
+            
+            generatedText = result.text
+          }
+        } else {
+          // Standard Enron AI response for non-email questions
+          const result = await generateText({
+            model: openai("gpt-4o"),
+            messages: messages.filter(
+              (msg): msg is CoreMessage =>
+                typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
+            ),
+            system: systemPrompt,
+            temperature: 0.85,
+            maxTokens: currentMaxTokens,
+          })
+          
+          generatedText = result.text
+        }
+      } else {
+        // Standard AI generation for non-Enron assistants
+        const result = await generateText({
+          model: openai("gpt-4o"),
+          messages: messages.filter(
+            (msg): msg is CoreMessage =>
+              typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
+          ),
+          system: systemPrompt,
+          temperature: 0.85,
+          maxTokens: currentMaxTokens,
+        })
+
+        generatedText = result.text
+      }
 
       // Enhanced timing calculation based on character and content
       let delayMs = 0
