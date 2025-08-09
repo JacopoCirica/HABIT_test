@@ -57,11 +57,16 @@ export default function EnronNamePage() {
       sessionStorage.setItem("enron_name_timestamp", new Date().toISOString())
       sessionStorage.setItem("enron_direct_entry", "true")
       
-      // Save to Supabase user_data table - matching actual schema
+      // Save to Supabase user_data table - matching actual schema with required columns
       const userData = {
         name: name.trim(),
         informed_consent_agreed: true,
-        consent_timestamp: sessionStorage.getItem("enron_consent_timestamp")
+        consent_timestamp: sessionStorage.getItem("enron_consent_timestamp"),
+        // Required columns with defaults (based on NOT NULL constraints)
+        vaccination: 4,  // Neutral value on 1-7 Likert scale
+        immigration: 4,
+        gun_control: 4, 
+        universal_healthcare: 4
       }
       
       // Add email to name for now since there's no separate email column
