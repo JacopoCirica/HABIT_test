@@ -391,19 +391,24 @@ function ChatEnronComponent() {
       ragSources: null,  // User messages don't have RAG sources
     }
     
+    // Build the updated messages array for the API call (including the new user message)
+    const updatedMessagesForAPI = [...messages, newUserMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    
+    // Update local state 
     setMessages(prev => {
       if (prev.some(msg => msg.id === newUserMessage.id)) {
         console.log('User message already exists in state')
         return prev
       }
-      const updatedMessages = [...prev, newUserMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      console.log('User message added to messages state, new count:', updatedMessages.length)
-      return updatedMessages
+      console.log('User message added to messages state, new count:', updatedMessagesForAPI.length)
+      return updatedMessagesForAPI
     })
 
     // Generate Enron AI's response directly - let the backend handle RAG vs normal conversation
     try {
       console.log("Enron generating AI response")
+      console.log("🔍 [FRONTEND DEBUG] Messages being sent to API (count):", updatedMessagesForAPI.length)
+      console.log("🔍 [FRONTEND DEBUG] Last message content:", updatedMessagesForAPI[updatedMessagesForAPI.length - 1]?.content)
       
       // Show searching phase
       setLoadingMessage("Searching for material in Jeffrey Keith's email archives...")
@@ -426,7 +431,7 @@ function ChatEnronComponent() {
       }
       
       const requestBody = {
-        messages: messages,
+        messages: updatedMessagesForAPI,  // Use the updated messages array
         userTraits,
         topic: "Whaling Attack Demonstration",
         roomId: roomIdEnron,
@@ -442,7 +447,13 @@ function ChatEnronComponent() {
       console.log("🔍 [FRONTEND DEBUG] isEnronAssistant:", requestBody.isEnronAssistant)
       console.log("🔍 [FRONTEND DEBUG] confederateName:", requestBody.confederateName)
       console.log("🔍 [FRONTEND DEBUG] sessionType:", requestBody.sessionType)
-      console.log("🔍 [FRONTEND DEBUG] User question:", trimmedInput)
+      console.log("🔍 [FRONTEND DEBUG] User question just submitted:", trimmedInput)
+      console.log("🔍 [FRONTEND DEBUG] Messages array length:", requestBody.messages.length)
+      console.log("🔍 [FRONTEND DEBUG] Last message in array:", requestBody.messages[requestBody.messages.length - 1])
+      console.log("🔍 [FRONTEND DEBUG] All messages being sent:")
+      requestBody.messages.forEach((msg: any, index: number) => {
+        console.log(`   ${index}: [${msg.role}] ${msg.content.substring(0, 100)}...`)
+      })
       console.log("🔍 [FRONTEND DEBUG] Full request body:", requestBody)
       
       console.log("🚀 [FRONTEND DEBUG] Making API call to /api/chat...")
