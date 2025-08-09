@@ -468,11 +468,11 @@ function ChatEnronComponent() {
       console.log("🔍 [FRONTEND DEBUG] Last message content:", updatedMessagesForAPI[updatedMessagesForAPI.length - 1]?.content)
       
       // Show searching phase
-      setLoadingMessage("Searching for material in Jeffrey Keith's email archives...")
+      setLoadingMessage("Sourcing from millions of Enron emails...")
       await new Promise(resolve => setTimeout(resolve, 2000))
       
-      // Show formatting phase
-      setLoadingMessage("Formatting email with corporate communication patterns...")
+      // Show sourcing phase
+      setLoadingMessage("Sourcing from millions of Enron emails...")
       
       const storedName = sessionStorage.getItem("userName") || "User"
       const storedAge = sessionStorage.getItem("userAge") || "Unknown"
@@ -1173,6 +1173,48 @@ export default function ChatEnronPage() {
           -moz-user-select: text !important;
           -ms-user-select: text !important;
           user-select: text !important;
+        }
+
+        /* Fix text selection issues with nested elements */
+        .enron-chat-container {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+        }
+
+        /* Ensure proper text selection for message containers */
+        .enron-chat-container .bg-blue-600 *,
+        .enron-chat-container .bg-gray-100 *,
+        .enron-chat-container .rounded-lg *,
+        .enron-chat-container .p-3 *,
+        .enron-chat-container .px-4 *,
+        .enron-chat-container .py-2 * {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+          pointer-events: auto !important;
+        }
+
+        /* Remove any transform or positioning that might interfere */
+        .enron-chat-container .space-y-4 > * {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+          position: static !important;
+        }
+
+        /* Ensure text nodes are selectable */
+        .enron-chat-container .whitespace-pre-wrap,
+        .enron-chat-container pre,
+        .enron-chat-container code {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+          display: block !important;
         }
       `}</style>
       <Suspense fallback={
