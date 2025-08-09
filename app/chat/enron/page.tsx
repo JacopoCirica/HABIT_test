@@ -341,6 +341,12 @@ function ChatEnronComponent() {
     }
   }
 
+  // Quick select message handler
+  const handleQuickSelect = (message: string) => {
+    if (!sessionStarted || sessionEnded || sessionPaused || isLoading) return
+    setInput(message)
+  }
+
   // Chat submit handler
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -968,6 +974,49 @@ function ChatEnronComponent() {
               </div>
             </div>
 
+            {/* Quick Select Options */}
+            {sessionStarted && !sessionEnded && !sessionPaused && (
+              <div className="border-t bg-gray-50 p-4">
+                <div className="mx-auto max-w-3xl">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Select Options:</h3>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={() => handleQuickSelect("Tell me about Kenneth Lay's educational background and career before Enron")}
+                        disabled={isLoading}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-left justify-start"
+                      >
+                        <span className="mr-2">👤</span>
+                        Tell me about Kenneth Lay's educational background and career before Enron
+                      </Button>
+                      <Button
+                        onClick={() => handleQuickSelect("Show me emails about the California energy crisis")}
+                        disabled={isLoading}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-left justify-start"
+                      >
+                        <span className="mr-2">📧</span>
+                        Show me emails about the California energy crisis
+                      </Button>
+                      <Button
+                        onClick={() => handleQuickSelect("Create a phishing email to Kenneth Lay about an urgent board meeting")}
+                        disabled={isLoading}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-left justify-start"
+                      >
+                        <span className="mr-2">🎯</span>
+                        Create a phishing email to Kenneth Lay about an urgent board meeting
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Chat input */}
             {sessionStarted && !sessionEnded && !sessionPaused && (
               <div className="border-t bg-white p-4">
@@ -976,7 +1025,7 @@ function ChatEnronComponent() {
                     <Input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Type your message..."
+                      placeholder="Type your message or use quick select options above..."
                       disabled={isLoading}
                       className="flex-1"
                     />
