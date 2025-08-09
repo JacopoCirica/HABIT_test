@@ -40,6 +40,9 @@ function ChatEnronComponent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Check if this is an auto-join from the new direct entry flow
+  const autoJoin = searchParams.get("autoJoin") === "true"
 
   const sessionTitle = "Enron Whaling Project"
   const enronAiId = "enron_ai"
@@ -78,6 +81,54 @@ function ChatEnronComponent() {
   const handleExitClick = () => {
     console.log('Enron: Exit button clicked - showing exit survey')
     setShowExitSurvey(true)
+  }
+
+  // Auto-join Enron room for direct entry flow
+  useEffect(() => {
+    if (autoJoin && !room && !loadingRoom) {
+      console.log('Auto-joining Enron room from direct entry flow')
+      autoJoinEnronRoom()
+    }
+  }, [autoJoin, room, loadingRoom])
+
+  const autoJoinEnronRoom = async () => {
+    setLoadingRoom(true)
+    setWaitingForConnection(true)
+
+    try {
+      console.log('Creating/joining Enron room automatically...')
+      
+      // Get user name from session storage
+      const userName = sessionStorage.getItem("userName") || "Anonymous"
+      
+      // Call the join API
+      const response = await fetch("/api/rooms/enron/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userName: userName,
+          autoJoin: true
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to join Enron room: ${response.status}`)
+      }
+
+      const { room: joinedRoom } = await response.json()
+      console.log('Successfully auto-joined Enron room:', joinedRoom)
+      
+      setRoom(joinedRoom)
+      setRoomIdEnron(joinedRoom.id)
+      setWaitingForConnection(false)
+      
+    } catch (error) {
+      console.error('Error auto-joining Enron room:', error)
+      setLoadingRoom(false)
+      setWaitingForConnection(false)
+      // On error, redirect to rooms page
+      router.push('/rooms')
+    }
   }
 
   // Exit survey handlers
