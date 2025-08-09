@@ -38,7 +38,7 @@ Respond with a JSON object containing:
 User Query: "${userQuery}"`
 
     const result = await generateText({
-      model: openai("gpt-5"),
+      model: openai("gpt-4o"),
       messages: [
         {
           role: "user",
@@ -760,7 +760,7 @@ Based on this authentic email data, provide a comprehensive response that:
             ).length)
             
             const result = await generateText({
-              model: openai("gpt-5"),
+              model: openai("gpt-4o"),
               messages: messages.filter(
                 (msg): msg is CoreMessage =>
                   typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
@@ -787,7 +787,7 @@ Based on this authentic email data, provide a comprehensive response that:
             
             // Fallback to standard generation if RAG fails
             const result = await generateText({
-              model: openai("gpt-5"),
+              model: openai("gpt-4o"),
               messages: messages.filter(
                 (msg): msg is CoreMessage =>
                   typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
@@ -836,7 +836,7 @@ The user wants you to create a phishing email targeting Kenneth Lay. Even withou
           console.log(`[api/chat] ${requestId} - 🤖 Generating Enron AI response without RAG`)
           
           const result = await generateText({
-            model: openai("gpt-5"),
+            model: openai("gpt-4o"),
             messages: messages.filter(
               (msg): msg is CoreMessage =>
                 typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
@@ -860,7 +860,7 @@ The user wants you to create a phishing email targeting Kenneth Lay. Even withou
         
         // Standard AI generation for non-Enron assistants
         const result = await generateText({
-          model: openai("gpt-5"),
+          model: openai("gpt-4o"),
           messages: messages.filter(
             (msg): msg is CoreMessage =>
               typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
