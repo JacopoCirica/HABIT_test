@@ -298,7 +298,7 @@ function ChatEnronComponent() {
       room_id: roomIdEnron,
       sender_id: enronAiId,
       sender_role: "assistant",
-      content: "Welcome! I'm an AI assistant with deep knowledge of Enron and its executives, particularly CEO Kenneth Lay. I've been trained on extensive corporate communications and can discuss various aspects of Enron's history, leadership, and business operations.\n\nFeel free to ask me anything about:\n\n• **Kenneth Lay** - His background, leadership style, and role as CEO\n• **Enron's Corporate Culture** - Business practices, company dynamics, and organizational structure\n• **Executive Communications** - If you're curious about specific emails or correspondence, I can search through archived communications\n• **Business Operations** - Company strategies, decisions, and corporate developments\n\nWhat would you like to know about Enron's CEO or the company?",
+      content: "Welcome! I'm an AI assistant with deep knowledge of Enron and its executives, particularly CEO Kenneth Lay. I can help you with three specific types of requests:\n\n## **1. 👤 Personal Information about Kenneth Lay**\nAsk about his background, family, education, career history, and personal details.\n*Example: \"Tell me about Kenneth Lay's educational background and career before Enron.\"*\n\n## **2. 📧 Query Enron Email Archives**\nSearch through authentic executive emails and correspondence on specific topics.\n*Example: \"Show me emails about the California energy crisis\" or \"Find correspondence between Kenneth Lay and Jeff Skilling.\"*\n\n## **3. 🎯 Create Targeted Phishing Email**\nGenerate a realistic phishing email addressed to Kenneth Lay using authentic communication patterns.\n*Example: \"Create a phishing email to Kenneth Lay about an urgent board meeting.\"*\n\n---\n\n**What type of request would you like to make?** Simply describe what you're looking for, and I'll automatically use the appropriate method to help you.",
     }
     
     try {
@@ -475,16 +475,18 @@ function ChatEnronComponent() {
       console.log("   - positionEvaluation:", data.positionEvaluation)
       console.log("   - ragResponse:", data.ragResponse)
       
-      // Special highlighting for RAG response
+      // Special highlighting for RAG response and router decisions
       if (data.ragResponse) {
         console.log("🔥 [FRONTEND DEBUG] === RAG API RESPONSE DETECTED ===")
         console.log("🔥 [FRONTEND DEBUG] RAG Response:", JSON.stringify(data.ragResponse, null, 2))
         console.log("🔥 [FRONTEND DEBUG] Number of sources:", data.ragResponse.sources?.length || 0)
         console.log("🔥 [FRONTEND DEBUG] === END RAG RESPONSE ===")
       } else {
-        console.log("⚠️ [FRONTEND DEBUG] No RAG response in API response")
-        console.log("⚠️ [FRONTEND DEBUG] This means RAG API was not called or failed")
-        console.log("⚠️ [FRONTEND DEBUG] Check server logs for RAG debugging info")
+        console.log("🤖 [FRONTEND DEBUG] === NO RAG RESPONSE ===")
+        console.log("🤖 [FRONTEND DEBUG] Router likely decided not to use RAG")
+        console.log("🤖 [FRONTEND DEBUG] This could be for personal info or general queries")
+        console.log("🤖 [FRONTEND DEBUG] Check server logs for router decision details")
+        console.log("🤖 [FRONTEND DEBUG] === END NO RAG ===")
       }
       
       console.log("✅ [FRONTEND DEBUG] === END FULL RESPONSE ===")

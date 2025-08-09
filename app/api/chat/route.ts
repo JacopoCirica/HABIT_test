@@ -6,6 +6,63 @@ import { generateText, type CoreMessage } from "ai"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
+// LLM Router to decide whether to use RAG based on query type
+async function shouldUseRAGRouter(userQuery: string): Promise<{shouldUseRAG: boolean, queryType: string, reasoning: string}> {
+  try {
+    console.log("[shouldUseRAGRouter] Analyzing query:", userQuery)
+    
+    const routerPrompt = `You are a query classification system for an Enron AI assistant. Analyze the user's query and determine:
+
+1. What type of request this is
+2. Whether the RAG (email archive) system should be used
+
+QUERY TYPES:
+- **personal_info**: Questions about Kenneth Lay's personal background, family, education, career history, or personal details
+- **email_query**: Requests to search, find, or show specific emails or correspondence from Enron archives  
+- **phishing_email**: Requests to create, generate, or write a phishing email targeting Kenneth Lay
+- **general**: Other general questions about Enron or business topics
+
+RAG USAGE RULES:
+- **personal_info**: NO RAG (use general knowledge about Kenneth Lay)
+- **email_query**: YES RAG (need to search email archives)
+- **phishing_email**: YES RAG (need email context for realistic patterns)
+- **general**: NO RAG (use general knowledge)
+
+Respond with a JSON object containing:
+{
+  "queryType": "personal_info|email_query|phishing_email|general",
+  "shouldUseRAG": true|false,
+  "reasoning": "Brief explanation of the decision"
+}
+
+User Query: "${userQuery}"`
+
+    const result = await generateText({
+      model: openai("gpt-4o"),
+      prompt: routerPrompt,
+      temperature: 0.1,
+      maxTokens: 200,
+    })
+
+    console.log("[shouldUseRAGRouter] Router response:", result.text)
+    
+    // Parse the JSON response
+    const decision = JSON.parse(result.text.trim())
+    
+    console.log("[shouldUseRAGRouter] Parsed decision:", decision)
+    return decision
+    
+  } catch (error) {
+    console.error("[shouldUseRAGRouter] Error in router:", error)
+    // Fallback: if router fails, default to using RAG for safety
+    return {
+      shouldUseRAG: true,
+      queryType: "unknown",
+      reasoning: "Router failed, defaulting to RAG for safety"
+    }
+  }
+}
+
 // Helper function to call Enron RAG API
 async function callEnronRAG(question: string, topK: number = 5, use: string = "hybrid") {
   try {
@@ -621,13 +678,17 @@ Remember: You are ${confederateName || "your character"} having a real conversat
       if ((isEnronAssistant || confederateName === "Enron AI Assistant" || sessionType === "enron_whaling") && lastUserMessage) {
         const userQuestion = typeof lastUserMessage.content === "string" ? lastUserMessage.content : ""
         
-        // Always use RAG for Enron assistant, regardless of keywords  
-        console.log(`[api/chat] ${requestId} - Enron assistant detected - ALWAYS using RAG API for question:`, userQuestion)
+        // Use LLM router to decide whether to use RAG based on query type
+        console.log(`[api/chat] ${requestId} - Enron assistant detected - analyzing query to decide RAG usage:`, userQuestion)
         console.log(`[api/chat] ${requestId} - Question length:`, userQuestion.length, "characters")
         
-        // Modified: Always trigger RAG for every user message in Enron chatroom
-        if (true) {  // Always trigger RAG for Enron assistant
-          console.log(`[api/chat] ${requestId} - ✅ TRIGGERING RAG API CALL for question:`, userQuestion)
+        // Use router to decide whether to trigger RAG
+        const routerDecision = await shouldUseRAGRouter(userQuestion)
+        console.log(`[api/chat] ${requestId} - Router decision:`, routerDecision)
+        
+        if (routerDecision.shouldUseRAG) {
+          console.log(`[api/chat] ${requestId} - ✅ TRIGGERING RAG API CALL - Query Type: ${routerDecision.queryType}`)
+          console.log(`[api/chat] ${requestId} - Reasoning: ${routerDecision.reasoning}`)
           
           try {
             const ragResponse = await callEnronRAG(userQuestion, 5, "hybrid")
@@ -696,6 +757,55 @@ Based on this authentic email data, provide a comprehensive response that:
             
             generatedText = result.text
           }
+        } else {
+          // Router decided NOT to use RAG - use Enron AI without email archive
+          console.log(`[api/chat] ${requestId} - 🚫 NOT using RAG - Query Type: ${routerDecision.queryType}`)
+          console.log(`[api/chat] ${requestId} - Reasoning: ${routerDecision.reasoning}`)
+          
+          // Create enhanced system prompt based on query type
+          let enhancedSystemPrompt = systemPrompt
+          
+          if (routerDecision.queryType === "personal_info") {
+            enhancedSystemPrompt = `${systemPrompt}
+
+## PERSONAL INFORMATION REQUEST DETECTED
+
+The user is asking about Kenneth Lay's personal information. Use your knowledge to provide detailed information about:
+- Educational background and qualifications
+- Career history before and during Enron
+- Personal and family details
+- Leadership style and management approach
+- Public persona and business philosophy
+
+Focus on factual, biographical information without needing email archives.`
+          } else if (routerDecision.queryType === "phishing_email") {
+            enhancedSystemPrompt = `${systemPrompt}
+
+## PHISHING EMAIL CREATION REQUEST DETECTED
+
+The user wants you to create a phishing email targeting Kenneth Lay. Even without specific email archives, you can:
+- Use typical corporate communication patterns
+- Create realistic business scenarios that would target a CEO
+- Include appropriate urgency and authority elements
+- Make the email believable based on general corporate knowledge
+- Address it specifically to Kenneth Lay as requested`
+          }
+          
+          console.log(`[api/chat] ${requestId} - 🤖 Generating Enron AI response without RAG`)
+          
+          const result = await generateText({
+            model: openai("gpt-4o"),
+            messages: messages.filter(
+              (msg): msg is CoreMessage =>
+                typeof msg.content === "string" && !(msg.role === "system" && "id" in msg && msg.id === "__userData"),
+            ),
+            system: enhancedSystemPrompt,
+            temperature: 0.85,
+            maxTokens: currentMaxTokens,
+          })
+          
+          generatedText = result.text
+          console.log(`[api/chat] ${requestId} - ✅ Generated Enron AI response without RAG, length: ${result.text?.length || 0}`)
         }
       } else {
         console.log(`[api/chat] ${requestId} - ❌ ENRON DETECTION FAILED - Using standard AI generation`)
