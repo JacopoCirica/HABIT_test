@@ -978,38 +978,38 @@ function ChatEnronComponent() {
             {sessionStarted && !sessionEnded && !sessionPaused && (
               <div className="border-t bg-gray-50 p-4">
                 <div className="mx-auto max-w-3xl">
-                  <div className="mb-3">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Select Options:</h3>
-                    <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="mb-2">
+                    <h3 className="text-xs font-medium text-gray-600 mb-2">Quick Options:</h3>
+                    <div className="flex flex-col sm:flex-row gap-1">
                       <Button
                         onClick={() => handleQuickSelect("Tell me about Kenneth Lay's educational background and career before Enron")}
                         disabled={isLoading}
                         variant="outline"
                         size="sm"
-                        className="flex-1 text-left justify-start"
+                        className="flex-1 text-xs px-2 py-1 h-auto text-left justify-start"
                       >
-                        <span className="mr-2">👤</span>
-                        Tell me about Kenneth Lay's educational background and career before Enron
+                        <span className="mr-1 text-xs">👤</span>
+                        <span className="truncate">Kenneth Lay's background</span>
                       </Button>
                       <Button
                         onClick={() => handleQuickSelect("Show me emails about the California energy crisis")}
                         disabled={isLoading}
                         variant="outline"
                         size="sm"
-                        className="flex-1 text-left justify-start"
+                        className="flex-1 text-xs px-2 py-1 h-auto text-left justify-start"
                       >
-                        <span className="mr-2">📧</span>
-                        Show me emails about the California energy crisis
+                        <span className="mr-1 text-xs">📧</span>
+                        <span className="truncate">California energy crisis emails</span>
                       </Button>
                       <Button
                         onClick={() => handleQuickSelect("Create a phishing email to Kenneth Lay about an urgent board meeting")}
                         disabled={isLoading}
                         variant="outline"
                         size="sm"
-                        className="flex-1 text-left justify-start"
+                        className="flex-1 text-xs px-2 py-1 h-auto text-left justify-start"
                       >
-                        <span className="mr-2">🎯</span>
-                        Create a phishing email to Kenneth Lay about an urgent board meeting
+                        <span className="mr-1 text-xs">🎯</span>
+                        <span className="truncate">Phishing email: board meeting</span>
                       </Button>
                     </div>
                   </div>
