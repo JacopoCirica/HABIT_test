@@ -42,7 +42,7 @@ export default function EnronNamePage() {
     setIsSubmitting(true)
     
     try {
-      // Generate unique user ID
+      // Generate unique user ID for session tracking
       let userId = sessionStorage.getItem("userId")
       if (!userId) {
         userId = `enron_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -57,86 +57,38 @@ export default function EnronNamePage() {
       sessionStorage.setItem("enron_name_timestamp", new Date().toISOString())
       sessionStorage.setItem("enron_direct_entry", "true")
       
-      // Save to Supabase user_data table
+      // Save to Supabase user_data table - matching actual schema
       const userData = {
-        user_id: userId,
         name: name.trim(),
-        email: email.trim() || null,
-        session_type: "enron_whaling",
-        entry_method: "direct_enron_flow", 
-        consent_given: true,
+        informed_consent_agreed: true,
         consent_timestamp: sessionStorage.getItem("enron_consent_timestamp")
+      }
+      
+      // Add email to name for now since there's no separate email column
+      if (email.trim()) {
+        userData.name = `${name.trim()} (${email.trim()})`
       }
       
       console.log("🔍 [ENRON NAME] Attempting to save user data to Supabase...")
       console.log("🔍 [ENRON NAME] User data payload:", JSON.stringify(userData, null, 2))
       console.log("🔍 [ENRON NAME] Supabase client available:", !!supabase)
       
-      try {
-        // First try a simple insert
-        const { data: insertData, error: insertError } = await supabase
-          .from("user_data")
-          .insert(userData)
-          .select()
-        
-        if (insertError) {
-          console.error("❌ [ENRON NAME] Insert error:", insertError)
-          console.error("❌ [ENRON NAME] Error details:", {
-            message: insertError.message,
-            details: insertError.details,
-            hint: insertError.hint,
-            code: insertError.code
-          })
-          
-          // Try upsert if insert fails
-          console.log("🔄 [ENRON NAME] Trying upsert instead...")
-          const { data: upsertData, error: upsertError } = await supabase
-            .from("user_data")
-            .upsert(userData, {
-              onConflict: "user_id"
-            })
-            .select()
-          
-                     if (upsertError) {
-             console.error("❌ [ENRON NAME] Upsert error:", upsertError)
-             console.error("❌ [ENRON NAME] Upsert error details:", {
-               message: upsertError.message,
-               details: upsertError.details,
-               hint: upsertError.hint,
-               code: upsertError.code
-             })
-             
-             // Try with just basic columns as last resort
-             console.log("🔄 [ENRON NAME] Trying minimal data insert...")
-             const minimalData: { user_id: string; name: string; email?: string } = {
-               user_id: userId,
-               name: name.trim()
-             }
-             
-             if (email.trim()) {
-               minimalData.email = email.trim()
-             }
-             
-             const { data: minimalData_result, error: minimalError } = await supabase
-               .from("user_data")
-               .insert(minimalData)
-               .select()
-             
-             if (minimalError) {
-               console.error("❌ [ENRON NAME] Minimal insert also failed:", minimalError)
-             } else {
-               console.log("✅ [ENRON NAME] Successfully inserted minimal user data:", minimalData_result)
-             }
-           } else {
-             console.log("✅ [ENRON NAME] Successfully upserted user data:", upsertData)
-           }
-         } else {
-           console.log("✅ [ENRON NAME] Successfully inserted user data:", insertData)
-         }
-       } catch (dbError) {
-         console.error("❌ [ENRON NAME] Database operation failed:", dbError)
-         console.error("❌ [ENRON NAME] Error type:", typeof dbError)
-         console.error("❌ [ENRON NAME] Error stack:", dbError instanceof Error ? dbError.stack : "No stack trace")
+             // Insert into Supabase using correct schema
+       const { data: insertData, error: insertError } = await supabase
+         .from("user_data")
+         .insert(userData)
+         .select()
+       
+       if (insertError) {
+         console.error("❌ [ENRON NAME] Insert error:", insertError)
+         console.error("❌ [ENRON NAME] Error details:", {
+           message: insertError.message,
+           details: insertError.details,
+           hint: insertError.hint,
+           code: insertError.code
+         })
+       } else {
+         console.log("✅ [ENRON NAME] Successfully inserted user data:", insertData)
        }
       
       // Add a small delay for better UX
