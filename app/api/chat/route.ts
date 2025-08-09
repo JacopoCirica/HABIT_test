@@ -39,18 +39,60 @@ User Query: "${userQuery}"`
 
     const result = await generateText({
       model: openai("gpt-4o"),
-      prompt: routerPrompt,
+      messages: [
+        {
+          role: "user",
+          content: routerPrompt
+        }
+      ],
       temperature: 0.1,
       maxTokens: 200,
     })
 
     console.log("[shouldUseRAGRouter] Router response:", result.text)
     
-    // Parse the JSON response
-    const decision = JSON.parse(result.text.trim())
-    
-    console.log("[shouldUseRAGRouter] Parsed decision:", decision)
-    return decision
+    // Parse the JSON response with error handling
+    try {
+      const cleanedResponse = result.text.trim()
+      // Remove any markdown formatting if present
+      const jsonMatch = cleanedResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || [null, cleanedResponse]
+      const jsonText = jsonMatch[1] || cleanedResponse
+      
+      const decision = JSON.parse(jsonText)
+      
+      // Validate the response structure
+      if (!decision.queryType || typeof decision.shouldUseRAG !== 'boolean') {
+        throw new Error('Invalid router response structure')
+      }
+      
+      console.log("[shouldUseRAGRouter] Parsed decision:", decision)
+      return decision
+    } catch (parseError) {
+      console.error("[shouldUseRAGRouter] Failed to parse router response:", parseError)
+      console.error("[shouldUseRAGRouter] Raw response was:", result.text)
+      
+      // Fallback decision based on keywords
+      const lowerQuery = userQuery.toLowerCase()
+      if (lowerQuery.includes('email') || lowerQuery.includes('correspondence') || lowerQuery.includes('show') || lowerQuery.includes('find')) {
+        return {
+          shouldUseRAG: true,
+          queryType: "email_query",
+          reasoning: "Fallback: Detected email-related keywords"
+        }
+      } else if (lowerQuery.includes('phishing') || lowerQuery.includes('create') || lowerQuery.includes('generate')) {
+        return {
+          shouldUseRAG: true,
+          queryType: "phishing_email", 
+          reasoning: "Fallback: Detected phishing creation keywords"
+        }
+      } else {
+        return {
+          shouldUseRAG: false,
+          queryType: "personal_info",
+          reasoning: "Fallback: Default to personal info without RAG"
+        }
+      }
+    }
     
   } catch (error) {
     console.error("[shouldUseRAGRouter] Error in router:", error)
