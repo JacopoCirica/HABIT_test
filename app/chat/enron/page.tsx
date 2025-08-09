@@ -713,7 +713,7 @@ function ChatEnronComponent() {
   // Main UI component
   return (
     <PageTransition>
-      <div className="flex h-screen flex-col">
+      <div className="enron-chat-container flex h-screen flex-col">
         {/* Header */}
         <header className="border-b">
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -1107,12 +1107,81 @@ function ChatEnronComponent() {
 
 export default function ChatEnronPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    }>
-      <ChatEnronComponent />
-    </Suspense>
+    <>
+      {/* Enable text selection for Enron chat messages */}
+      <style jsx global>{`
+        /* Override any user-select restrictions on message content */
+        .enron-chat-container * {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+        }
+
+        /* Ensure message text is selectable */
+        .enron-message-content,
+        .message-content,
+        .chat-message,
+        [class*="message"],
+        .whitespace-pre-wrap,
+        .prose,
+        .text-gray-800,
+        .text-white,
+        .bg-blue-600,
+        .bg-gray-100 {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;  
+          -ms-user-select: text !important;
+          user-select: text !important;
+          cursor: text;
+        }
+
+        /* Override Tailwind's select-none class specifically in chat */
+        .enron-chat-container .select-none {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+        }
+
+        /* Enable selection for all text elements in chat */
+        .enron-chat-container p, 
+        .enron-chat-container span, 
+        .enron-chat-container div {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important; 
+          user-select: text !important;
+        }
+
+        /* Target chat message areas specifically */
+        .enron-chat-container [role="main"] *,
+        .enron-chat-container .overflow-y-auto *,
+        .enron-chat-container .space-y-4 *,
+        .enron-chat-container .max-w-3xl * {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+        }
+
+        /* Override any drag/drop or interaction restrictions */
+        .enron-chat-container * {
+          -webkit-touch-callout: default !important;
+          -webkit-user-select: text !important;
+          -khtml-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+        }
+      `}</style>
+      <Suspense fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }>
+        <ChatEnronComponent />
+      </Suspense>
+    </>
   )
 } 
