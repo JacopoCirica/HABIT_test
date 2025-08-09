@@ -131,6 +131,53 @@ function ChatEnronComponent() {
     }
   }
 
+  // Prevent events that might clear text selection
+  useEffect(() => {
+    const preventSelectionClearing = (e: Event) => {
+      // Don't prevent selection on input fields or buttons
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA') {
+        return
+      }
+      
+      // Allow text selection events
+      if (e.type === 'selectstart' || e.type === 'mousedown' || e.type === 'mousemove' || e.type === 'mouseup') {
+        e.stopPropagation()
+      }
+    }
+
+         const chatContainer = document.querySelector('.enron-chat-container')
+     if (chatContainer) {
+       // Prevent drag events that might interfere with selection
+       const preventDrag = (e: Event) => e.preventDefault()
+       const preventFocusClearing = (e: Event) => {
+         const target = e.target as HTMLElement
+         // Don't prevent focus on input/button elements
+         if (target.tagName === 'INPUT' || target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA') {
+           return
+         }
+         // Prevent focus from clearing selection
+         const selection = window.getSelection()
+         if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+           e.preventDefault()
+           e.stopPropagation()
+         }
+       }
+       
+       chatContainer.addEventListener('dragstart', preventDrag)
+       chatContainer.addEventListener('selectstart', preventSelectionClearing)
+       chatContainer.addEventListener('mousedown', preventFocusClearing)
+       chatContainer.addEventListener('focus', preventFocusClearing, true)
+       
+       return () => {
+         chatContainer.removeEventListener('dragstart', preventDrag)
+         chatContainer.removeEventListener('selectstart', preventSelectionClearing)
+         chatContainer.removeEventListener('mousedown', preventFocusClearing)
+         chatContainer.removeEventListener('focus', preventFocusClearing, true)
+       }
+     }
+  }, [room])
+
   // Exit survey handlers
   const handleExitSurveySubmit = async (responses: ExitSurveyResponses) => {
     try {
@@ -316,9 +363,15 @@ function ChatEnronComponent() {
     }
   }, [roomIdEnron])
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change (but preserve text selection)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const selection = window.getSelection()
+    const hasSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed
+    
+    // Don't auto-scroll if user has selected text
+    if (!hasSelection) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
   // Session timer
@@ -1215,6 +1268,32 @@ export default function ChatEnronPage() {
           -ms-user-select: text !important;
           user-select: text !important;
           display: block !important;
+        }
+
+        /* Prevent selection clearing on mouse events */
+        .enron-chat-container * {
+          -webkit-user-drag: none !important;
+          -khtml-user-drag: none !important;
+          -moz-user-drag: none !important;
+          -o-user-drag: none !important;
+          user-drag: none !important;
+        }
+
+        /* Prevent focus events from clearing selection */
+        .enron-chat-container *:focus {
+          outline: none !important;
+        }
+
+        /* Fix for selection clearing on click/touch */
+        .enron-chat-container {
+          -webkit-tap-highlight-color: transparent !important;
+          tap-highlight-color: transparent !important;
+        }
+
+        /* Ensure selection persists during state updates */
+        .enron-chat-container .space-y-4,
+        .enron-chat-container .overflow-y-auto {
+          contain: layout style !important;
         }
       `}</style>
       <Suspense fallback={
