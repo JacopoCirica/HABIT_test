@@ -7,11 +7,13 @@ import { AnimatedButton } from "@/components/ui/animated-button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, ArrowRight } from "lucide-react"
+import { User, ArrowRight, Mail } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
 
 export default function EnronNamePage() {
   const router = useRouter()
   const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -22,10 +24,14 @@ export default function EnronNamePage() {
       return
     }
 
-    // Pre-fill name if already stored
+    // Pre-fill name and email if already stored
     const storedName = sessionStorage.getItem("userName")
+    const storedEmail = sessionStorage.getItem("userEmail")
     if (storedName) {
       setName(storedName)
+    }
+    if (storedEmail) {
+      setEmail(storedEmail)
     }
   }, [router])
 
@@ -35,16 +41,62 @@ export default function EnronNamePage() {
     
     setIsSubmitting(true)
     
-    // Store name in session storage
-    sessionStorage.setItem("userName", name.trim())
-    sessionStorage.setItem("enron_name_timestamp", new Date().toISOString())
-    sessionStorage.setItem("enron_direct_entry", "true")
-    
-    // Add a small delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Redirect to Enron chatroom with auto-join parameter
-    router.push("/chat/enron?autoJoin=true")
+    try {
+      // Generate unique user ID
+      let userId = sessionStorage.getItem("userId")
+      if (!userId) {
+        userId = `enron_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        sessionStorage.setItem("userId", userId)
+      }
+      
+      // Store data in session storage
+      sessionStorage.setItem("userName", name.trim())
+      if (email.trim()) {
+        sessionStorage.setItem("userEmail", email.trim())
+      }
+      sessionStorage.setItem("enron_name_timestamp", new Date().toISOString())
+      sessionStorage.setItem("enron_direct_entry", "true")
+      
+      // Save to Supabase user_data table
+      const userData = {
+        user_id: userId,
+        name: name.trim(),
+        email: email.trim() || null, // null if empty
+        session_type: "enron_whaling",
+        entry_method: "direct_enron_flow",
+        consent_given: true,
+        consent_timestamp: sessionStorage.getItem("enron_consent_timestamp"),
+        created_at: new Date().toISOString()
+      }
+      
+      console.log("Saving user data to Supabase:", userData)
+      
+      const { data, error } = await supabase
+        .from("user_data")
+        .upsert(userData, {
+          onConflict: "user_id"
+        })
+        .select()
+      
+      if (error) {
+        console.error("Error saving user data:", error)
+        // Continue anyway - don't block the user flow
+      } else {
+        console.log("Successfully saved user data:", data)
+      }
+      
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Redirect to Enron chatroom with auto-join parameter
+      router.push("/chat/enron?autoJoin=true")
+      
+    } catch (error) {
+      console.error("Error in handleSubmit:", error)
+      setIsSubmitting(false)
+      // Still redirect on error to not block user flow
+      router.push("/chat/enron?autoJoin=true")
+    }
   }
 
   return (
@@ -63,24 +115,45 @@ export default function EnronNamePage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">
-                    Your Name
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name..."
-                    required
-                    disabled={isSubmitting}
-                    className="w-full"
-                    autoFocus
-                  />
-                  <p className="text-xs text-gray-500">
-                    This name will be displayed during your chat session
-                  </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-medium">
+                      Your Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name..."
+                      required
+                      disabled={isSubmitting}
+                      className="w-full"
+                      autoFocus
+                    />
+                    <p className="text-xs text-gray-500">
+                      This name will be displayed during your chat session
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium flex items-center">
+                      <Mail className="w-4 h-4 mr-2" />
+                      Email Address (Optional)
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email address..."
+                      disabled={isSubmitting}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Used for research follow-up and participation tracking (optional)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
