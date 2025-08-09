@@ -59,6 +59,7 @@ export default function EnronNamePage() {
       
       // Save to Supabase user_data table - matching actual schema with required columns
       const userData = {
+        user_id: userId,  // Link to messages table sender_id
         name: name.trim(),
         informed_consent_agreed: true,
         consent_timestamp: sessionStorage.getItem("enron_consent_timestamp"),
