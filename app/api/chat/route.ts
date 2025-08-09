@@ -25,7 +25,7 @@ QUERY TYPES:
 RAG USAGE RULES:
 - **personal_info**: NO RAG (use general knowledge about Kenneth Lay)
 - **email_query**: YES RAG (need to search email archives)
-- **phishing_email**: YES RAG (need email context for realistic patterns)
+- **phishing_email**: NO RAG (use specialized phishing generation without archives)
 - **general**: NO RAG (use general knowledge)
 
 Respond with a JSON object containing:
@@ -81,7 +81,7 @@ User Query: "${userQuery}"`
         }
       } else if (lowerQuery.includes('phishing') || lowerQuery.includes('create') || lowerQuery.includes('generate')) {
         return {
-          shouldUseRAG: true,
+          shouldUseRAG: false,
           queryType: "phishing_email", 
           reasoning: "Fallback: Detected phishing creation keywords"
         }
