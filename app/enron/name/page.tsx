@@ -61,29 +61,83 @@ export default function EnronNamePage() {
       const userData = {
         user_id: userId,
         name: name.trim(),
-        email: email.trim() || null, // null if empty
+        email: email.trim() || null,
         session_type: "enron_whaling",
-        entry_method: "direct_enron_flow",
+        entry_method: "direct_enron_flow", 
         consent_given: true,
-        consent_timestamp: sessionStorage.getItem("enron_consent_timestamp"),
-        created_at: new Date().toISOString()
+        consent_timestamp: sessionStorage.getItem("enron_consent_timestamp")
       }
       
-      console.log("Saving user data to Supabase:", userData)
+      console.log("🔍 [ENRON NAME] Attempting to save user data to Supabase...")
+      console.log("🔍 [ENRON NAME] User data payload:", JSON.stringify(userData, null, 2))
+      console.log("🔍 [ENRON NAME] Supabase client available:", !!supabase)
       
-      const { data, error } = await supabase
-        .from("user_data")
-        .upsert(userData, {
-          onConflict: "user_id"
-        })
-        .select()
-      
-      if (error) {
-        console.error("Error saving user data:", error)
-        // Continue anyway - don't block the user flow
-      } else {
-        console.log("Successfully saved user data:", data)
-      }
+      try {
+        // First try a simple insert
+        const { data: insertData, error: insertError } = await supabase
+          .from("user_data")
+          .insert(userData)
+          .select()
+        
+        if (insertError) {
+          console.error("❌ [ENRON NAME] Insert error:", insertError)
+          console.error("❌ [ENRON NAME] Error details:", {
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code
+          })
+          
+          // Try upsert if insert fails
+          console.log("🔄 [ENRON NAME] Trying upsert instead...")
+          const { data: upsertData, error: upsertError } = await supabase
+            .from("user_data")
+            .upsert(userData, {
+              onConflict: "user_id"
+            })
+            .select()
+          
+                     if (upsertError) {
+             console.error("❌ [ENRON NAME] Upsert error:", upsertError)
+             console.error("❌ [ENRON NAME] Upsert error details:", {
+               message: upsertError.message,
+               details: upsertError.details,
+               hint: upsertError.hint,
+               code: upsertError.code
+             })
+             
+             // Try with just basic columns as last resort
+             console.log("🔄 [ENRON NAME] Trying minimal data insert...")
+             const minimalData: { user_id: string; name: string; email?: string } = {
+               user_id: userId,
+               name: name.trim()
+             }
+             
+             if (email.trim()) {
+               minimalData.email = email.trim()
+             }
+             
+             const { data: minimalData_result, error: minimalError } = await supabase
+               .from("user_data")
+               .insert(minimalData)
+               .select()
+             
+             if (minimalError) {
+               console.error("❌ [ENRON NAME] Minimal insert also failed:", minimalError)
+             } else {
+               console.log("✅ [ENRON NAME] Successfully inserted minimal user data:", minimalData_result)
+             }
+           } else {
+             console.log("✅ [ENRON NAME] Successfully upserted user data:", upsertData)
+           }
+         } else {
+           console.log("✅ [ENRON NAME] Successfully inserted user data:", insertData)
+         }
+       } catch (dbError) {
+         console.error("❌ [ENRON NAME] Database operation failed:", dbError)
+         console.error("❌ [ENRON NAME] Error type:", typeof dbError)
+         console.error("❌ [ENRON NAME] Error stack:", dbError instanceof Error ? dbError.stack : "No stack trace")
+       }
       
       // Add a small delay for better UX
       await new Promise(resolve => setTimeout(resolve, 500))
