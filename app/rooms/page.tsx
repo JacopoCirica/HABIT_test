@@ -6,9 +6,10 @@ export default function RoomSelectionPage() {
   return (
     <div className="container mx-auto py-16">
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-center max-w-2xl mx-auto">
-        {/* Hidden rooms - keeping them in code but not visible to users */}
-        <Card className="flex flex-col hidden">
+      <p className="text-lg text-gray-600 text-center mb-8">Choose from 9 different room types for various research experiences</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center max-w-6xl mx-auto">
+        {/* All rooms now visible for user selection */}
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
           </CardHeader>
@@ -19,7 +20,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col hidden">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>1v1 Confederate</CardTitle>
           </CardHeader>
@@ -30,7 +31,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col hidden">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>2-on-1 Room</CardTitle>
           </CardHeader>
@@ -41,7 +42,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col hidden">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>2vs4 Room</CardTitle>
           </CardHeader>
@@ -52,7 +53,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col hidden">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Team vs Team</CardTitle>
           </CardHeader>
@@ -60,6 +61,17 @@ export default function RoomSelectionPage() {
             <p className="flex-1 mb-4">Red Team vs Blue Team: 8 participants (4 humans + 4 participants) with random team assignment.</p>
             <Link href="/chat?type=team-vs-team">
               <Button className="w-full">Join Battle</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle>LLM vs Confederate</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Watch AI vs Human confederate debates on various topics with real-time position tracking.</p>
+            <Link href="/chat/llm-vs-confederate">
+              <Button className="w-full bg-purple-600 hover:bg-purple-700">Start LLM Debate</Button>
             </Link>
           </CardContent>
         </Card>
