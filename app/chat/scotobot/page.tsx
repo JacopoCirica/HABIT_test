@@ -108,9 +108,10 @@ function ChatScotobotComponent() {
         setIsBeforeStartTime(false)
         return Math.floor((sessionDuration - timeIntoSession) / 1000) // Remaining seconds in session
       } else {
-        // Session has ended
+        // Session time has passed, but allow new session to start
+        // Instead of ending immediately, provide a fresh 55-minute session
         setIsBeforeStartTime(false)
-        return 0
+        return Math.floor(sessionDuration / 1000) // Fresh 55-minute session
       }
     }
   }
@@ -279,11 +280,13 @@ function ChatScotobotComponent() {
 
   // Session timer - now handled by Pacific Time updater
   useEffect(() => {
-    if (!isBeforeStartTime && sessionTimeRemaining <= 0 && sessionStarted && !sessionEnded) {
+    // Only end session if it has actually been running for some time
+    // This prevents immediate exit survey on page load
+    if (!isBeforeStartTime && sessionTimeRemaining <= 0 && sessionStarted && !sessionEnded && sessionTime > 60) {
       setSessionEnded(true)
       setShowExitSurvey(true)
     }
-  }, [sessionTimeRemaining, isBeforeStartTime, sessionStarted, sessionEnded])
+  }, [sessionTimeRemaining, isBeforeStartTime, sessionStarted, sessionEnded, sessionTime])
 
   // Helper functions
   const formatTime = (seconds: number) => {
