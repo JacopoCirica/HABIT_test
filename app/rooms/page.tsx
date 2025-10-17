@@ -11,10 +11,10 @@ export default function RoomSelectionPage() {
         {/* Priority rooms - featured first */}
         <Card className="flex flex-col">
           <CardHeader>
-            <CardTitle>LLM vs Confederate</CardTitle>
+            <CardTitle>Participant vs LLM Debate</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Watch AI vs Human confederate debates on various topics with real-time position tracking.</p>
+            <p className="flex-1 mb-4">1 Participant vs 1 LLM debates on various topics with real-time sentiment tracking.</p>
             <Link href="/chat/llm-vs-confederate">
               <Button className="w-full bg-purple-600 hover:bg-purple-700">Start LLM Debate</Button>
             </Link>
@@ -25,7 +25,7 @@ export default function RoomSelectionPage() {
             <CardTitle>Scotobot</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Have a conversation with Scotobot Bob, an AI assistant ready to discuss various topics.</p>
+            <p className="flex-1 mb-4">Have a conversation with a digital twin of Chief Justice Roberts with no knowledge of the world after August 2024.</p>
             <Link href="/chat/scotobot">
               <Button className="w-full bg-green-600 hover:bg-green-700">Start Scotobot</Button>
             </Link>
@@ -36,7 +36,7 @@ export default function RoomSelectionPage() {
             <CardTitle>Enron Whaling Project</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Explore insider threat models and whaling attack scenarios with an AI trained on Enron executive emails.</p>
+            <p className="flex-1 mb-4">Explore insider threat models and whaling attack scenarios with an LLM trained on Enron executive emails.</p>
             <Link href="/chat/enron">
               <Button className="w-full bg-red-600 hover:bg-red-700">Start Enron AI</Button>
             </Link>
@@ -49,7 +49,7 @@ export default function RoomSelectionPage() {
             <CardTitle>1-on-1 Room</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Chat with a confederate in a private session.</p>
+            <p className="flex-1 mb-4">Chat with an LLM Assistant in a private session.</p>
             <Link href="/chat?type=1v1">
               <Button className="w-full">Start 1-on-1</Button>
             </Link>
@@ -57,12 +57,12 @@ export default function RoomSelectionPage() {
         </Card>
         <Card className="flex flex-col">
           <CardHeader>
-            <CardTitle>1v1 Confederate</CardTitle>
+            <CardTitle>2 Human Debate</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Chat with a human confederate in a private session.</p>
+            <p className="flex-1 mb-4">1 Participant vs 1 Human Assistant in a debate.</p>
             <Link href="/chat?type=1v1-human">
-              <Button className="w-full">Start 1v1 Confederate</Button>
+              <Button className="w-full">Start Human Debate</Button>
             </Link>
           </CardContent>
         </Card>
@@ -71,7 +71,7 @@ export default function RoomSelectionPage() {
             <CardTitle>2-on-1 Room</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Join a room with another user and a confederate.</p>
+            <p className="flex-1 mb-4">1 Participant vs 1 Human Assistant and 1 LLM Assistant in a Debate.</p>
             <Link href="/chat?type=2v1">
               <Button className="w-full">Start 2-on-1</Button>
             </Link>
@@ -82,7 +82,7 @@ export default function RoomSelectionPage() {
             <CardTitle>2vs4 Room</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Join a room with another user and debate against 4 participants (1 confederate + 3 users).</p>
+            <p className="flex-1 mb-4">Join a room with another user and debate against 4 participants (1 LLM Assistant + 3 users).</p>
             <Link href="/chat?type=2vs4">
               <Button className="w-full">Start 2vs4</Button>
             </Link>
@@ -93,7 +93,7 @@ export default function RoomSelectionPage() {
             <CardTitle>Team vs Team</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Red Team vs Blue Team: 8 participants (4 humans + 4 participants) with random team assignment.</p>
+            <p className="flex-1 mb-4">8 participants (4 humans + 4 LLMs) with random team assignment.</p>
             <Link href="/chat?type=team-vs-team">
               <Button className="w-full">Join Battle</Button>
             </Link>
