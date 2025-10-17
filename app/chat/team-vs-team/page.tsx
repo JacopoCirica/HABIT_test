@@ -1193,7 +1193,7 @@ function ChatTeamVsTeamComponent() {
                                           </div>
                                         </Avatar>
                                         <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
-                                        {isConfederate && <Badge variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">Confederate</Badge>}
+                                        {isConfederate && <Badge variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">(LLM)</Badge>}
                                       </div>
                                     )
                                   })}
@@ -1256,7 +1256,7 @@ function ChatTeamVsTeamComponent() {
                                           </div>
                                         </Avatar>
                                         <span className="text-sm font-medium">{memberName || 'Unknown'}</span>
-                                        {isConfederate && <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">Confederate</Badge>}
+                                        {isConfederate && <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">(LLM)</Badge>}
                                       </div>
                                     )
                                   })}
@@ -1284,7 +1284,7 @@ function ChatTeamVsTeamComponent() {
                         </Avatar>
                         <div>
                           <div className="font-medium">Moderator</div>
-                          <div className="text-xs text-muted-foreground">Battle Referee</div>
+                          <div className="text-xs text-muted-foreground">(LLM)</div>
                         </div>
                       </div>
                     </div>

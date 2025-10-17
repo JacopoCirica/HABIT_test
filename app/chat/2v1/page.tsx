@@ -1151,8 +1151,8 @@ function Chat2v1Component() {
                         </Avatar>
                         <div className="flex flex-col">
                           <div className="font-medium">{member.name}</div>
-                          <div className="text-xs text-muted-foreground capitalize">
-                            {member.role}
+                          <div className="text-xs text-muted-foreground">
+                            {member.role === "user" ? "Participant (Human)" : member.role === "confederate" ? "Participant (Human)" : member.role === "moderator" ? "(LLM)" : member.role}
                           </div>
                         </div>
                       </motion.div>

@@ -834,8 +834,8 @@ function LLMvsConfederateComponent() {
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground capitalize">
-                            {member.role === "ai" ? "AI Participant" : member.role === "confederate" ? "Confederate" : member.role}
+                          <div className="text-xs text-muted-foreground">
+                            {member.role === "ai" ? "(LLM)" : member.role === "confederate" ? "Participant (Human)" : member.role === "moderator" ? "(LLM)" : member.role}
                           </div>
                         </div>
                       </motion.div>

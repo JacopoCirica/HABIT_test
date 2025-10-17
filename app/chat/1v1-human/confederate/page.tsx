@@ -682,7 +682,7 @@ function ConfederateChat1v1HumanComponent() {
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground capitalize">
-                            {member.role === "confederate" ? "Confederate" : member.role}
+                            {member.role === "confederate" ? "Participant (Human)" : member.role === "user" ? "Participant (Human)" : member.role === "moderator" ? "(LLM)" : member.role}
                           </div>
                         </div>
                       </motion.div>
