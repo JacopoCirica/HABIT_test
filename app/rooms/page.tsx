@@ -6,7 +6,7 @@ export default function RoomSelectionPage() {
   return (
     <div className="container mx-auto py-16">
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
-      <p className="text-lg text-gray-600 text-center mb-8">Choose from 9 different room types for various research experiences</p>
+      <p className="text-lg text-gray-600 text-center mb-8">Choose from 6 different room types for various research experiences</p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center max-w-6xl mx-auto">
         {/* Priority rooms - featured first */}
         <Card className="flex flex-col">
@@ -44,7 +44,7 @@ export default function RoomSelectionPage() {
         </Card>
         
         {/* Additional room types */}
-        <Card className="flex flex-col">
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
           </CardHeader>
@@ -77,7 +77,7 @@ export default function RoomSelectionPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="flex flex-col">
+        <Card className="flex flex-col hidden">
           <CardHeader>
             <CardTitle>2vs4 Room</CardTitle>
           </CardHeader>
