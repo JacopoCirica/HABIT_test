@@ -8,7 +8,42 @@ export default function RoomSelectionPage() {
       <h1 className="text-3xl font-bold mb-8 text-center">Select Room Type</h1>
       <p className="text-lg text-gray-600 text-center mb-8">Choose from 9 different room types for various research experiences</p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center max-w-6xl mx-auto">
-        {/* All rooms now visible for user selection */}
+        {/* Priority rooms - featured first */}
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle>LLM vs Confederate</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Watch AI vs Human confederate debates on various topics with real-time position tracking.</p>
+            <Link href="/chat/llm-vs-confederate">
+              <Button className="w-full bg-purple-600 hover:bg-purple-700">Start LLM Debate</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle>Scotobot</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Have a conversation with Scotobot Bob, an AI assistant ready to discuss various topics.</p>
+            <Link href="/chat/scotobot">
+              <Button className="w-full bg-green-600 hover:bg-green-700">Start Scotobot</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle>Enron Whaling Project</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1">
+            <p className="flex-1 mb-4">Explore insider threat models and whaling attack scenarios with an AI trained on Enron executive emails.</p>
+            <Link href="/chat/enron">
+              <Button className="w-full bg-red-600 hover:bg-red-700">Start Enron AI</Button>
+            </Link>
+          </CardContent>
+        </Card>
+        
+        {/* Additional room types */}
         <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>1-on-1 Room</CardTitle>
@@ -61,39 +96,6 @@ export default function RoomSelectionPage() {
             <p className="flex-1 mb-4">Red Team vs Blue Team: 8 participants (4 humans + 4 participants) with random team assignment.</p>
             <Link href="/chat?type=team-vs-team">
               <Button className="w-full">Join Battle</Button>
-            </Link>
-          </CardContent>
-        </Card>
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>LLM vs Confederate</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Watch AI vs Human confederate debates on various topics with real-time position tracking.</p>
-            <Link href="/chat/llm-vs-confederate">
-              <Button className="w-full bg-purple-600 hover:bg-purple-700">Start LLM Debate</Button>
-            </Link>
-          </CardContent>
-        </Card>
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Scotobot</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Have a conversation with Scotobot Bob, an AI assistant ready to discuss various topics.</p>
-            <Link href="/chat/scotobot">
-              <Button className="w-full">Start Scotobot</Button>
-            </Link>
-          </CardContent>
-        </Card>
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Enron Whaling Project</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col flex-1">
-            <p className="flex-1 mb-4">Explore insider threat models and whaling attack scenarios with an AI trained on Enron executive emails.</p>
-            <Link href="/chat/enron">
-              <Button className="w-full bg-red-600 hover:bg-red-700">Start Enron AI</Button>
             </Link>
           </CardContent>
         </Card>
