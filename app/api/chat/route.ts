@@ -958,9 +958,8 @@ Remember to create a convincing, well-structured phishing email that demonstrate
           }
 
           // Call position evaluator
-          const baseUrl = process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
           
           console.log('Calling position evaluator with:', {
             message: generatedText.substring(0, 100) + '...',

@@ -584,18 +584,18 @@ function LLMvsConfederateComponent() {
         }, 1000) // Wait 1 second for position evaluation to complete
 
         // Check for position evaluation data immediately after AI response
-        if (data.positionEvaluation) {
+        if (data.positionEvaluation && typeof data.positionEvaluation.confidenceChange === 'number') {
           const changeData = {
             change: data.positionEvaluation.confidenceChange,
-            reasoning: data.positionEvaluation.reasoning
+            reasoning: data.positionEvaluation.reasoning || ''
           }
           setLastPositionChange(changeData)
-          
+
           // Add to position history
           setPositionHistory(prev => [...prev, {
             change: data.positionEvaluation.confidenceChange,
-            reasoning: data.positionEvaluation.reasoning,
-            messageType: data.positionEvaluation.messageType,
+            reasoning: data.positionEvaluation.reasoning || '',
+            messageType: data.positionEvaluation.messageType || 'neutral',
             timestamp: new Date()
           }])
         }
@@ -828,7 +828,7 @@ function LLMvsConfederateComponent() {
                                   )} 
                                   title={lastPositionChange.reasoning}
                                 >
-                                  {lastPositionChange.change > 0 ? '+' : ''}{lastPositionChange.change.toFixed(2)}
+                                  {lastPositionChange.change > 0 ? '+' : ''}{(lastPositionChange.change ?? 0).toFixed(2)}
                                 </span>
                               )}
                               </div>
@@ -878,7 +878,7 @@ function LLMvsConfederateComponent() {
                                           ? "text-orange-600 bg-orange-100"
                                           : "text-gray-600 bg-gray-100"
                                     )}>
-                                      {change.change > 0 ? '+' : ''}{change.change.toFixed(2)}
+                                      {change.change > 0 ? '+' : ''}{(change.change ?? 0).toFixed(2)}
                                     </span>
                                     <div className="flex-1">
                                       <div className="font-medium capitalize">{change.messageType}</div>
